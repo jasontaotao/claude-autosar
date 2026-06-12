@@ -26,13 +26,14 @@ def _register_command(name: str, module: Any) -> None:
 # Importing command modules and registering into the dispatch table.
 # Imported at module load (not lazily inside main()) so that callers/tests
 # can introspect _DISPATCH.
-from autoc.cli.commands import davinci, eb, export, log, session  # noqa: E402, PLC0415
+from autoc.cli.commands import davinci, eb, export, init, log, session  # noqa: E402, PLC0415
 
 _register_command("eb", eb)
 _register_command("davinci", davinci)
 _register_command("session", session)
 _register_command("log", log)
 _register_command("export", export)
+_register_command("init", init)
 
 
 def build_parser() -> argparse.ArgumentParser:
