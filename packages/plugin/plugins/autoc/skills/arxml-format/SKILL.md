@@ -9,11 +9,16 @@ description: |
 
 ## 命名空间
 
-| 规范版本 | 命名空间 | schema 位置 |
-|----------|---------|-------------|
-| R20-11 | `http://autosar.org/schema/r4.0 AUTOSAR_00046.xsd` | AUTOSAR_00046.xsd |
-| R21-11 | `http://autosar.org/schema/r4.0 AUTOSAR_00047.xsd` | AUTOSAR_00047.xsd |
-| R24-11 | `http://autosar.org/schema/r4.0 AUTOSAR_00048.xsd` | AUTOSAR_00048.xsd |
+| 规范版本 | 完整 URI | Schema 文件 | 首次引入年份 |
+|----------|---------|-------------|------------|
+| R20-11 (r4.0) | `http://autosar.org/schema/r4.0` | `AUTOSAR_00046.xsd` | 2020 |
+| R21-11 (r4.2) | `http://autosar.org/schema/r4.2` | `AUTOSAR_00047.xsd` | 2021 |
+| R22-11 (r4.4) | `http://autosar.org/schema/r4.4` | `AUTOSAR_00048.xsd` | 2022 |
+| R23-11 (r4.6) | `http://autosar.org/schema/r4.6` | `AUTOSAR_00049.xsd` | 2023 |
+| R24-11 (r4.7) | `http://autosar.org/schema/r4.7` | `AUTOSAR_00050.xsd` | 2024 |
+| R25-11 (r4.8) | `http://autosar.org/schema/r4.8` | `AUTOSAR_00051.xsd` | 2025 |
+
+> **工具按根 `xmlns` 自动探测，前缀仅作 fallback**。autoc 不硬编码 r4.0；通过 `arxml_io.detect_namespaces(path)` 从文件根元素动态读 URI，XPath 中 `ar:` / `d:` 等前缀绑定由该函数返回的 nsmap 决定。
 
 ```xml
 <AR-PACKAGES xmlns="http://autosar.org/schema/r4.0"
@@ -92,8 +97,11 @@ wrapper，autoc 自动 unwrap 后再处理内部元素，调用方无需感知�
 
 ```python
 from lxml import etree
+from autoc.core.bsw import arxml_io
+
 tree = etree.parse("Mcu.arxml")
-ns = {"ar": "http://autosar.org/schema/r4.0"}
+# 建议用 arxml_io.detect_namespaces() 动态获取（按根 xmlns 自动探测，前缀仅作 fallback）
+ns = arxml_io.detect_namespaces("Mcu.arxml")
 elements = tree.findall(".//ar:ECUC-CONTAINER-VALUE", ns)
 ```
 
