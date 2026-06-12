@@ -17,6 +17,11 @@ from lxml import etree
 from autoc.adapters.protocol import EcuConfigProjectContext, SaveResult, VerifyResult
 from autoc.core.bsw.arxml_io import read as arxml_read
 from autoc.core.bsw.arxml_io import write as arxml_write
+from autoc.core.bsw.bsw_write_path import (
+    BSWWritePathError,
+    validate_writes_against_bswmd,
+)
+from autoc.core.bsw.bswmd import BSWMDRegistry
 from autoc.core.bsw.config import BSWParam
 from autoc.core.bsw.ecuc import _find_module_root, _local_tag, load_module
 from autoc.core.bsw.ecuc import set_value as ecuc_set_value
@@ -67,6 +72,8 @@ def modify_and_verify(
     ctx: EcuConfigProjectContext,
     adapter: _VerifySaveAdapter,
     req: ModifyRequest,
+    *,
+    bswmd_registry: BSWMDRegistry | None = None,
 ) -> ModifyResult:
     """改 + verify + 失败回滚 + 成功 save 的闭环。
 
@@ -77,9 +84,26 @@ def modify_and_verify(
       4. verify → 失败：还原 + 返回 rolled_back
       5. verify → 成功：save → 把 written_files 填到结果
       6. 任何步骤抛异常：best-effort 还原 + 抛 ValidatorError
+
+    T8.E.3：在 snapshot 之前先按 BSWMD 校验（multiplicity / type / range / enum）；
+    校验失败时走 ``ModifyResult(error=...)`` 返回，不抛 ``ValidatorError``，不调 verify / save。
+    9 个老 test 不破：``bswmd_registry=None`` 时跳过校验。
     """
     if not req.params:
         return ModifyResult(success=True, written_files=())
+
+    # T8.E.3：BSWMD 校验在 snapshot 之前；不抛 ValidatorError
+    if bswmd_registry is not None:
+        try:
+            # current_values 此时还未加载；走"以 BSWMD 已知的写集为准"路径
+            # （容器 multiplicity 只看 writes 数；type/range 只看 writes 内容）
+            validate_writes_against_bswmd(bswmd_registry, req.module, (), req.params)
+        except BSWWritePathError as exc:
+            return ModifyResult(
+                success=False,
+                rolled_back=False,
+                error=f"BSWMD validation failed: {exc}",
+            )
 
     target_file = _locate_module_file(ctx.project_path, req.module)
     if target_file is None:
@@ -112,7 +136,8 @@ def modify_and_verify(
             arxml_doc = arxml_read(target_file)
             for param in req.params:
                 _update_tree_value(arxml_doc.tree, req.module, param)
-            arxml_write(arxml_doc, atomic=True)
+            # T8.E.5: 走 preserve_format=True 保留 PIs / DOCTYPE / 注释 / 属性顺序 / namespace prefix
+            arxml_write(arxml_doc.tree, target_file, atomic=True, preserve_format=True)
         except Exception as e:
             _restore_from_snapshot(snapshot_file, target_file)
             raise ValidatorError(f"Failed to write modified ARXML to {target_file}: {e}") from e
@@ -171,15 +196,27 @@ def _update_tree_value(
     tree: etree._ElementTree,
     module_name: str,
     param: BSWParam,
+    *,
+    nsmap: dict[str, str] | None = None,
 ) -> None:
     """在 lxml 树中按 path 找 ECUC 节点并改 VALUE 文本。
 
     path 格式: "ModuleName/[Container/]*ShortName"
+    nsmap=None（默认）：自动从 root 重建（Sprint 8.E T8.E.1 contract 3）。
+    nsmap=非空：调用方显式提供，避免重复 build_default_nsmap。
     """
     segments = param.path.split("/")
     assert segments[0] == module_name, f"path {param.path!r} 不属于模块 {module_name!r}"
 
     root = tree.getroot()
+    # nsmap 重建（如果调用方没传）：用 root.nsmap 构造。
+    # 当前 _find_module_root / _find_leaf_value_elem 都用 {*} wildcard，nsmap
+    # 仅作将来 xpath 替换的扩展点；为契约 3 保持签名一致仍消费之。
+    if nsmap is None:
+        from autoc.core.bsw.arxml_io import build_default_nsmap
+
+        nsmap = build_default_nsmap(root)
+
     module_elem = _find_module_root(root, module_name)
     if module_elem is None:
         raise ValueError(f"Module root {module_name!r} not found in tree")
