@@ -12,14 +12,21 @@ license = { text = "MIT" }
 authors = [
     { name = "AutoC Contributors" },
 ]
-keywords = ["autosar", "bsw", "tresos", "davinci", "arxml"]
+keywords = ["autosar", "bsw", "tresos", "davinci", "arxml", "ecu", "embedded", "mcp"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Automotive Engineers",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Embedded Systems",
+    "Typing :: Typed",
 ]
 dependencies = [
     "lxml>=5.0",
@@ -29,6 +36,12 @@ dependencies = [
     "platformdirs>=4.0",
     "tomli-w>=1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/autoc-cc/autoc-cc"
+Repository = "https://github.com/autoc-cc/autoc-cc"
+Issues = "https://github.com/autoc-cc/autoc-cc/issues"
+Changelog = "https://github.com/autoc-cc/autoc-cc/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

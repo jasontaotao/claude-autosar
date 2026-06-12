@@ -17,6 +17,8 @@
 
 下一个待办：**Sprint 8（待规划）** — 候选：PyPI 发布（autoc 0.1.0 wheel + 签名）、VSCode 扩展 vscode-autoc、CI 增 pip-audit/bandit 步骤。
 
+**Sprint 8.B 状态**：PyPI 发布 0.1.0 wheel + trusted publishing 就绪，本地 build/twine check/smoke test 全通过；release.yml 已就位。**等用户在 PyPI 项目上配置 trusted publisher 一次（PyPI dashboard → Publishing → Add trusted publisher：GitHub → 选 repo + workflow `release.yml` + environment `pypi`）后**打 tag 即可触发自动发布。详细见 Sprint 8.B 段。
+
 ## 当前 HEAD 状态
 
 > Sprint 8 完成 git init + 首 commit 后的状态；之前的 sprint 都在文件系统上，未做版本控制。
@@ -593,4 +595,94 @@ Sprint 3 review 留 0 HIGH / 3 MEDIUM / 3 LOW：
 - `tests/unit/test_cli_eb.py` (追加 TestRunSaveSession 2 测试)
 
 **下一个 sprint**：Sprint 5 — CLI 主入口（`cli/main.py` 已就绪，剩 `cli/repl_skin.py` Rich 样式 + `cli/mcp_server.py` 暴露 10 个 MCP 工具）。
+
+---
+
+### Sprint 8.A — git init baseline ✅
+
+| # | 任务 | 状态 |
+|---|---|---|
+| T8.A.1 | `git init` + 分支 `master` → `main` | ✅ |
+| T8.A.2 | 删除 `_tmp_test.xdm` 测试残留 | ✅ |
+| T8.A.3 | Sprint 5+6+7 全部改动入库（合并 commit，43 文件 / +5866 行） | ✅ |
+| T8.A.4 | `PROGRESS.md` 顶部"当前 HEAD 状态"段刷新（Sprint 2 → Sprint 7 实际数） | ✅ |
+
+**最终状态**（按 commit 顺序）：
+- `914f20d` chore(sprint8): git init baseline — refresh PROGRESS.md head state
+- `599aa39` feat: sprint 5+6+7 — mcp server, plugin shell, e2e, security audit
+- `8b5149c` feat: sprint 0+1+2+3+4 — core, adapters, CLI, session, marketplace
+- `ef68726` chore: initial project scaffold
+
+**为什么合并 sprint 5+6+7 一个 commit**：mcp_server.py 在 Sprint 5 创建、Sprint 7 修复 4 处 error dict 合约；分 commit 会让 sprint 5 commit 缺一块、且 mcp_server 在 sprint 7 commit 中反历史。合并 commit 粒度与既有 `8b5149c`（sprint 0-4 一次合并）对齐。
+
+---
+
+### Sprint 8.B — PyPI 发布 0.1.0 wheel + trusted publishing ✅
+
+| # | 任务 | 状态 |
+|---|---|---|
+| T8.B.1 | `pyproject.toml` 审计 + 补 `project.urls` + 操作系统 classifiers | ✅ |
+| T8.B.2 | `CHANGELOG.md`（Keep a Changelog 1.1.0 风格） | ✅ |
+| T8.B.3 | `python -m build` wheel + sdist + `twine check` + fresh venv smoke test | ✅ |
+| T8.B.4 | `.github/workflows/release.yml` — trusted publishing（OIDC，无 token） | ✅ |
+| T8.B.5 | `PROGRESS.md` Sprint 8.B 段 | ✅ |
+
+**T8.B.1 — `pyproject.toml` 改进**
+- 增 `[project.urls]`（Homepage / Repository / Issues / Changelog）
+- 增 7 个 classifiers：Intended Audience :: Developers、Operating System :: OS Independent / Windows / POSIX Linux、Python 3.13、Typing :: Typed
+- keywords 增 `ecu` / `embedded` / `mcp`（去重 arxml）
+
+**T8.B.2 — `CHANGELOG.md`**
+- 根目录 `CHANGELOG.md`（非 packages/autoc/ 内）— PyPI 主页 + GitHub 双方都链
+- Keep a Changelog 1.1.0 风格：Added / Changed / Fixed / Notes 四段
+- 0.1.0 release notes 覆盖 Sprint 0-7 所有用户面向变更（不变更路径 / 不影响二次开发者的内部重构不写）
+
+**T8.B.3 — build 验证**
+- `dist/autoc-0.1.0-py3-none-any.whl` (66 KB) + `dist/autoc-0.1.0.tar.gz` (51 KB)
+- `twine check dist/*` → PASSED（long_description README 渲染合法）
+- fresh venv 烟囱：
+  - `autoc --version` → `autoc 0.1.0`
+  - `autoc --help` → dispatch 表 5 子命令（eb / davinci / session / log / export）+ 全局 flags
+  - `from autoc.cli.mcp_server import build_mcp_server; build_mcp_server()` → 10 工具注册
+
+**T8.B.4 — `release.yml`**
+- 触发：`v*.*.*` tag push **或** `workflow_dispatch`（带 `test_pypi` input）
+- 3 jobs：`build`（含 `twine check` + fresh venv smoke test + 上传 artifact） → `publish`（PyPI，env `pypi`） / `publish-test`（TestPyPI，env `test-pypi`，仅 manual + test_pypi=true 触发）
+- trusted publishing 配置：`permissions.id-token: write` + PyPI 端 OIDC 信任（无需 API token）
+- artifact 留存 14 天（traceability / 手动 verify）
+
+**PyPI 项目一次性配置**（项目 owner 做一次，release.yml 才能跑）：
+1. 登录 https://pypi.org → autoc 项目 → Publishing → Add a new pending publisher
+2. 填：
+   - Owner：`autoc-cc`
+   - Repository：`autoc-cc`
+   - Workflow filename：`release.yml`
+   - Environment name：`pypi`
+3. （可选但推荐）GitHub repo → Settings → Environments → `pypi` → Required reviewers：1 人
+4. 首次发布可先去 TestPyPI 同样配置一遍（environment name 用 `test-pypi`）
+
+**触发发布**：
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+# → release.yml 自动 build + publish
+```
+
+**最终状态**
+- 测试 467 passed / coverage 90.07%（不变 — 仅打包）
+- ruff / isort / black / mypy strict 全清
+- twine check 全 PASSED
+- fresh venv smoke test OK
+- wheel 路径：`dist/autoc-0.1.0-py3-none-any.whl`
+
+**文件清单**（5 个文件）
+- 新：`packages/autoc/LICENSE`（MIT 全文）
+- 新：`CHANGELOG.md`（根目录）
+- 新：`.github/workflows/release.yml`（trusted publishing）
+- 改：`packages/autoc/pyproject.toml`（+project.urls + 7 classifiers + 3 keywords）
+- 改：`packages/autoc/README.md`（Sprint 0+1 → 0.1.0 全刷；PyPI long_description 用）
+
+**下一个 sprint**：Sprint 8.C — VSCode 扩展 vscode-autoc（把 `autoc` CLI 包成 VSCode 扩展） / Sprint 8.D — 文档收尾（CHANGELOG 入 plugin docs；plugin commands 链接审计） 二选一。
+
+
 
