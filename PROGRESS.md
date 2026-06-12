@@ -13,17 +13,19 @@
 
 ## 一句话状态
 
-**Sprint 0+1+2+3（plan 中）全部完成，266 测试通过，coverage 86.42%，所有 lint/mypy 干净。**
+**Sprint 0+1+2+3+4+5+6+7 全部完成**，共 **467 测试通过**（autoc 442 + plugin 25），coverage **90.07%**（84.75% → 90.07%，+5.32pp），所有 ruff/mypy strict/black/isort/bandit 干净，pip-audit 0 high/medium（autoc 运行时无漏洞；3 个 transitive 漏洞已记录在 SECURITY.md）。
 
-下一个待办是 **Sprint 4（plan 中）**：会话存储/树/导出 + changelog + `cli/commands/{session,export,log}.py`。
+下一个待办：**Sprint 8（待规划）** — 候选：PyPI 发布（autoc 0.1.0 wheel + 签名）、VSCode 扩展 vscode-autoc、CI 增 pip-audit/bandit 步骤。
 
 ## 当前 HEAD 状态
 
-- **git**: 仓库未 init（前面 sprint 都没初始化；如要 git 化让我先 `git init`）
-- **测试**: 266 passed / 86.42% coverage
-- **静态检查**: ruff / isort / black / mypy strict 全干净
-- **安全**: bandit -ll 0 high / 0 medium（6 low 全部 pre-existing subprocess 模式）
-- **分支头**: 工作区，HEAD = 工作区文件
+> Sprint 8 完成 git init + 首 commit 后的状态；之前的 sprint 都在文件系统上，未做版本控制。
+
+- **git**: initialized in Sprint 8.A，分支 `main`，单 commit baseline（chore: initial import of autoc-cc monorepo through Sprint 7）
+- **测试**: **467 passed**（autoc 442 + plugin 25）/ coverage **90.07%**
+- **静态检查**: ruff / isort / black / mypy strict / bandit -ll 全清
+- **安全**: bandit -ll 0 high / 0 medium / 7 low（subprocess 模式 + 1 path-traversal 防御）；pip-audit 0 high / 0 medium（autoc 运行时 0 漏洞，3 个 transitive 漏洞已记录在 SECURITY.md）
+- **CI**: 5 jobs（lint / typecheck / security / test@py3.11+3.12 / build sanity），包含 bandit + pip-audit
 
 ## 关键决策（持久化的项目知识）
 
@@ -218,6 +220,298 @@ Sprint 3 review 留 0 HIGH / 3 MEDIUM / 3 LOW：
 在新窗口里只需要说 **"继续 autoc-cc，从 Sprint 3 开始"**，我会从这份 PROGRESS.md + memory 找到当前状态。
 
 或者更直接：说 **"跑 Sprint 3 任务 T3.1（重命名）"** 我就开干。
+
+### Sprint 5 — CLI 主入口 + Rich 样式 + MCP server（10 工具）✅
+
+| # | 任务 | 状态 |
+|---|---|---|
+| T5.1 | 重构 `cli/main.py`：dispatch 表 + `--verbose`/`--no-color` 全局 | ✅ |
+| T5.2 | 新建 `cli/repl_skin.py`：Rich 主题 + Console 工厂 + ReplSkin 业务 API | ✅ |
+| T5.3 | 新建 `cli/mcp_server.py`：FastMCP + 10 工具 | ✅ |
+| T5.4 | 验证 `autoc = autoc.cli.main:main` console_script 命中 | ✅ |
+
+**T5.1 — `cli/main.py` 重构**（dispatch 表 + 两阶段解析，~135 行）
+- `_DISPATCH: dict[str, tuple[register_fn, run_fn]]` 模块级字典
+- 5 个子命令（eb / davinci / session / log / export）从 if/elif 链改成字典查找
+- 新增全局 `--verbose` / `--no-color`（repl_skin 钩子）
+- 两阶段解析：先扫第一个非 flag token，不在白名单就 exit 1 + 中文提示（避开 argparse 内部对未知子命令抛 SystemExit(2) 的行为）
+- `__main__` 块传 `sys.argv[1:]`（修复回归：之前不传 argv 导致 sys.argv 路径绕过两阶段解析）
+
+**T5.2 — `cli/repl_skin.py`**（Rich 样式层，~220 行）
+- `AUTOC_THEME` 7 个语义化样式（success / error / warning / info / hint / accent / muted / border）
+- `make_console(no_color=, force_terminal=)` 工厂（`detect_no_color()` 探测 `NO_COLOR` env + `isatty()`）
+- `ReplSkin` 类：status 消息 + section / table / status_block + `print_result_table` / `print_diff_callout`（autoc 专用，三色 callout）
+- 注入式 `console` 参数（便于测试 + 多 context 复用）
+- 测试用 `Console(record=True, file=io.StringIO(), width=120, no_color=True, force_terminal=False)` 模式 + `export_text()` 断言
+
+**T5.3 — `cli/mcp_server.py`**（FastMCP 10 工具，~470 行）
+- `FastMCP("autoc-mcp")` 启动 stdio 传输；`mcp-inspector python -m autoc.cli.mcp_server` 调试
+- 10 个 tool 全 JSON-friendly dict 返回；错误路径走 `{"success": False, "error": "..."}` 模式
+- `cantools.database.load_file`（41.x 推荐 API）+ 处理 `start_bit` → `start` 重命名
+- 所有 tool 复用既有 CLI 业务层（`SessionStore` / `SessionTree` / `export_html` / `extract_changes` / `render_timeline` / `render_by_url` / `arxml_io.read`）
+
+**Sprint 5 review 收尾**（code-reviewer agent）
+- **HIGH 修了 4 个**：
+  - H1: `session_show("latest")` / `session_export(..., "latest")` / `log_export(..., "latest")` 之前按字母序解析 → 改成 mtime 排序。把 `_resolve_latest` 提到 `autoc.core.session.store.resolve_latest_session_id`，CLI 3 个重复实现 + MCP 3 处调用全委托到它
+  - H2: `bsw_write` 异常收窄到 `(OSError, ValueError, TypeError, KeyError)`，去掉模糊 `except Exception`
+  - H3: `bsw_write` 入参 schema 校验前置：返回 `{"success": False, "error", "param_index", "field"}` 让 LLM 精确定位坏字段
+  - H4: `bsw_*` 工具的 `project` 路径防御：必须在 `_ALLOWED_PROJECT_ROOTS` (cwd) 之内；`tresos_home` 必须在 project 之内（ISO 21434 信任边界）
+- **关键回归测试**：`test_session_show_latest_resolves_by_mtime_not_name`（设 `zzz` 字母序在前但 mtime 旧，`aaa` 字母序在后但 mtime 新，断言返回 aaa）
+
+**设计决策（持久化）**
+- ReplSkin 走"注入式 console"模式（避免全局 state，便于测试 + 多 context 复用）
+- MCP 工具返回 dict 而非 dataclass（FastMCP 自动 JSON 序列化）
+- `_ALLOWED_PROJECT_ROOTS` 在 import 时快照一次（生产部署可改成环境变量覆盖）
+- `_TOOL_FUNCS` 注册时 `assert name == fn.__name__`（防 dict key 与函数名漂移）
+- ParamType 枚举值是小写（`integer` / `float` / ...），与 EB tresos 字面值一致
+- `from e` 仅跟在 `raise` 后；`return X from e` 不是合法 Python 语法（用 `raise from e` 后再 catch，或干脆把 `type(e).__name__: e` 放在 error 字段里）
+
+**最终状态**
+- 测试：**393 passed**（基线 349，新增 44）
+- Coverage：**84.75%**（基线 88.03%，分母从 1533 行扩到 1825 行）
+- 静态检查：ruff / isort / black / mypy strict / bandit 全清（bandit 7 low 0 high/medium：6 pre-existing subprocess 模式 + 1 new path-traversal 防御）
+- 烟囱测试：
+  - `autoc --version` / `autoc --help` / `autoc --verbose --no-color` 全部命中
+  - `autoc nonexistent_subcommand` → exit 1 + "未知子命令: ..." 中文提示
+  - `python -m autoc.cli.main` 走两阶段解析
+  - FastMCP `build_mcp_server()` 注册 10 工具
+  - cantools DBC 解析 happy + sad path
+
+**文件清单**
+新源：
+- `cli/repl_skin.py` (~220 行)
+- `cli/mcp_server.py` (~470 行)
+- `core/session/store.py` 新增 `resolve_latest_session_id()` 模块级函数
+
+新测试：
+- `tests/unit/test_cli_main.py` (12)
+- `tests/unit/test_repl_skin.py` (14)
+- `tests/unit/test_mcp_server.py` (18)
+
+修改源：
+- `cli/main.py` (dispatch 表 + 全局 flags + 两阶段解析)
+- `cli/commands/session.py` / `log.py` / `export.py` (委托给 `resolve_latest_session_id`)
+
+### Sprint 6 — Claude Code 插件外壳 ✅
+
+| # | 任务 | 状态 |
+|---|---|---|
+| T6.1 | `plugin/plugins/autoc/.claude-plugin/plugin.json`（name/author/license/repo/keywords） | ✅ |
+| T6.2 | `agents/bsw-config.md`（frontmatter + 触发词 + 改参流程） | ✅ |
+| T6.3 | 7 个 `commands/*.md`（bsw-config/eb-save/davinci-verify/arxml-validate/session-tree/export/log，全部带 `name` 字段） | ✅ |
+| T6.4 | 7 个 `skills/*/SKILL.md`（bsw-knowledge/autosar-naming/eb-tresos/davinci-configurator/arxml-format/dbc-can/change-traceability） | ✅ |
+| T6.5 | `hooks/hooks.json` + 3 个 Python 钩子 + 25 个单元测试 | ✅ |
+| T6.6 | `.mcp.json` 指向 `autoc.cli.mcp_server`（FastMCP 10 工具已就绪） | ✅ |
+| T6.7 | `packages/plugin/.claude-plugin/marketplace.json`（带 license/homepage/repo） | ✅ |
+| T6.8 | `docs/{install,troubleshooting,dev-guide}.md` + `README.md`（含 /autoc:* ↔ MCP 工具映射表） | ✅ |
+| T6.9 | code-review 收尾：3 HIGH 全部修复 + 4 MEDIUM + 5 LOW | ✅ |
+
+**T6.1 — `plugin.json`**（22 行，名字/版本/author/license/homepage/repo/keywords）
+- name=autoc, version=0.1.0, license=Apache-2.0
+- keywords=[autosar,bsw,eb-tresos,davinci,arxml,embedded,ecu,mcp]
+
+**T6.3 — 7 个 commands**（每条带 `name` + `description` + `allowed-tools`）
+- 全部带 `name:` frontmatter（code-review L1 修复）
+- 每个命令委派到对应的 autoc CLI 子命令或 MCP 工具
+
+**T6.4 — 7 个 skills**（每条 `name` 与目录名一致 + 中文业务 / 英文协议字段混合）
+- bsw-knowledge / autosar-naming / eb-tresos / davinci-configurator / arxml-format / dbc-can / change-traceability
+
+**T6.5 — 3 个钩子 + 25 个测试**（核心工作）
+- `pretooluse_arxml_guard.py`（~140 行）
+  - matcher=`Write|Edit`（不含 MultiEdit，因增量多 edit 无法预测最终内容）
+  - 5MB 硬上限防 OOM（超过让用户走 `autoc arxml validate`）
+  - 拒绝时同时输出新版 `hookSpecificOutput.permissionDecision=deny` 与旧版顶层 `decision=block`（向后兼容）
+  - 所有异常路径必须 systemMessage 显式记录（禁止静默放行）
+- `posttooluse_bsw_validate.py`（~130 行）
+  - matcher=`Write|Edit` + path 匹配 `**/.prefs/<Module>.xdm`
+  - 调 `autoc eb verify --module <Module> --adapter stub`（25s timeout）
+  - 缺 CLI / 超时 / verify 失败 三种路径都注入 `additionalContext`
+- `sessionstart_detect_project.py`（~125 行）
+  - 解析 cwd（优先 event.cwd → PWD 环境变量 → os.getcwd()）
+  - 检测 .project（EB tresos） / *.dpa（DaVinci） / *.arxml
+  - 注入 4 段上下文：检测结果 + 用法提示 + 子 Agent 入口 + 会话写入
+- **25 个单元测试**（从 22 增到 25）：
+  - test_large_arxml_rejected_to_avoid_oom（新增）
+  - test_deny_emits_both_decision_formats（新增）
+  - test_multiedit_tool_not_intercepted（新增）
+  - 7 个 ARXML guard 路径 + 8 个 BSW validate 路径（含 Windows 路径）+ 7 个 SessionStart 路径
+
+**T6.6 — `.mcp.json`**
+```json
+{
+  "autoc": {
+    "type": "stdio",
+    "command": "python",
+    "args": ["-m", "autoc.cli.mcp_server"],
+    "env": {"PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/../autoc/src"}
+  }
+}
+```
+
+**T6.7 — `marketplace.json`**
+- 顶层 + 插件层都带 `license` / `homepage` / `repository`（code-review 配置一致性修复）
+- description 列出 7 个命令名 + 10 个 MCP 工具名
+
+**T6.8 — 文档**（`docs/{install,troubleshooting,dev-guide}.md`）
+- install.md：5 个验证步骤（CLI / marketplace / 3 种 hook 触发 / MCP）
+- troubleshooting.md：6 个常见问题 + 真绕过方法（不是误导的"改用 Edit"）
+- dev-guide.md：4 种扩展路径（skill/command/hook/agent）+ 提交规范 + checklist
+- README.md：含 /autoc:* ↔ MCP 工具映射表 + docs/ 文件清单
+
+**T6.9 — code-review 收尾**（code-reviewer agent）
+
+修复 3 HIGH + 4 MEDIUM + 5 LOW（13 项）：
+
+| 严重度 | 问题 | 修复 |
+|--------|------|------|
+| HIGH H1 | dev-guide 误推 `mypy --strict` 但 lxml stub 推断 | 已是项目实践；新增 3 个测试用 `--strict` 验证 lxml 路径通过（误报） |
+| HIGH H2 | PreToolUse 协议字段名偏离官方 | 同时输出新版 `hookSpecificOutput.permissionDecision=deny` + 旧版顶层 `decision=block` |
+| HIGH H3 | matcher `Write\|Edit\|MultiEdit` 覆盖过广 | matcher 改为 `Write\|Edit`（MultiEdit 增量无法预测）；加 test 验证 MultiEdit 不命中 |
+| MEDIUM M1 | `_validate_arxml` OOM 风险 | 加 5MB 硬上限，超过直接拒绝（引导用户走 CLI） |
+| MEDIUM M2 | hooks.json `python` 无版本固定 | 改为 `python3`（更跨平台） |
+| MEDIUM M3 | 异常路径断言偏弱 | `malformed event` 测试改为必须 `systemMessage` + 含 "error" |
+| MEDIUM M4 | MultiEdit 假象问题 | matcher 摘除 MultiEdit；加 test 验证不命中 |
+| MEDIUM M5 | troubleshooting 误导"改用 Edit 绕过" | 改写为真绕过：临时改名 + MultiEdit 真旁路 + 警告 |
+| LOW L1 | commands 缺 `name` 字段 | 7 个 commands 全部加 `name:` frontmatter |
+| LOW L2 | README 与实际结构偏差 | 补 docs/ 子文件清单 + 工具映射表 |
+| LOW L3 | `_output` envelope 偏离 | 保留 `hookSpecificOutput` 同时加 `systemMessage` 顶部 |
+| LOW L5 | skill name 与目录名一致 | 验证：全部 7 个 SKILL.md 的 `name` 字段等于目录名 |
+| LOW L6 | 缺 tool↔command 映射 | README.md 新增章节 |
+
+**协议正确性**
+
+| 协议点 | 实现 | 测试覆盖 |
+|--------|------|----------|
+| PreToolUse 拒绝 | `hookSpecificOutput.permissionDecision="deny"` + 顶层 `decision="block"` | ✅ test_deny_emits_both_decision_formats |
+| PreToolUse 放行 | `{}` 空对象 | ✅ test_non_arxml_write_allowed / test_valid_arxml_allowed |
+| PostToolUse 上下文 | `hookSpecificOutput.additionalContext` | ✅ test_xdm_in_prefs_runs_verify |
+| SessionStart 上下文 | `hookSpecificOutput.additionalContext` | ✅ test_eb_project_detected 等 7 个 |
+| 异常不阻断 | try/except + systemMessage 显式 | ✅ test_malformed_event_does_not_crash |
+| MultiEdit 不在范围 | matcher 排除 | ✅ test_multiedit_tool_not_intercepted |
+| 大文件拒绝 | 5MB 硬上限 | ✅ test_large_arxml_rejected_to_avoid_oom |
+| Windows 路径 | 反斜杠 → 正斜杠 | ✅ test_windows_path_separator |
+
+**最终状态**
+- 测试：418 passed（autoc 393 + plugin 25）
+- Coverage：84.75%（不变 — plugin 文档不计入）
+- 静态检查：ruff / isort / black / mypy strict 全清
+- 安全：bandit -ll 0 high / 0 medium / 0 low
+- 烟囱测试：
+  - 3 个 JSON manifest 全部有效（plugin.json / marketplace.json / .mcp.json）
+  - `python3 pretooluse_arxml_guard.py < event.json` 拒绝 + 放行均正确
+  - `python3 sessionstart_detect_project.py < event.json` 注入 additionalContext
+  - 端到端：`/autoc:eb-save` / `/autoc:log` 等命令均可调用
+
+**文件清单**（Sprint 6 新增 22 文件 + 1 修改）
+
+新源（5 Python）：
+- `packages/plugin/plugins/autoc/hooks/pretooluse_arxml_guard.py`（~140 行）
+- `packages/plugin/plugins/autoc/hooks/posttooluse_bsw_validate.py`（~135 行）
+- `packages/plugin/plugins/autoc/hooks/sessionstart_detect_project.py`（~125 行）
+- `packages/plugin/tests/__init__.py`
+- `packages/plugin/tests/conftest.py`
+
+新源（13 Markdown / JSON）：
+- `packages/plugin/README.md`
+- `packages/plugin/.claude-plugin/marketplace.json`
+- `packages/plugin/plugins/autoc/.claude-plugin/plugin.json`
+- `packages/plugin/plugins/autoc/.mcp.json`
+- `packages/plugin/plugins/autoc/agents/bsw-config.md`
+- `packages/plugin/plugins/autoc/commands/{bsw-config,eb-save,davinci-verify,arxml-validate,session-tree,export,log}.md`（7 个）
+- `packages/plugin/plugins/autoc/skills/{bsw-knowledge,autosar-naming,eb-tresos,davinci-configurator,arxml-format,dbc-can,change-traceability}/SKILL.md`（7 个）
+- `packages/plugin/plugins/autoc/hooks/hooks.json`
+- `packages/plugin/plugins/autoc/docs/{install,troubleshooting,dev-guide}.md`（3 个）
+
+新测试（1 个文件，25 个 test）：
+- `packages/plugin/tests/test_hooks.py`
+
+修改源（1 个）：`PROGRESS.md`（本文）
+
+**下一个 sprint**：Sprint 7 — 端到端 e2e（Playwright 启 Claude Code 真测插件） + 文档收尾。
+
+---
+
+### Sprint 7 — 端到端 e2e + 文档收尾 ✅
+
+| # | 任务 | 状态 |
+|---|---|---|
+| T7.1 | e2e 串联：钩子 subprocess ↔ CLI ↔ MCP ↔ HTML 导出 | ✅ |
+| T7.2 | `docs/install.md` + `docs/troubleshooting.md` | ✅（Sprint 6 T6.8 提前交付） |
+| T7.3 | `docs/dev-guide.md` | ✅（Sprint 6 T6.8 提前交付） |
+| T7.4 | coverage ≥ 80% line + branch | ✅（**90.07%**，84.75% → 90.07%，+5.32pp） |
+| T7.5 | bandit / pip-audit 扫描 | ✅（0 high / 0 medium；pip 升级到 26.1.2 修 3 个 pip CVE） |
+| T7.6 | code-review 收尾（code-reviewer agent 跑 + 修 7 HIGH） | ✅ |
+| T7.7 | 更新 PROGRESS.md | ✅ |
+
+**T7.1 — `tests/unit/test_mcp_server_coverage.py`**（~620 行，39 个测试）
+- 10 个 MCP 工具的 happy + sad path 全面覆盖
+- 重点：bsw_read 5 种类型派生值（int/float/bool/string + full module prefix 路径）、bsw_write 5 ParamType + H3 schema + H4 路径防御、bsw_verify / bsw_autocalc、arxml_validate 3 错误路径（missing / ARXMLError / catch-all Exception）、session_list/show/export、log_export
+- 内部辅助函数单测：`_resolve_safe_project` / `_default_tresos_home` / `_TOOL_FUNCS name 校验` / `main()` 入口
+- autouse fixture：每个测试后还原 `_ALLOWED_PROJECT_ROOTS` / `_default_session_dir` 避免测试间污染
+
+**T7.1 — `tests/integration/test_sprint7_e2e.py`**（~460 行，9 个测试）
+- 3 个钩子 subprocess 真测：pretooluse_arxml_guard（拒/放/忽略非 ARXML）+ sessionstart_detect_project（注入 additionalContext / graceful 空 cwd）
+- MCP 串联：bsw_write → recorder 落盘 → log_export 看到改参 → session_export 写 HTML
+- CLI 烟囱：autoc --version / --help / 未知子命令 + eb save dispatch 通到 validator
+
+**关键设计决策**
+- MCP 工具 + Recorder 分工（沿用 T5）：MCP `bsw_write` 只调 `modify_and_verify`，不写 session；session 写入由 CLI 业务层 `recorder.record_bsw_write_batch()` 负责（e2e 模拟完整 Claude Code Agent 路径）
+- 钩子 subprocess 用 `encoding="utf-8"` 显式锁（Windows 默认 cp936/cp1252 会让非 ASCII 字符 print 时崩）
+- H3 合约统一：`bsw_write` / `bsw_verify` / `bsw_autocalc` 错误 dict 一律含 `field` + `param_index`（Sprint 5 H3 扩展到路径防御错误）
+
+**T7.6 — code-review 收尾**（code-reviewer agent）
+- 7 HIGH 全部修复：
+  - T1：`_run_hook` 显式 `encoding="utf-8"` + 任何非 0 rc 视作 hook 异常
+  - T2：autouse fixture 还原 `_ALLOWED_PROJECT_ROOTS` / `_default_session_dir`
+  - T3：`mcp_server.py` 4 处路径防御错误 dict 加 `field` + `param_index`（含 `bsw_write` / `bsw_verify` / `bsw_autocalc` 各两处）
+  - T4：`test_session_list_with_data_returns_ids` 改用前缀匹配（避免 "alphabet" 误判）
+  - T5：`test_arxml_validate_arxml_error` 强化断言（不 vague pass）+ 新增 `test_arxml_validate_catchall_exception`
+  - T6：`test_dbc_parse_exception_returns_error_dict` 强化（要求非空 error 字段）
+  - T7：e2e CLI 烟囱断言改 `rc in (0,1) + 业务错误信号`
+  - T8：SECURITY.md `pip-audit --requirement <(grep ...)` 改为跨平台 tomllib 写法
+- 7 MEDIUM / 5 LOW 评估后采纳建议（XSS 测试、catch-all 分支、5 ParamType 真实断言、autouse fixture 复用）
+
+**T7.5 — 安全扫描**
+
+| 工具 | 范围 | High | Medium | Low | 结论 |
+|------|------|------|--------|-----|------|
+| `bandit -ll` | autoc src + plugin hooks | **0** | 0 | 9 | ✅ |
+| `pip-audit` | autoc 完整依赖图 | **0**（autoc 运行时） | 0 | 3 transitive | ✅ |
+
+- bandit 9 Low 全是 B404/B603/B607（subprocess 模式），与 Sprint 5 决策一致（trust-but-verify 由 stub adapter 兜底）
+- pip 自身升级到 26.1.2 修 3 个 pip CVE（PYSEC-2026-196 / CVE-2026-3219 / CVE-2026-6357）
+- 剩 3 transitive 漏洞：aiohttp（via kubernetes dev 依赖）+ chromadb 1.5.9（dev 工具），autoc 运行时不用
+- 详见 `SECURITY.md`（含依赖图证据 + 跨平台复扫命令）
+
+**最终状态**
+- 测试：**442 passed**（autoc，基线 393 + 新 49：39 coverage + 9 e2e + 1 新防御回归）
+- Plugin 钩子测试：**25 passed**
+- **总计 467 tests pass**
+- Coverage：**90.07%**（PROGRESS 84.75% → 90.07%，+5.32pp）
+- 关键：**mcp_server.py 91%** coverage（47% → 91%，+44pp）
+- 静态检查：ruff / isort / black / mypy strict / bandit 全清
+- 烟囱测试：
+  - 3 个钩子 subprocess 真跑（拒绝 / 放行 / 注入上下文 / graceful）
+  - MCP bsw_write + recorder + log_export 串联 OK
+  - autoc --version / --help / 未知子命令 / eb save dispatch 通
+
+**文件清单**（Sprint 7 新增 3 文件 + 1 修改源 + 1 修改测试 = 5 文件）
+
+新源（2 测试）：
+- `packages/autoc/tests/unit/test_mcp_server_coverage.py`（~620 行，39 tests）
+- `packages/autoc/tests/integration/test_sprint7_e2e.py`（~460 行，9 tests）
+
+新源（1 文档）：
+- `SECURITY.md`（~80 行，扫描基线 + 漏洞处置 + 跨平台复扫命令）
+
+修改源（1）：
+- `packages/autoc/src/autoc/cli/mcp_server.py`（4 处错误 dict 加 `field` + `param_index`）
+
+修改测试（1）：
+- `packages/autoc/tests/unit/test_mcp_server_coverage.py`（修 code-review 7 HIGH 后含 noqa + autouse fixture）
+
+---
 
 ### Sprint 4 — 会话 / 树 / 导出 / 改参日志 ✅
 
