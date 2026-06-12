@@ -23,6 +23,7 @@ from autoc.adapters.protocol import (
 from autoc.adapters.stub import StubTresosAdapter
 from autoc.adapters.tresos import TresosAdapter
 from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
+from autoc.core.bsw.path_resolver import BSWPathResolver
 from autoc.core.bsw.validator import ModifyRequest, modify_and_verify
 
 
@@ -144,7 +145,20 @@ def _run_save(
 ) -> int:
     params = _parse_params(args.param, args.module)
     req = ModifyRequest(module=args.module, params=tuple(params))
-    result = modify_and_verify(ctx, adapter, req)
+    try:
+        result = modify_and_verify(ctx, adapter, req)
+    except Exception as e:
+        # T8.E.4: typo 防御 — 尝试给"path not found"类错误加"Did you mean: ..."
+        suggestions = _maybe_typo_suggestion(e, ctx, args.module)
+        payload: dict[str, Any] = {
+            "success": False,
+            "error": str(e),
+        }
+        if suggestions:
+            payload["suggestions"] = list(suggestions)
+            _emit_did_you_mean(suggestions)
+        print(json.dumps(payload))
+        return 1
     payload = {
         "success": result.success,
         "written_files": [str(p) for p in result.written_files],
@@ -209,3 +223,77 @@ def _run_autocalc(
         )
     )
     return 0 if result.success else 1
+
+
+# ---------------------------------------------------------------------------
+# T8.E.4 — typo 防御 helpers
+# ---------------------------------------------------------------------------
+
+
+def _maybe_typo_suggestion(
+    exc: BaseException,
+    ctx: EcuConfigProjectContext,
+    module: str,
+) -> tuple[str, ...]:
+    """如果异常来自 `ecuc_set_value` 找不到 path，调 BSWPathResolver 给候选。
+
+    链式判别：走 __cause__ / __context__ / 直接 exc 自身（covers
+    `raise X from Y` 模式 + `raise X` in try/except + 直接 raise）。
+    """
+    from autoc.core.bsw.ecuc import load_module
+
+    # 找目标 .xdm / .arxml（与 validator._locate_module_file 逻辑相同，
+    # 这里再写一遍避免 import private）
+    target_file: Path | None = None
+    for ext in (".xdm", ".arxml"):
+        candidate = ctx.project_path / f"{module}{ext}"
+        if candidate.is_file():
+            target_file = candidate
+            break
+    if target_file is None:
+        return ()
+
+    try:
+        doc = load_module(target_file, module)
+    except Exception:
+        return ()
+
+    # 提取 err_path：exception str 里 "Path 'X'" 或 "path 'X'" 或 "X not in tree"
+    err_path = _extract_err_path(str(exc))
+    if err_path is None:
+        return ()
+
+    return BSWPathResolver.suggest_for_ecuc_set_value_error(err_path, doc)
+
+
+def _extract_err_path(msg: str) -> str | None:
+    """从 ValueError msg 提 path。
+
+    ecuc_set_value / validator 可能的 msg 形态：
+      - "Path 'X' not in ECUCDocument for module 'M'"
+      - "Failed to set value for path 'X': ..."
+      - "Path 'X' not found in tree ..."
+    """
+    import re
+
+    patterns = (
+        r"path\s+'([^']+)'",
+        r"Path\s+'([^']+)'",
+        r"\"([^\"]+)\"\s+not\s+in",
+    )
+    for pat in patterns:
+        m = re.search(pat, msg)
+        if m:
+            return m.group(1)
+    return None
+
+
+def _emit_did_you_mean(suggestions: tuple[str, ...]) -> None:
+    """stderr 输出 "Did you mean: <s0>?"（契约 4 / plan T8.E.4 验收要求）。"""
+    if not suggestions:
+        return
+    if len(suggestions) == 1:
+        print(f"Did you mean: {suggestions[0]}?", file=sys.stderr)
+    else:
+        joined = ", ".join(suggestions)
+        print(f"Did you mean: {joined}?", file=sys.stderr)
