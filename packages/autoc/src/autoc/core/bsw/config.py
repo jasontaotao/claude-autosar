@@ -66,16 +66,23 @@ class BSWParam:
 
     path 必须是层级形式（至少含一个 ``/``），用于精确寻址：
         ``Mcu/McuClockSettingConfig_0/McuClockReferencePoint``
+    def_ref: 可选的 BSWMD DEFINITION-REF 路径（契约 2 / T8.E.3）。
+             例: ``/AUTOSAR/Mcu/McuClockSettingConfig/McuClockFrequency``。
+             为 None 时按 fallback（DEST 启发式 / BSWMD lookup miss）处理；
+             设置时 bsw_write_path 校验优先用 def_ref 查 BSWMD。
     """
 
     path: str
     value: ParamValue
+    def_ref: str | None = None
 
     def __post_init__(self) -> None:
         if not self.path or "/" not in self.path:
             raise ValueError(f"path must be hierarchical (contain '/'), got {self.path!r}")
         if not isinstance(self.value, ParamValue):
             raise TypeError(f"value must be ParamValue, got {type(self.value).__name__}")
+        if self.def_ref is not None and not isinstance(self.def_ref, str):
+            raise TypeError(f"def_ref must be str or None, got {type(self.def_ref).__name__}")
 
 
 @dataclass(frozen=True)
@@ -116,12 +123,36 @@ class BSWModule:
             version=self.version,
         )
 
+    def with_def_ref(self, path: str, def_ref: str) -> BSWModule:
+        """返回带 ``def_ref`` 的新 BSWModule（不可变）。
+
+        若指定 ``path`` 不在当前 params 里，抛 ValueError。
+        """
+        replaced = False
+        new_params: list[BSWParam] = []
+        for p in self.params:
+            if p.path == path:
+                new_params.append(BSWParam(path=p.path, value=p.value, def_ref=def_ref))
+                replaced = True
+            else:
+                new_params.append(p)
+        if not replaced:
+            raise ValueError(f"BSWModule.with_def_ref: path {path!r} not in params")
+        return BSWModule(
+            name=self.name,
+            params=tuple(new_params),
+            vendor=self.vendor,
+            version=self.version,
+        )
+
     @classmethod
     def from_ecuc(cls, doc: object) -> BSWModule:
         """从 ECUCDocument 反序列化为 BSWModule。
 
         不可变：原 ECUCDocument 不受影响。
         故意接受 `object` 注解避免循环 import（`ecuc.py` 已反向 import 本模块）。
+        ECUCValue 当前不携带 def_ref；BSWParam.def_ref 留 None（T8.E.3 BSWMD 校验
+        fallback 到 registry.lookup_param 走路径查表）。
         """
         from autoc.core.bsw.ecuc import ECUCValue  # noqa: PLC0415
 
