@@ -1,0 +1,13 @@
+{
+  "autoc": {
+    "type": "stdio",
+    "command": "python",
+    "args": [
+      "-m",
+      "autoc.cli.mcp_server"
+    ],
+    "env": {
+      "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/../autoc/src"
+    }
+  }
+}

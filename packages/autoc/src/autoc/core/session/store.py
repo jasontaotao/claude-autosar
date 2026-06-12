@@ -149,3 +149,18 @@ def new_session_id() -> str:
 def _read_lines(path: Path) -> list[str]:
     """读所有行（保持尾随换行不参与 splitlines 后的逻辑由调用方处理）。"""
     return path.read_text(encoding="utf-8").splitlines()
+
+
+def resolve_latest_session_id(sessions_dir: Path) -> str | None:
+    """按 mtime 倒序找最新 session id（``autoc session show latest`` 语义）。
+
+    :param sessions_dir: 指向 ``*.jsonl`` 文件目录的 :class:`Path`
+    :return: 最新 mtime 的 session 文件 stem（不含 ``.jsonl``），目录为空时返回 ``None``
+    """
+    if not sessions_dir.is_dir():
+        return None
+    files = [p for p in sessions_dir.iterdir() if p.is_file() and p.suffix == ".jsonl"]
+    if not files:
+        return None
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return files[0].stem

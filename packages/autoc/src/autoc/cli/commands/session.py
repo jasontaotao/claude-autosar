@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import sys
 from typing import Any
 
@@ -147,10 +146,7 @@ def _run_fork(store: SessionStore, source_session: str, entry_id: str) -> int:
 
 
 def _resolve_latest(store: SessionStore) -> str | None:
-    """按 mtime 找最新 session id。"""
-    sessions_dir: Path = store.dir
-    files = [p for p in sessions_dir.iterdir() if p.is_file() and p.suffix == ".jsonl"]
-    if not files:
-        return None
-    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    return files[0].stem
+    """按 mtime 找最新 session id。Sprint 5：委托给 :func:`resolve_latest_session_id`。"""
+    from autoc.core.session.store import resolve_latest_session_id
+
+    return resolve_latest_session_id(store.dir)

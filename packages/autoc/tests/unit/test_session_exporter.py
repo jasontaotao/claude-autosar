@@ -217,7 +217,7 @@ def test_render_html_blocks_javascript_url_xss() -> None:
     tree = _build_tree([_user("u1", None, "s1", md_content)])
     html = render_html(tree)
     # href 中的 javascript: 必须不存在
-    assert "href=\"javascript:" not in html
+    assert 'href="javascript:' not in html
     assert "href='javascript:" not in html
     # scheme 拒绝时只保留 link text
     assert "click me" in html
@@ -228,8 +228,8 @@ def test_render_html_blocks_data_and_vbscript_url() -> None:
     for url in ("data:text/html,<script>alert(1)</script>", "vbscript:msgbox(1)"):
         tree = _build_tree([_user("u1", None, "s1", f"[x]({url})")])
         html = render_html(tree)
-        assert "href=" not in html or "href=\"data:" not in html
-        assert "href=\"vbscript:" not in html
+        assert "href=" not in html or 'href="data:' not in html
+        assert 'href="vbscript:' not in html
 
 
 def test_render_html_adds_rel_noopener_noreferrer() -> None:
