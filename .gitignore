@@ -60,3 +60,5 @@ Thumbs.db
 .autoc/
 *.log
 local_settings.json
+# Test residue from arxml_io.write surgical patch (Sprint 8.E)
+target_test*.xdm
