@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from autoc.core.bsw.arxml_io import ARXMLError
+from autoc.core.bsw.bswmd import BSWMDRegistry
 from autoc.core.bsw.ecuc import (
     ECUCType,
     get_value,
@@ -176,6 +177,91 @@ class TestTypeInference:
         assert val is not None
         assert val.type == "STRING"
         assert val.raw == "hello"
+
+    def test_bswmd_registry_strict_inference(self, tmp_path: Path) -> None:
+        """T8.E.2: 传 BSWMDRegistry 时优先按 BSWMD 严格推断（不依赖 DEST）。"""
+        from autoc.core.bsw.bswmd import (
+            BSWMDRegistry,
+            ContainerDef,
+            ModuleDef,
+            ParamDef,
+        )
+
+        # 写一个 DEST 错误但 BSWMD 有正确类型的 xdm
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<AUTOSAR xmlns="http://autosar.org/schema/r4.0">
+  <AR-PACKAGES><AR-PACKAGE><SHORT-NAME>B</SHORT-NAME><ELEMENTS>
+    <ECUC-MODULE-CONFIGURATION-VALUES>
+      <SHORT-NAME>Mcu</SHORT-NAME>
+      <CONTAINERS>
+        <ECUC-PARAM-CONF-CONTAINER>
+          <SHORT-NAME>Root</SHORT-NAME>
+          <PARAMETER-VALUES>
+            <ECUC-NUMERICAL-PARAM-VALUE>
+              <DEFINITION-REF DEST="ECUC-CUSTOM-WRONG">/Mcu/Root/Mystery</DEFINITION-REF>
+              <VALUE>42</VALUE>
+            </ECUC-NUMERICAL-PARAM-VALUE>
+          </PARAMETER-VALUES>
+        </ECUC-PARAM-CONF-CONTAINER>
+      </CONTAINERS>
+    </ECUC-MODULE-CONFIGURATION-VALUES>
+  </ELEMENTS></AR-PACKAGE></AR-PACKAGES>
+</AUTOSAR>
+"""
+        f = tmp_path / "Mcu.xdm"
+        f.write_text(xml, encoding="utf-8")
+
+        # BSWMD 声明 Mystery 是 BOOLEAN
+        reg = BSWMDRegistry(
+            modules={
+                "Mcu": ModuleDef(
+                    short_name="Mcu",
+                    full_path="/B/Mcu",
+                    containers={
+                        "Root": ContainerDef(
+                            short_name="Root",
+                            full_path="/B/Mcu/Root",
+                            lower_multiplicity=0,
+                            upper_multiplicity=1,
+                            param_defs={
+                                "Mystery": ParamDef(
+                                    short_name="Mystery",
+                                    full_path="/B/Mcu/Root/Mystery",
+                                    param_type="BOOLEAN",
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            },
+        )
+
+        # 不传 BSWMDRegistry → 启发式 fallback STRING（dest 不匹配）
+        doc_no_bswmd = load_module(f, "Mcu")
+        val_no_bswmd = get_value(doc_no_bswmd, "Mcu/Root/Mystery")
+        assert val_no_bswmd is not None
+        assert val_no_bswmd.type == "STRING"  # fallback
+
+        # 传 BSWMDRegistry → 严格推断 BOOLEAN
+        doc_with_bswmd = load_module(f, "Mcu", bswmd_registry=reg)
+        val_with_bswmd = get_value(doc_with_bswmd, "Mcu/Root/Mystery")
+        assert val_with_bswmd is not None
+        assert val_with_bswmd.type == "BOOLEAN"
+
+    def test_bswmd_registry_miss_falls_back_to_dest_heuristic(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """T8.E.2: BSWMD miss 时 fallback 到 DEST 启发式（向后兼容）。"""
+        # 用真实 BSWMD 加载（同 _S32K3_MCU_XML fixture）
+        f = _write_s32k3_mcu(tmp_path)
+
+        # 空 registry（没有任何 module）→ 全部 fallback
+        empty_reg = BSWMDRegistry()
+        doc = load_module(f, "Mcu", bswmd_registry=empty_reg)
+        val = get_value(doc, "Mcu/McuClockSettingConfig_0/McuClockFrequency")
+        assert val is not None
+        assert val.type == "INTEGER"  # DEST 启发式（ECUC-INTEGER-PARAM-DEF）
 
 
 # ---------------------------------------------------------------------------
