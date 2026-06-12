@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?tresos generator="autoc-fixture" version="0.1" date="2026-06-12"?>
+<!DOCTYPE d:datamodel SYSTEM "Port_BSWMD.arxml">
+<d:datamodel xmlns:d="http://www.3soft.de/xml/tresos/datamodel/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <!-- Port driver config: pin directions + modes -->
+  <d:module id="Port" url="http://www.autosar.org/ecu/cfg#Port">
+    <d:unit id="Port">
+      <d:pkg id="Ecuc">
+        <d:pkg id="Port">
+          <d:subpkg id="Config">
+            <d:elements>
+              <ECUC-MODULE-CONFIGURATION-VALUES xmlns="http://autosar.org/schema/r4.0">
+                <SHORT-NAME>Port</SHORT-NAME>
+                <DEFINITION-REF DEST="ECUC-MODULE-DEF">/AUTOSAR/EcucDefs/Port/Port</DEFINITION-REF>
+                <CONTAINERS>
+                  <ECUC-PARAM-CONF-CONTAINER>
+                    <SHORT-NAME>PortConfigSet_0</SHORT-NAME>
+                    <DEFINITION-REF DEST="ECUC-PARAM-CONF-CONTAINER-DEF">/AUTOSAR/EcucDefs/Port/Port/PortConfigSet</DEFINITION-REF>
+                    <PARAMETER-VALUES>
+                      <ECUC-NUMERICAL-PARAM-VALUE>
+                        <DEFINITION-REF DEST="ECUC-INTEGER-PARAM-DEF">/AUTOSAR/EcucDefs/Port/Port/PortConfigSet/PortNumberOfPortPins</DEFINITION-REF>
+                        <VALUE>32</VALUE>
+                      </ECUC-NUMERICAL-PARAM-VALUE>
+                    </PARAMETER-VALUES>
+                  </ECUC-PARAM-CONF-CONTAINER>
+                </CONTAINERS>
+              </ECUC-MODULE-CONFIGURATION-VALUES>
+            </d:elements>
+          </d:subpkg>
+        </d:pkg>
+      </d:pkg>
+    </d:unit>
+  </d:module>
+</d:datamodel>

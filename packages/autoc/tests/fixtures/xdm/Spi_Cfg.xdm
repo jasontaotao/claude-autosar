@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?tresos generator="autoc-fixture" version="0.1" date="2026-06-12"?>
+<!DOCTYPE d:datamodel SYSTEM "Spi_BSWMD.arxml">
+<d:datamodel xmlns:d="http://www.3soft.de/xml/tresos/datamodel/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <!-- Spi driver: multi-channel / multi-job config with ENUMERATION params -->
+  <d:module id="Spi" url="http://www.autosar.org/ecu/cfg#Spi">
+    <d:unit id="Spi">
+      <d:pkg id="Ecuc">
+        <d:pkg id="Spi">
+          <d:subpkg id="Config">
+            <d:elements>
+              <ECUC-MODULE-CONFIGURATION-VALUES xmlns="http://autosar.org/schema/r4.0">
+                <SHORT-NAME>Spi</SHORT-NAME>
+                <DEFINITION-REF DEST="ECUC-MODULE-DEF">/AUTOSAR/EcucDefs/Spi/Spi</DEFINITION-REF>
+                <CONTAINERS>
+                  <ECUC-PARAM-CONF-CONTAINER>
+                    <SHORT-NAME>SpiDriver_0</SHORT-NAME>
+                    <PARAMETER-VALUES>
+                      <ECUC-NUMERICAL-PARAM-VALUE>
+                        <DEFINITION-REF DEST="ECUC-INTEGER-PARAM-DEF">/AUTOSAR/EcucDefs/Spi/Spi/SpiDriver/SpiMaxChannel</DEFINITION-REF>
+                        <VALUE>8</VALUE>
+                      </ECUC-NUMERICAL-PARAM-VALUE>
+                      <ECUC-NUMERICAL-PARAM-VALUE>
+                        <DEFINITION-REF DEST="ECUC-INTEGER-PARAM-DEF">/AUTOSAR/EcucDefs/Spi/Spi/SpiDriver/SpiMaxJob</DEFINITION-REF>
+                        <VALUE>4</VALUE>
+                      </ECUC-NUMERICAL-PARAM-VALUE>
+                      <ECUC-NUMERICAL-PARAM-VALUE>
+                        <DEFINITION-REF DEST="ECUC-INTEGER-PARAM-DEF">/AUTOSAR/EcucDefs/Spi/Spi/SpiDriver/SpiChannelBufferSize</DEFINITION-REF>
+                        <VALUE>64</VALUE>
+                      </ECUC-NUMERICAL-PARAM-VALUE>
+                    </PARAMETER-VALUES>
+                  </ECUC-PARAM-CONF-CONTAINER>
+                </CONTAINERS>
+              </ECUC-MODULE-CONFIGURATION-VALUES>
+            </d:elements>
+          </d:subpkg>
+        </d:pkg>
+      </d:pkg>
+    </d:unit>
+  </d:module>
+</d:datamodel>
