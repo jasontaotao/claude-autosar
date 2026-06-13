@@ -15,19 +15,13 @@ Sprint 9.0 — T9.0.7（schema + 加载器）+ T9.0.6（init 向导 v2 部分）
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from claude_autosar.core.settings.v2_paths import (
-    DEFAULT_TRESOS_HOME_LINUX,
-    DEFAULT_TRESOS_HOME_WIN,
     MCAL_VENDORS,
     SETTINGS_JSON_NAME,
-    TRESOS_CLI_LINUX,
-    TRESOS_CLI_WIN,
     VENDOR_DEFAULT_HOMES,
     V2Paths,
     V2PathsError,
@@ -46,7 +40,7 @@ from claude_autosar.core.settings.v2_paths import (
 
 def _build_vendor_home(root: Path, vendor: str) -> Path:
     """Build a fake ``<root>/<vendor_home>`` matching the vendor's default layout."""
-    candidates = VENDOR_DEFAULT_HOMES[vendor]
+    _candidates = VENDOR_DEFAULT_HOMES[vendor]  # noqa: F841 — referenced for parity
     # use the first candidate's leaf name (e.g. "AUTOSAR", "SPC58")
     # for test we use the actual candidate but inside tmp_path
     home = root / "vendor_home"
@@ -167,7 +161,7 @@ class TestV2PathsDataclass:
             mcal_vendor_home=Path("C:/NXP/AUTOSAR"),
             chip_derivative="Mcu_s32k148_lqfp176.epd",
         )
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises((AttributeError, Exception)):  # FrozenInstanceError  # noqa: B017
             v.mcal_vendor = "st"  # type: ignore[misc]
 
 
@@ -551,7 +545,7 @@ class TestLoadV2PathsMissing:
         )
         monkeypatch.setattr("sys.platform", "win32")
         # 探测 vendor 表全空
-        patched = {v: tuple() for v in MCAL_VENDORS}
+        patched = dict.fromkeys(MCAL_VENDORS, ())
         import claude_autosar.core.settings.v2_paths as mod
         monkeypatch.setattr(mod, "VENDOR_DEFAULT_HOMES", patched)
 

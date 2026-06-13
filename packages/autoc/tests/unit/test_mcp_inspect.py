@@ -41,12 +41,12 @@ class TestToolRegistration:
     """新增 3 个 inspect tool 必须注册到 FastMCP server。"""
 
     def test_tool_names_includes_three_inspect(self) -> None:
-        """_TOOL_NAMES 元组新增 3 个 inspect tool。"""
+        """_TOOL_NAMES 元组新增 3 个 inspect tool + 2 个 apply_template tool。"""
         assert "arxml_inspect" in _TOOL_NAMES
         assert "xdm_inspect" in _TOOL_NAMES
         assert "bsw_inspect" in _TOOL_NAMES
-        # 总数：原 10 + 新 3 = 13
-        assert len(_TOOL_NAMES) == 13
+        # 总数：原 10 + 3 inspect (Sprint 9.1) + 2 apply_template (Sprint 9.2-γ) = 15
+        assert len(_TOOL_NAMES) == 15
 
     def test_tool_funcs_includes_three_inspect(self) -> None:
         """_TOOL_FUNCS 字典映射正确（key 与函数名一致）。"""

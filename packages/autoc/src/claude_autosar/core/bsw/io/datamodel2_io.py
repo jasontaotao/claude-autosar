@@ -297,14 +297,34 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
     """
     original_text = original_bytes.decode("utf-8", errors="replace")
 
+    # 冷路径：c14n 比较（O(n)）— 当 <a:a> 段全无变化时，决定 fallback vs
+    # 真无变化（保留字节）。
+    # c14n 输出在 attribute order / namespace prefix 等做 canonical 化，
+    # 仅语义层比较。
+    try:
+        new_canonical = etree.tostring(tree, method="c14n")
+    except Exception:  # noqa: BLE001
+        new_canonical = b""  # 走后续 patch 失败 → fallback
+    try:
+        orig_canonical = etree.tostring(
+            etree.fromstring(original_bytes), method="c14n"
+        )
+    except Exception:  # noqa: BLE001
+        orig_canonical = b""
+    if new_canonical and orig_canonical and new_canonical == orig_canonical:
+        # 真无变化 — 保留原字节（byte-identity 100%）
+        return original_bytes
+
     # 匹配 self-closing: <a:a name="..." value="..."/>
     self_closing_pattern = re.compile(
         r'<a:a\s+([^>]*?)/>',
         re.DOTALL,
     )
-    # 匹配 parent-form opening: <a:a ...> （非 self-closing），捕获 attrs
+    # 匹配 parent-form opening: <a:a ...> （attrs 不以 `/` 结尾，即非
+    # self-closing），捕获 attrs。`[^>]+?` 要求至少 1 个非 `>` 字符；
+    # `[^/]` 排除 attrs 以 `/` 结尾的 self-closing 段。
     parent_open_pattern = re.compile(
-        r'<a:a\s+([^>]*?)>(?!</a:a>)',
+        r'<a:a\s+([^>]+?[^/])>',
         re.DOTALL,
     )
 
@@ -323,12 +343,14 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
         len(tree_self_closing) == len(self_closing_matches)
         and len(tree_self_closing) > 0
     ):
-        return _patch_self_closing(
+        patched = _patch_self_closing(
             original_text,
-            original_bytes,
             tree_self_closing,
             self_closing_matches,
         )
+        if patched is not None:
+            return patched
+        # self-closing attrs 无变化 — 试 parent-form（a:v 文本可能改了）
     if (
         len(tree_parent) == len(parent_open_matches)
         and len(tree_parent) > 0
@@ -348,10 +370,9 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
 
 def _patch_self_closing(
     original_text: str,
-    original_bytes: bytes,
     tree_self_closing: list[Any],
     original_matches: list[re.Match[str]],
-) -> bytes:
+) -> bytes | None:
     """Strategy A: 全 self-closing 形态 surgical patch。"""
     new_attr_pairs: list[tuple[str, str]] = [
         (e.get("name", ""), e.get("value", "")) for e in tree_self_closing
@@ -376,7 +397,10 @@ def _patch_self_closing(
             break
 
     if not any_changed:
-        return original_bytes
+        # 没有 <a:a> attrs 变化 — caller 可能改了 parent-form <a:v> 文本
+        # 或 <d:var> 等非 a:a 段。返回 None 让 caller 继续试 parent-form
+        # 或 fallback。
+        return None
 
     # 按位置倒序替换每个变化的段
     out = original_text

@@ -47,10 +47,10 @@ def register(subparsers: Any) -> None:
         help="输出 HTML 路径；缺省 = <input>.report.html",
     )
     p.add_argument(
-        "--no-lint",
+        "--lint",
         action="store_true",
         default=False,
-        help="占位参数：Sprint 9.4 M4 lint 启用后再用；当前 sprint 忽略",
+        help="Enable lint check (Sprint 9.4 M4)",
     )
 
 

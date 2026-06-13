@@ -374,7 +374,10 @@ def test_bsw_verify_happy_returns_stub_output(fake_project: Path) -> None:
         r = bsw_verify("Mcu", project=str(fake_project))
     assert r["success"] is True
     assert r["returncode"] == 0
-    assert r["stdout"] == "ok"
+    # Sprint 9.3-β bsw_verify 改签名后返 {"success", "module", "returncode", "report": {...}}
+    assert r["report"]["has_errors"] is False
+    # stdout "ok" 解析器 fallback: 不匹配行 → INFO 整段记 1 条（保守策略）
+    assert r["report"]["issue_count"] == 1
 
 
 def test_bsw_verify_rejects_path_traversal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

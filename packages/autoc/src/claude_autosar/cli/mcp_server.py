@@ -14,7 +14,7 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
 
@@ -50,6 +50,9 @@ _TOOL_NAMES: tuple[str, ...] = (
     "arxml_inspect",
     "xdm_inspect",
     "bsw_inspect",
+    # Sprint 9.2 T9.2-γ
+    "arxml_apply_template",
+    "xdm_apply_template",
 )
 
 
@@ -433,10 +436,39 @@ def bsw_write(
 
 
 def bsw_verify(
-    module: str, *, project: str = ".", tresos_home: str | None = None
+    module: str,
+    *,
+    project: str = ".",
+    tresos_home: str | None = None,
+    chip_derivative: str | None = None,
+    mcal_vendor: str | None = None,
+    mcal_vendor_home: str | None = None,
+    as_json: bool = False,
 ) -> dict[str, Any]:
-    """调用 ``tresos_cmd verify``（只 verify，不改值）。"""
+    """调用 ``tresos_cmd verify``（只 verify，不改值）。
+
+    Sprint 9.3 — T9.3-β 增强：
+
+    * 新增 4 个 v2 path 参数（``chip_derivative`` / ``mcal_vendor`` /
+      ``mcal_vendor_home``）→ 走 :func:`load_v2_paths` 4 级优先级合并。
+    * 新增 ``as_json`` 参数：默认返轻量 dict（success / module / returncode /
+      report 摘要）；``as_json=True`` 时返完整
+      :class:`TresosVerifyReport` 序列化。
+    * 保留 H4 路径防御（``tresos_home.relative_to(project_path)`` 校验）。
+
+    :param module: BSW 模块名（如 ``Mcu``）
+    :param project: 工程根目录路径字符串（默认 cwd）
+    :param tresos_home: EB tresos CLI 根（CLI 参数 / settings.json / 环境变量 /
+        探测 4 级优先级合并）
+    :param chip_derivative: 芯片派生（如 ``Mcu_s32k148_lqfp176.epd``）
+    :param mcal_vendor: MCAL 厂商（nxp / st / ti / renesas / infineon）
+    :param mcal_vendor_home: 厂商 AUTOSAR 包根目录
+    :param as_json: ``True`` 时返完整 :class:`TresosVerifyReport` 序列化
+    :return: ``{"success": ..., "module", "returncode", "report": {...}}`` 或
+        ``as_json=True`` 时返 report dict 顶层展开。
+    """
     from claude_autosar.adapters.tresos import TresosAdapter
+    from claude_autosar.core.bsw.verify.tresos_parser import parse_tresos_verify_stdout
 
     try:
         project_path = _resolve_safe_project(project)
@@ -458,14 +490,63 @@ def bsw_verify(
             "param_index": -1,
         }
     tresos_path.mkdir(parents=True, exist_ok=True)
+
+    # T9.3-β：把 4 个 v2 path 喂给 load_v2_paths（best-effort：失败不阻塞 verify，
+    # 因为现有 verify 链路不依赖 vendor/chip 字段；保留扩展点）。
+    _v2_paths_meta: dict[str, str] = {}
+    try:
+        from claude_autosar.core.settings.v2_paths import load_v2_paths
+
+        v2 = load_v2_paths(
+            project_path,
+            cli_tresos_home=str(tresos_path),
+            cli_mcal_vendor=mcal_vendor,
+            cli_mcal_vendor_home=mcal_vendor_home,
+            cli_chip_derivative=chip_derivative,
+        )
+        _v2_paths_meta = {
+            "tresos_home": str(v2.tresos_home),
+            "mcal_vendor": str(v2.mcal_vendor),
+            "mcal_vendor_home": str(v2.mcal_vendor_home),
+            "chip_derivative": str(v2.chip_derivative),
+        }
+    except Exception:
+        # load_v2_paths 4 级都拿不到时抛 V2PathsError；这里不阻塞 verify 主链路。
+        pass
+
     ctx = _build_ctx(project_path, tresos_path, module)
     result = TresosAdapter().verify(ctx, module)
+    report = parse_tresos_verify_stdout(
+        result.stdout,
+        result.stderr,
+        returncode=result.returncode,
+        module=module,
+    )
+    if as_json:
+        # 完整 TresosVerifyReport 序列化（含 issues tuple / has_errors property）
+        from dataclasses import asdict
+
+        report_dict = asdict(cast(Any, report))  # mypy: asdict 不接受 type[DataclassInstance]
+        report_dict["has_errors"] = report.has_errors
+        report_dict["has_warnings"] = report.has_warnings
+        return {
+            "success": result.returncode == 0,
+            "module": module,
+            "returncode": result.returncode,
+            "report": report_dict,
+            "v2_paths": _v2_paths_meta,
+        }
+    # 默认轻量 dict：仅暴露 summary（issue 数 + has_errors/has_warnings）
     return {
-        "success": result.success,
+        "success": result.returncode == 0,
         "module": module,
         "returncode": result.returncode,
-        "stdout": result.stdout,
-        "stderr": result.stderr,
+        "report": {
+            "issue_count": len(report.issues),
+            "has_errors": report.has_errors,
+            "has_warnings": report.has_warnings,
+        },
+        "v2_paths": _v2_paths_meta,
     }
 
 
@@ -715,7 +796,8 @@ def log_export(
 # ---------------------------------------------------------------------------
 # 复用 :mod:`core.bsw.inspector.arxml_report` 和 ``xdm_report``；路径防御
 # 走 :func:`_resolve_safe_project`（R6：project 路径必须是 cwd 子目录）。
-# ``include_lint`` 占位参数：Sprint 9.4 M4 lint 实现后再启用，本 sprint 忽略。
+# Sprint 9.4 M4 (T9.4-β) ``include_lint`` 激活：跑 LintRule 全集并把
+# violations 写进返 dict。
 #
 # 注：``path`` 参数（待 inspect 的文件）**不**做 project 子目录校验 — 测试用
 # tmp_path 时可能落在 cwd 之外（且 ``bsw_read`` 工具自身也只对 ``project``
@@ -737,18 +819,83 @@ def _inspect_resolve_input(path: str, *, project: str = ".") -> Path:
     return src
 
 
+def _run_lint_for_inspect(
+    src: Path, fmt: str
+) -> dict[str, Any] | None:
+    """走 LintRunner 跑 lint，返回 ``{violations, lint_summary}`` 或 ``None``。
+
+    duck-typed：9.4-α 在并发写 ``core.bsw.lint``；框架未就位时返 ``None``
+    （向调用方表示 "lint 不可用" 而不是抛异常）。任何 IO / 类型异常都收
+    敛到 ``None``，避免污染 inspect 主流程。
+    """
+    try:
+        from claude_autosar.core.bsw.lint import LintRunner
+        from claude_autosar.core.bsw.lint.rules import rules_for_namespace
+    except ImportError:
+        return None
+
+    try:
+        if fmt == "arxml":
+            from claude_autosar.core.bsw.lint.extract import (
+                extract_arxml_for_lint,
+            )
+
+            extracted: Any = extract_arxml_for_lint(src)
+            ns = "arxml"
+        else:
+            from claude_autosar.core.bsw.lint.extract import extract_xdm_for_lint
+
+            extracted = extract_xdm_for_lint(src)
+            ns = "xdm"
+    except (ImportError, OSError, ValueError, TypeError):
+        return None
+
+    try:
+        # 按 namespace 过滤规则（避免 arxml 规则被喂 XDM 数据抛 AttributeError）
+        rules = list(rules_for_namespace(ns))
+        runner = LintRunner(rules=rules)
+        violations = list(runner.run(extracted))
+        summary = runner.summarize(violations)
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
+
+    return {
+        "violations": [
+            {
+                "rule_id": str(getattr(v, "rule_id", "")),
+                "severity": str(getattr(v, "severity", "")),
+                "message": str(getattr(v, "message", "")),
+                "path": str(getattr(v, "path", "") or ""),
+                "line": getattr(v, "line", None),
+            }
+            for v in violations
+        ],
+        "lint_summary": (
+            {
+                "total": int(getattr(summary, "total", 0)),
+                "by_severity": dict(
+                    getattr(summary, "by_severity", {}) or {}
+                ),
+            }
+            if summary is not None
+            else {"total": len(violations), "by_severity": {}}
+        ),
+    }
+
+
 def arxml_inspect(
     path: str,
     output: str | None = None,
     *,
-    include_lint: bool = False,  # noqa: ARG001 - placeholder (Sprint 9.4 M4)
+    include_lint: bool = False,
     project: str = ".",
 ) -> dict[str, Any]:
     """读单个 ``.arxml`` → 渲染一页式 HTML 报告（IPdu / Signal / 关键参数）。
 
     :param path: ``.arxml`` 文件路径（相对 project 根或绝对）
     :param output: 输出 HTML 路径；``None`` = ``<input>.report.html``
-    :param include_lint: 占位参数（Sprint 9.4 M4 lint 启用后再用）
+    :param include_lint: ``True`` 时附加 LintRunner 全集（duck-typed；
+        lint 框架未就位时返 ``lint_unavailable=True``，不抛异常）
     :param project: 工程根目录（默认 cwd）
     :return: ``{"success": True, "format": "arxml", "report_path": ..., "path": ...}``
         或 error dict
@@ -768,26 +915,37 @@ def arxml_inspect(
     except (OSError, ValueError, TypeError) as e:
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
 
-    return {
+    result: dict[str, Any] = {
         "success": True,
         "format": "arxml",
         "path": str(src),
         "report_path": str(written),
     }
 
+    if include_lint:
+        lint_result = _run_lint_for_inspect(src, "arxml")
+        if lint_result is None:
+            result["lint_unavailable"] = True
+        else:
+            result["violations"] = lint_result["violations"]
+            result["lint_summary"] = lint_result["lint_summary"]
+
+    return result
+
 
 def xdm_inspect(
     path: str,
     output: str | None = None,
     *,
-    include_lint: bool = False,  # noqa: ARG001 - placeholder (Sprint 9.4 M4)
+    include_lint: bool = False,
     project: str = ".",
 ) -> dict[str, Any]:
     """读单个 ``.xdm`` (DataModel2) → 渲染一页式 HTML 报告。
 
     :param path: ``.xdm`` 文件路径（相对 project 根或绝对）
     :param output: 输出 HTML 路径；``None`` = ``<input>.report.html``
-    :param include_lint: 占位参数（Sprint 9.4 M4 lint 启用后再用）
+    :param include_lint: ``True`` 时附加 LintRunner 全集（duck-typed；
+        lint 框架未就位时返 ``lint_unavailable=True``，不抛异常）
     :param project: 工程根目录（默认 cwd）
     :return: ``{"success": True, "format": "xdm", "report_path": ..., "path": ...}``
         或 error dict
@@ -807,24 +965,36 @@ def xdm_inspect(
     except (OSError, ValueError, TypeError) as e:
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
 
-    return {
+    result: dict[str, Any] = {
         "success": True,
         "format": "xdm",
         "path": str(src),
         "report_path": str(written),
     }
 
+    if include_lint:
+        lint_result = _run_lint_for_inspect(src, "xdm")
+        if lint_result is None:
+            result["lint_unavailable"] = True
+        else:
+            result["violations"] = lint_result["violations"]
+            result["lint_summary"] = lint_result["lint_summary"]
+
+    return result
+
 
 def bsw_inspect(
     path: str,
     output: str | None = None,
     *,
+    include_lint: bool = False,
     project: str = ".",
 ) -> dict[str, Any]:
     """dispatcher：按文件根 namespace 自动选 arxml / xdm 渲染器。
 
     :param path: 输入文件路径（按根 xmlns 自动选，不依赖后缀）
     :param output: 输出 HTML 路径；``None`` = ``<input>.report.html``
+    :param include_lint: ``True`` 时附加 LintRunner 全集（duck-typed）
     :param project: 工程根目录（默认 cwd）
     :return: ``{"success": True, "format": <arxml|xdm>, "report_path": ..., "path": ...}``
         或 error dict
@@ -860,12 +1030,296 @@ def bsw_inspect(
     except (OSError, ValueError, TypeError) as e:
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
 
-    return {
+    result: dict[str, Any] = {
         "success": True,
         "format": fmt,
         "path": str(src),
         "report_path": str(written),
     }
+
+    if include_lint:
+        lint_result = _run_lint_for_inspect(src, fmt)
+        if lint_result is None:
+            result["lint_unavailable"] = True
+        else:
+            result["violations"] = lint_result["violations"]
+            result["lint_summary"] = lint_result["lint_summary"]
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Sprint 9.2 — T9.2-γ 双格式 apply-template tool
+# ---------------------------------------------------------------------------
+# 注：``apply_template_diff`` / ``ApplyMode`` 由并发任务 T9.2.1（apply.py）
+# 实现；``diff_arxml_templates`` 由 T9.2.0b（arxml_diff.py）；xdm_diff /
+# xdm_value 由 T9.2-α 已完成。本 tool 用延迟 import 调用；这些模块加载失败
+# 时返回 ``success=False`` error dict。路径防御复用 :func:`_inspect_resolve_input`。
+
+
+def arxml_apply_template(
+    path: str,
+    template: str,
+    *,
+    apply: bool = False,
+    output: str | None = None,
+    project: str = ".",
+) -> dict[str, Any]:
+    """读 ``.arxml`` current + template → diff → dry-run / ``apply`` 写回。
+
+    :param path: ``.arxml`` 当前文件路径（相对 project 根或绝对）
+    :param template: ``.arxml`` 模板文件路径
+    :param apply: ``True`` 真正写回；``False`` 只算 diff（dry-run）
+    :param output: 输出 HTML 报告路径（可选）
+    :param project: 工程根目录（默认 cwd）
+    :return: ``{"success": True, "format": "arxml", "mode", "diff_count",
+        "applied", ...}`` 或 error dict
+    """
+    from claude_autosar.core.bsw.arxml_io import ARXMLError
+    from claude_autosar.core.bsw.dispatcher import (
+        DispatcherError,
+        FormatMismatchError,
+        UnknownFormatError,
+        read as dispatcher_read,
+    )
+    from claude_autosar.core.bsw.ecuc import load_module as ecuc_load_module
+    # 延迟 import：依赖 T9.2.1（apply.py）+ T9.2.0b（arxml_diff.py）
+    from claude_autosar.core.bsw.templates.apply import (
+        ApplyMode,
+        apply_template_diff,
+    )
+    from claude_autosar.core.bsw.templates.arxml_diff import diff_arxml_templates
+
+    try:
+        src = _inspect_resolve_input(path, project=project)
+    except PermissionError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except FileNotFoundError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    tpl = Path(template).resolve()
+    if not tpl.is_file():
+        return {"success": False, "error": f"FileNotFoundError: {tpl}"}
+
+    try:
+        dispatcher_read(src, expected_format="arxml")
+        dispatcher_read(tpl, expected_format="arxml")
+    except (FileNotFoundError, OSError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except (ARXMLError, DispatcherError, UnknownFormatError,
+            FormatMismatchError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    module_name = _detect_arxml_module_name(src)
+    if module_name is None:
+        module_name = _detect_arxml_module_name(tpl)
+    if module_name is None:
+        return {
+            "success": False,
+            "error": (
+                "ValueError: no ECUC-MODULE-CONFIGURATION-VALUES "
+                "in current/template"
+            ),
+        }
+
+    try:
+        current_doc = ecuc_load_module(src, module_name)
+        template_doc = ecuc_load_module(tpl, module_name)
+    except (ARXMLError, ValueError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    try:
+        diff_result = diff_arxml_templates(current_doc, template_doc)
+    except (ValueError, TypeError, AttributeError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    mode = ApplyMode.APPLY if apply else ApplyMode.DRY_RUN
+    try:
+        apply_result = apply_template_diff(src, diff_result, mode=mode)
+    except (OSError, FileNotFoundError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except (ValueError, TypeError, NotImplementedError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    return {
+        "success": True,
+        "format": "arxml",
+        "mode": str(mode),
+        "path": str(src),
+        "template": str(tpl),
+        "module_name": module_name,
+        "diff_count": len(diff_result.diffs),
+        "adds": len(diff_result.adds),
+        "modifies": len(diff_result.modifies),
+        "deletes": len(diff_result.deletes),
+        "applied": bool(apply),
+        "report_path": str(Path(output).resolve()) if output else None,
+        "result": _apply_result_to_dict(apply_result),
+    }
+
+
+def xdm_apply_template(
+    path: str,
+    template: str,
+    *,
+    apply: bool = False,
+    output: str | None = None,
+    project: str = ".",
+) -> dict[str, Any]:
+    """读 ``.xdm`` current + template → diff → dry-run / ``apply`` 写回。
+
+    :param path: ``.xdm`` 当前文件路径（相对 project 根或绝对）
+    :param template: ``.xdm`` 模板文件路径
+    :param apply: ``True`` 真正写回；``False`` 只算 diff（dry-run）
+    :param output: 输出 HTML 报告路径（可选）
+    :param project: 工程根目录（默认 cwd）
+    :return: ``{"success": True, "format": "xdm", "module_name",
+        "diff_count", ...}`` 或 error dict
+    """
+    from claude_autosar.core.bsw.dispatcher import (
+        DispatcherError,
+        FormatMismatchError,
+        UnknownFormatError,
+        read as dispatcher_read,
+    )
+    from claude_autosar.core.bsw.io.datamodel2_io import DataModel2Error
+    # 延迟 import：依赖 T9.2.1（apply.py）
+    from claude_autosar.core.bsw.templates.apply import (
+        ApplyMode,
+        apply_template_diff,
+    )
+    from claude_autosar.core.bsw.templates.xdm_diff import diff_xdm_templates
+    from claude_autosar.core.bsw.templates.xdm_value import (
+        XDMValueError,
+        load_xdm_module,
+    )
+
+    try:
+        src = _inspect_resolve_input(path, project=project)
+    except PermissionError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except FileNotFoundError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    tpl = Path(template).resolve()
+    if not tpl.is_file():
+        return {"success": False, "error": f"FileNotFoundError: {tpl}"}
+
+    try:
+        current_doc = dispatcher_read(src, expected_format="xdm")
+        template_doc = dispatcher_read(tpl, expected_format="xdm")
+    except (FileNotFoundError, OSError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except (DataModel2Error, DispatcherError, UnknownFormatError,
+            FormatMismatchError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    module_name = _detect_xdm_module_name(current_doc)
+    if module_name is None:
+        module_name = _detect_xdm_module_name(template_doc)
+    if module_name is None:
+        return {
+            "success": False,
+            "error": (
+                "XDMValueError: no <d:chc type=AR-ELEMENT> in current/template"
+            ),
+        }
+
+    try:
+        current_mod = load_xdm_module(src, module_name)
+        template_mod = load_xdm_module(tpl, module_name)
+    except XDMValueError as e:
+        return {"success": False, "error": f"XDMValueError: {e}"}
+
+    try:
+        diff_result = diff_xdm_templates(current_mod, template_mod)
+    except (ValueError, TypeError, AttributeError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    mode = ApplyMode.APPLY if apply else ApplyMode.DRY_RUN
+    try:
+        apply_result = apply_template_diff(src, diff_result, mode=mode)
+    except (OSError, FileNotFoundError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except (ValueError, TypeError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    return {
+        "success": True,
+        "format": "xdm",
+        "mode": str(mode),
+        "path": str(src),
+        "template": str(tpl),
+        "module_name": module_name,
+        "diff_count": len(diff_result.diffs),
+        "adds": len(diff_result.adds),
+        "modifies": len(diff_result.modifies),
+        "deletes": len(diff_result.deletes),
+        "applied": bool(apply),
+        "report_path": str(Path(output).resolve()) if output else None,
+        "result": _apply_result_to_dict(apply_result),
+    }
+
+
+def _detect_arxml_module_name(path: Path) -> str | None:
+    """从 .arxml 文件取顶层 ECUC-MODULE-CONFIGURATION-VALUES 的 SHORT-NAME。
+
+    任意失败（XML 畸形 / 无 module）一律返回 ``None``；caller 决定 fallback。
+    """
+    try:
+        from lxml import etree
+
+        from claude_autosar.core.bsw.arxml_io import detect_namespaces
+
+        nsmap = detect_namespaces(path)
+        ar_uri = nsmap.get("ar")
+        if not ar_uri:
+            return None
+        tree = etree.parse(str(path))
+        root = tree.getroot()
+        modules = root.xpath(
+            "//ar:ECUC-MODULE-CONFIGURATION-VALUES",
+            namespaces={"ar": ar_uri},
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    if not modules:
+        return None
+    for m in modules:
+        sn = m.find(f"{{{ar_uri}}}SHORT-NAME")
+        if sn is not None and sn.text:
+            return cast("str | None", sn.text)
+    return None
+
+
+def _detect_xdm_module_name(loaded_doc: Any) -> str | None:
+    """从 dispatcher 加载的 XDM tree 找第一个 ``<d:chc type=AR-ELEMENT>`` name。"""
+    try:
+        tree = loaded_doc.tree
+        root = tree.getroot() if hasattr(tree, "getroot") else tree
+        ns = {"d": "http://www.tresos.de/_projects/DataModel2/06/data.xsd"}
+        elems = root.xpath('.//d:chc[@type="AR-ELEMENT"]', namespaces=ns)
+    except Exception:  # noqa: BLE001
+        return None
+    if not elems:
+        return None
+    name = elems[0].get("name")
+    return name or None
+
+
+def _apply_result_to_dict(result: Any) -> dict[str, Any]:
+    """把 ``ApplyResult`` 缩成 dict（不假设字段顺序，避免 dataclass 耦合）。"""
+    try:
+        from dataclasses import asdict, is_dataclass
+
+        if is_dataclass(result) and not isinstance(result, type):
+            return asdict(cast(Any, result))  # mypy: asdict 不接受 type[DataclassInstance]
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return dict(vars(result))
+    except TypeError:
+        return {}
 
 
 # ---------------------------------------------------------------------------
@@ -889,6 +1343,9 @@ _TOOL_FUNCS: dict[str, Callable[..., Any]] = {
     "arxml_inspect": arxml_inspect,
     "xdm_inspect": xdm_inspect,
     "bsw_inspect": bsw_inspect,
+    # Sprint 9.2 T9.2-γ
+    "arxml_apply_template": arxml_apply_template,
+    "xdm_apply_template": xdm_apply_template,
 }
 
 

@@ -27,14 +27,18 @@ def _register_command(name: str, module: Any) -> None:
 # Imported at module load (not lazily inside main()) so that callers/tests
 # can introspect _DISPATCH.
 from claude_autosar.cli.commands import (  # noqa: E402, PLC0415
+    arxml_apply_template,
     arxml_inspect,
     bsw_inspect,
+    bsw_verify,
     davinci,
     eb,
     export,
     init,
+    lint,
     log,
     session,
+    xdm_apply_template,
     xdm_inspect,
 )
 
@@ -47,6 +51,10 @@ _register_command("init", init)
 _register_command("arxml-inspect", arxml_inspect)
 _register_command("xdm-inspect", xdm_inspect)
 _register_command("bsw-inspect", bsw_inspect)
+_register_command("lint", lint)
+_register_command("bsw-verify", bsw_verify)
+_register_command("arxml-apply-template", arxml_apply_template)
+_register_command("xdm-apply-template", xdm_apply_template)
 
 
 def build_parser() -> argparse.ArgumentParser:

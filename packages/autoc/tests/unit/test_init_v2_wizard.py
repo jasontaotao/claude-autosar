@@ -252,7 +252,6 @@ class TestInitV2WizardProbeFailure:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """交互 + 全缺 → console 警告 + 跳过 settings.json（不阻 init）。"""
-        from rich.prompt import Prompt
 
         _clean_env(
             monkeypatch,

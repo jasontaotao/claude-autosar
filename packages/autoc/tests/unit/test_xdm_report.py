@@ -385,7 +385,6 @@ class TestXssDefense:
         攻击向量：恶意 .xdm 把 module name 写成 ``<img/src=x/onerror=alert(1)>``，
         渲染时未 escape 会注入 HTML → 用户浏览器执行 JS。
         """
-        import pytest  # noqa: PLC0415
 
         hostile_xdm = tmp_path / "hostile.xdm"
         hostile_xdm.write_text(

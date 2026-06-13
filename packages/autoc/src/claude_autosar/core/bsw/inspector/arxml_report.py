@@ -644,4 +644,140 @@ def etree_local_name(elem: Any) -> str:
     return tag
 
 
-__all__ = ["render_arxml_report", "export_arxml_report"]
+# ---------------------------------------------------------------------------
+# Sprint 9.3 T9.3-γ — verify section 嵌入（独立切片）
+# ---------------------------------------------------------------------------
+
+
+def render_arxml_report_with_verify(
+    path: Path,
+    verify_issues: tuple[Any, ...] = (),
+    verify_returncode: int = 0,
+) -> str:
+    """Sprint 9.3 T9.3-γ 入口：渲染 arxml 报告 + 嵌入 verify section HTML。
+
+    Parameters
+    ----------
+    path:
+        输入 ``.arxml`` 文件路径。
+    verify_issues:
+        :class:`TresosVerifyIssue` 元组（duck-typing）；
+        空 + returncode=0 → 不嵌入 verify section。
+    verify_returncode:
+        tresos_cmd returncode；非 0 即使 issues 空也会嵌入（标记失败）。
+
+    Returns
+    -------
+    str:
+        完整 HTML 报告（含 verify section 嵌入到 ``</body>`` 之前）。
+
+    Notes
+    -----
+    * 不重写 :func:`render_arxml_report` 既有逻辑；本函数走
+      ``render_arxml_report`` → 字符串拼接 verify section。
+    * 嵌入失败（``</body>`` 不规整）→ graceful fallback：直接
+      ``base + section`` 拼接（section 可能在 HTML 之外，但保留内容）。
+    """
+    base = render_arxml_report(path)
+    if not verify_issues and verify_returncode == 0:
+        return base
+    # 延迟导入：避免 verify 包未实现时影响 arxml_report 自身 import
+    from claude_autosar.core.bsw.verify.report_section import (
+        render_verify_section_html,
+    )
+
+    section = render_verify_section_html(
+        verify_issues,
+        returncode=verify_returncode,
+    )
+    # 尝试插入到 </body> 之前；找不到 → 简单拼接
+    if "</body>" in base:
+        return base.replace("</body>", section + "</body>", 1)
+    return base + section
+
+
+__all__ = ["render_arxml_report", "export_arxml_report",
+           "render_arxml_report_with_verify",
+           "render_arxml_report_with_lint"]
+
+
+# ---------------------------------------------------------------------------
+# Sprint 9.4 T9.4-β — lint section 嵌入（独立切片；不动 9.3-γ 的 verify）
+# ---------------------------------------------------------------------------
+# 给 9.4-β MCP `arxml_inspect(..., include_lint=True)` / CLI `arxml-inspect
+# --lint` 复用。**append-only**：不改既有 `render_arxml_report` / 9.3-γ
+# `render_arxml_report_with_verify`，独立渲染函数只在 base HTML 后追加
+# lint section（reuse `_INSPECTOR_CSS` 的 `summary-box` + violations table；
+# XSS 走 :func:`html.escape`）。duck-typed violations：``v.rule_id`` /
+# ``v.severity`` / ``v.message`` / ``v.path`` / ``v.line``（与
+# ``commands.lint._violation_to_dict`` 一致）。
+
+
+def _render_arxml_lint_section_html(violations: tuple[Any, ...]) -> str:
+    """Sprint 9.4-β：渲染 arxml 报告底部嵌入的 lint section。
+
+    :param violations: 任意 duck-typed 对象序列（rule_id/severity/message/
+        path/line 属性），空 tuple → 返空字符串
+    :return: HTML string（含 ``summary-box`` + violations table）
+    """
+    if not violations:
+        return ""
+
+    severity_rank = {"error": 0, "warning": 1, "info": 2}
+    sorted_v = sorted(
+        violations,
+        key=lambda v: (
+            severity_rank.get(str(getattr(v, "severity", "info")).lower(), 99),
+            str(getattr(v, "rule_id", "")),
+        ),
+    )
+
+    rows: list[str] = []
+    for v in sorted_v:
+        rule_id = _html_escape(str(getattr(v, "rule_id", "")))
+        severity = _html_escape(str(getattr(v, "severity", "")))
+        message = _html_escape(str(getattr(v, "message", "")))
+        path_str = _html_escape(str(getattr(v, "path", "") or "-"))
+        line_raw = getattr(v, "line", None)
+        line_str = _html_escape("" if line_raw is None else str(line_raw))
+        rows.append(
+            "<tr>"
+            f"<td>{rule_id}</td>"
+            f"<td>{severity}</td>"
+            f"<td>{path_str}:{line_str}</td>"
+            f"<td>{message}</td>"
+            "</tr>"
+        )
+
+    return (
+        '<section class="lint-section">\n'
+        "<h2>Lint Violations</h2>\n"
+        '<div class="summary-box">\n'
+        f"<strong>{len(violations)}</strong> violation(s)\n"
+        "</div>\n"
+        "<table>\n"
+        "<thead><tr><th>Rule</th><th>Severity</th><th>Location</th>"
+        "<th>Message</th></tr></thead>\n"
+        "<tbody>\n" + "\n".join(rows) + "\n</tbody>\n"
+        "</table>\n"
+        "</section>\n"
+    )
+
+
+def render_arxml_report_with_lint(
+    path: Path,
+    violations: tuple[Any, ...] = (),
+) -> str:
+    """Sprint 9.4 T9.4-β 入口：arxml 报告 + lint section 嵌入。
+
+    :param path: ``.arxml`` 文件路径
+    :param violations: duck-typed lint violations；空 → 不嵌入 lint section
+    :return: 自包含 HTML 字符串
+    """
+    base = render_arxml_report(path)
+    if not violations:
+        return base
+    section = _render_arxml_lint_section_html(violations)
+    if "</body>" in base:
+        return base.replace("</body>", section + "</body>", 1)
+    return base + "\n" + section

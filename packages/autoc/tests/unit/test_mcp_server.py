@@ -41,6 +41,9 @@ _EXPECTED_TOOLS = {
     "arxml_inspect",
     "xdm_inspect",
     "bsw_inspect",
+    # Sprint 9.2-γ — 2 个 apply_template tool
+    "arxml_apply_template",
+    "xdm_apply_template",
 }
 
 
@@ -53,9 +56,11 @@ def test_build_mcp_server_returns_fastmcp_instance() -> None:
 
 
 def test_tool_names_constant_matches_spec() -> None:
-    """_TOOL_NAMES 是 10 个原 tool + Sprint 9.1 新增 3 个 inspect tool（顺序独立）。"""
+    """_TOOL_NAMES 是 10 个原 tool + Sprint 9.1 新增 3 个 inspect tool +
+    Sprint 9.2-γ 新增 2 个 apply_template tool（顺序独立）。
+    """
     assert set(_TOOL_NAMES) == _EXPECTED_TOOLS
-    assert len(_TOOL_NAMES) == 13
+    assert len(_TOOL_NAMES) == 15
 
 
 def test_mcp_server_registers_all_ten_tools() -> None:
