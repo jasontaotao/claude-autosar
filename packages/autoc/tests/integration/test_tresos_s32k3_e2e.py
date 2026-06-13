@@ -19,7 +19,7 @@ from unittest.mock import patch
 
 import pytest
 
-from autoc.adapters.tresos import TresosAdapter, TresosAdapterError
+from claude_autosar.adapters.tresos import TresosAdapter, TresosAdapterError
 
 # 集成测试 marker（pyproject 已注册）
 pytestmark = pytest.mark.integration
@@ -55,7 +55,7 @@ class TestTresosE2EFlow:
         assert all(p.suffix == ".arxml" for p in ctx.available_plugins)
 
         # 2) verify / save / autocalc —— mock subprocess.run
-        with patch("autoc.adapters.tresos.subprocess.run") as mock_run:
+        with patch("claude_autosar.adapters.tresos.subprocess.run") as mock_run:
             mock_run.return_value = subprocess.CompletedProcess(
                 args=[], returncode=0, stdout="OK", stderr=""
             )
@@ -99,7 +99,7 @@ class TestTresosE2EFlow:
         adapter = TresosAdapter()
         ctx = adapter.discover(project_path, tool_home)
 
-        with patch("autoc.adapters.tresos.subprocess.run") as mock_run:
+        with patch("claude_autosar.adapters.tresos.subprocess.run") as mock_run:
             mock_run.return_value = subprocess.CompletedProcess(
                 args=[],
                 returncode=0,
@@ -129,7 +129,7 @@ class TestTresosE2EFlow:
         adapter = TresosAdapter()
         ctx = adapter.discover(project_path, tool_home)
 
-        with patch("autoc.adapters.tresos.subprocess.run") as mock_run:
+        with patch("claude_autosar.adapters.tresos.subprocess.run") as mock_run:
             mock_run.return_value = subprocess.CompletedProcess(
                 args=[], returncode=1, stdout="", stderr="tresos_cmd failed"
             )
@@ -142,7 +142,7 @@ class TestTresosE2EFlow:
         assert c.success is False and c.returncode == 1
 
         # 真正的 IO 错误（如 PermissionError）应包成 TresosAdapterError
-        with patch("autoc.adapters.tresos.subprocess.run") as mock_run:
+        with patch("claude_autosar.adapters.tresos.subprocess.run") as mock_run:
             mock_run.side_effect = PermissionError("EACCES")
             with pytest.raises(TresosAdapterError):
                 adapter.verify(ctx)
@@ -168,7 +168,7 @@ class TestTresosE2EFlow:
             ctx.available_plugins,
         )
 
-        with patch("autoc.adapters.tresos.subprocess.run") as mock_run:
+        with patch("claude_autosar.adapters.tresos.subprocess.run") as mock_run:
             mock_run.return_value = subprocess.CompletedProcess(
                 args=[], returncode=0, stdout="", stderr=""
             )

@@ -11,11 +11,11 @@ import sys
 
 import pytest
 
-from autoc.cli.commands.init import (
+from claude_autosar.cli.commands.init import (
     _copy_bswmd_files,
     _scan_project_modules,
 )
-from autoc.core.config.project_config import (
+from claude_autosar.core.config.project_config import (
     ProjectConfig,
     ProjectConfigError,
     default_tresos_home,
@@ -62,7 +62,7 @@ def user_config_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     user_dir = tmp_path / "user-autoc" / "agent"
     user_dir.mkdir(parents=True)
     monkeypatch.setattr(
-        "autoc.core.config.project_config._USER_CONFIG",
+        "claude_autosar.core.config.project_config._USER_CONFIG",
         user_dir / "autoc.yaml",
     )
     return user_dir
@@ -128,7 +128,7 @@ class TestDefaultTresosHome:
         # 强制 win32 分支并指向 tmp_path（不存在）
         monkeypatch.setattr(sys, "platform", "win32", raising=False)
         # 替换默认路径常量
-        import autoc.core.config.project_config as mod
+        import claude_autosar.core.config.project_config as mod
 
         monkeypatch.setattr(
             mod,
@@ -143,7 +143,7 @@ class TestDefaultTresosHome:
         tmp_path: Path,
     ) -> None:
         """探测路径存在时返回该路径。"""
-        import autoc.core.config.project_config as mod
+        import claude_autosar.core.config.project_config as mod
 
         monkeypatch.setattr(sys, "platform", "win32", raising=False)
         monkeypatch.setattr(
@@ -244,7 +244,7 @@ class TestProjectConfigLoad:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """缺 tresos_home 字段 → 走 default_tresos_home()。"""
-        import autoc.core.config.project_config as mod
+        import claude_autosar.core.config.project_config as mod
 
         monkeypatch.setattr(sys, "platform", "win32", raising=False)
         monkeypatch.setattr(

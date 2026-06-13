@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from autoc.adapters.tresos import TresosAdapter, TresosAdapterError
+from claude_autosar.adapters.tresos import TresosAdapter, TresosAdapterError
 
 # =============================================================================
 # 工厂 fixture 验证

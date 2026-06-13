@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from autoc.core.bsw.arxml_io import ARXMLError
-from autoc.core.bsw.bswmd import BSWMDRegistry
-from autoc.core.bsw.ecuc import (
+from claude_autosar.core.bsw.arxml_io import ARXMLError
+from claude_autosar.core.bsw.bswmd import BSWMDRegistry
+from claude_autosar.core.bsw.ecuc import (
     ECUCType,
     get_value,
     list_paths,
@@ -180,7 +180,7 @@ class TestTypeInference:
 
     def test_bswmd_registry_strict_inference(self, tmp_path: Path) -> None:
         """T8.E.2: 传 BSWMDRegistry 时优先按 BSWMD 严格推断（不依赖 DEST）。"""
-        from autoc.core.bsw.bswmd import (
+        from claude_autosar.core.bsw.bswmd import (
             BSWMDRegistry,
             ContainerDef,
             ModuleDef,

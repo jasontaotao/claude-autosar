@@ -6,21 +6,21 @@ from pathlib import Path
 
 import pytest
 
-from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
-from autoc.core.session.recorder import (
+from claude_autosar.core.bsw.config import BSWParam, ParamType, ParamValue
+from claude_autosar.core.session.recorder import (
     get_current_session_path,
     get_or_create_current_session,
     record_bsw_write_batch,
     set_current_session,
 )
-from autoc.core.session.store import SessionStore, new_session_id
+from claude_autosar.core.session.store import SessionStore, new_session_id
 
 
 def _patch_session_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     cfg_dir = tmp_path / "fake_agent"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(
-        "autoc.utils.paths.user_config_dir",
+        "claude_autosar.utils.paths.user_config_dir",
         lambda *a, **kw: str(cfg_dir),
     )
     return cfg_dir / "sessions"

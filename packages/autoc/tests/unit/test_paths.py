@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from autoc.utils.paths import (
+from claude_autosar.utils.paths import (
     APP_AUTHOR,
     APP_NAME,
     find_ancestor_file,
@@ -31,7 +31,7 @@ class TestGlobalDirs:
     ) -> None:
         """global_config_dir 返回的目录应当存在。"""
         monkeypatch.setattr(
-            "autoc.utils.paths.user_config_dir",
+            "claude_autosar.utils.paths.user_config_dir",
             lambda *a, **kw: str(tmp_path / "cfg"),
         )
         result = global_config_dir()
@@ -43,7 +43,7 @@ class TestGlobalDirs:
     ) -> None:
         """global_session_dir 在 config_dir/sessions 下。"""
         monkeypatch.setattr(
-            "autoc.utils.paths.user_config_dir",
+            "claude_autosar.utils.paths.user_config_dir",
             lambda *a, **kw: str(tmp_path / "cfg"),
         )
         result = global_session_dir()
@@ -53,7 +53,7 @@ class TestGlobalDirs:
     def test_global_data_dir_exists(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """global_data_dir 返回的目录应当存在。"""
         monkeypatch.setattr(
-            "autoc.utils.paths.user_data_dir",
+            "claude_autosar.utils.paths.user_data_dir",
             lambda *a, **kw: str(tmp_path / "data"),
         )
         result = global_data_dir()
@@ -62,7 +62,7 @@ class TestGlobalDirs:
     def test_global_log_dir_exists(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """global_log_dir 返回的目录应当存在。"""
         monkeypatch.setattr(
-            "autoc.utils.paths.user_log_dir",
+            "claude_autosar.utils.paths.user_log_dir",
             lambda *a, **kw: str(tmp_path / "logs"),
         )
         result = global_log_dir()

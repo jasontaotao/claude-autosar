@@ -65,7 +65,7 @@ def _hook_path(name: str) -> Path:
     - parents[3] = packages   ← 起点
     """
     repo_packages = Path(__file__).resolve().parents[3]
-    return repo_packages / "plugin" / "plugins" / "autoc" / "hooks" / name
+    return repo_packages / "plugin" / "plugins" / "claude-autosar" / "hooks" / name
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +178,7 @@ def _patch_session_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     cfg_dir = tmp_path / "fake_agent"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(
-        "autoc.utils.paths.user_config_dir",
+        "claude_autosar.utils.paths.user_config_dir",
         lambda *a, **kw: str(cfg_dir),
     )
 
@@ -194,10 +194,10 @@ def test_mcp_bsw_write_then_recorder_then_log_export_renders(
     """
     from unittest import mock
 
-    from autoc.cli.mcp_server import bsw_write, log_export
-    from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
-    from autoc.core.bsw.validator import ModifyResult
-    from autoc.core.session.recorder import record_bsw_write_batch
+    from claude_autosar.cli.mcp_server import bsw_write, log_export
+    from claude_autosar.core.bsw.config import BSWParam, ParamType, ParamValue
+    from claude_autosar.core.bsw.validator import ModifyResult
+    from claude_autosar.core.session.recorder import record_bsw_write_batch
 
     _patch_session_dir(monkeypatch, tmp_path)
 
@@ -228,7 +228,7 @@ def test_mcp_bsw_write_then_recorder_then_log_export_renders(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "autoc.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
+        "claude_autosar.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
         frozenset({tmp_path.resolve()}),
     )
 
@@ -241,7 +241,7 @@ def test_mcp_bsw_write_then_recorder_then_log_export_renders(
     )
 
     # 步骤 1：调 MCP bsw_write
-    with mock.patch("autoc.core.bsw.validator.modify_and_verify", return_value=fake_result):
+    with mock.patch("claude_autosar.core.bsw.validator.modify_and_verify", return_value=fake_result):
         r = bsw_write(
             "Mcu",
             [
@@ -252,7 +252,7 @@ def test_mcp_bsw_write_then_recorder_then_log_export_renders(
     assert r["success"] is True, r
 
     # 步骤 2：模拟 CLI 业务层 record 改参到 session
-    from autoc.core.session.store import SessionStore
+    from claude_autosar.core.session.store import SessionStore
 
     params = (
         BSWParam(
@@ -287,8 +287,8 @@ def test_mcp_bsw_write_then_recorder_then_log_export_renders(
 
 def test_mcp_session_export_writes_html(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """MCP session_export：写出 HTML 文件，含基础结构。"""
-    from autoc.cli.mcp_server import session_export
-    from autoc.core.session.store import SessionEntry, SessionStore
+    from claude_autosar.cli.mcp_server import session_export
+    from claude_autosar.core.session.store import SessionEntry, SessionStore
 
     _patch_session_dir(monkeypatch, tmp_path)
     store = SessionStore()
@@ -328,8 +328,8 @@ def test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape(
     """
     from unittest import mock
 
-    from autoc.cli.mcp_server import bsw_write
-    from autoc.core.bsw.validator import ModifyResult
+    from claude_autosar.cli.mcp_server import bsw_write
+    from claude_autosar.core.bsw.validator import ModifyResult
 
     _patch_session_dir(monkeypatch, tmp_path)
 
@@ -361,7 +361,7 @@ def test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape(
     )
 
     monkeypatch.setattr(
-        "autoc.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
+        "claude_autosar.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
         frozenset({tmp_path.resolve()}),
     )
 
@@ -370,7 +370,7 @@ def test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape(
     )
 
     # --- MCP: bsw_write ---
-    with mock.patch("autoc.core.bsw.validator.modify_and_verify", return_value=fake):
+    with mock.patch("claude_autosar.core.bsw.validator.modify_and_verify", return_value=fake):
         mcp_r = bsw_write(
             "Mcu",
             [{"path": "Mcu/ClockFreq", "value": 80000000, "type": "integer"}],
@@ -393,7 +393,7 @@ def test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape(
         [
             sys.executable,
             "-m",
-            "autoc.cli.main",
+            "claude_autosar.cli.main",
             "eb",
             "save",
             "--module",
@@ -436,7 +436,7 @@ def test_cli_version_help_nonexistent(tmp_path: Path) -> None:  # noqa: ARG001
     env["PYTHONPATH"] = str(Path(__file__).resolve().parents[3] / "packages" / "autoc" / "src")
     # 1. --version
     v = subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "autoc.cli.main", "--version"],
+        [sys.executable, "-m", "claude_autosar.cli.main", "--version"],
         capture_output=True,
         text=True,
         env=env,
@@ -447,7 +447,7 @@ def test_cli_version_help_nonexistent(tmp_path: Path) -> None:  # noqa: ARG001
 
     # 2. --help
     h = subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "autoc.cli.main", "--help"],
+        [sys.executable, "-m", "claude_autosar.cli.main", "--help"],
         capture_output=True,
         text=True,
         env=env,
@@ -460,7 +460,7 @@ def test_cli_version_help_nonexistent(tmp_path: Path) -> None:  # noqa: ARG001
 
     # 3. 未知子命令 — 中文提示走 stderr（PROGRESS.md 5.1 节决定）
     u = subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "autoc.cli.main", "nonexistent_xyz"],
+        [sys.executable, "-m", "claude_autosar.cli.main", "nonexistent_xyz"],
         capture_output=True,
         text=True,
         env=env,

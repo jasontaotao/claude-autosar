@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "autoc"
+name = "claude-autosar"
 version = "0.1.0"
-description = "AutoC - AUTOSAR BSW AI 配置助手 Python 核心"
+description = "claude-autosar - AUTOSAR BSW AI 配置助手 Python 核心"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -58,10 +58,10 @@ dev = [
 ]
 
 [project.scripts]
-autoc = "autoc.cli.main:main"
+claude-autosar = "claude_autosar.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-autoc = ["py.typed"]
+claude_autosar = ["py.typed"]

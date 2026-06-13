@@ -38,9 +38,9 @@ import pytest
 from rich.console import Console
 from rich.prompt import Prompt
 
-from autoc.cli.commands import init as init_mod
-from autoc.core.config import project_config as pc_mod
-from autoc.core.config.project_config import (
+from claude_autosar.cli.commands import init as init_mod
+from claude_autosar.core.config import project_config as pc_mod
+from claude_autosar.core.config.project_config import (
     ProjectConfig,
     ProjectConfigError,
     default_tresos_home,
@@ -59,13 +59,25 @@ def _make_console() -> tuple[Console, io.StringIO]:
 
 
 def _make_namespace(**kwargs: Any) -> argparse.Namespace:
-    """Build an argparse.Namespace with all ``init`` subcommand defaults."""
+    """Build an argparse.Namespace with all ``init`` subcommand defaults.
+
+    v2 (Sprint 9.0) 新加 4 字段全部默认 ``None``/``False``，让 v1 测试
+    不被 v2 settings.json 写入路径影响（v1 测试 fixture 没 v2 探测路径，
+    settings.json 写入会在非交互模式抛 :class:`V2PathsError`，所以
+    ``no_settings_json=True`` 强制跳过 v2 写。
+    """
     defaults: dict[str, Any] = {
         "project_root": None,
         "tresos_home": None,
         "non_interactive": False,
         "no_bswmd": False,
         "refresh_bswmd": False,
+        # v2 字段（T9.0.6 增强）—— 默认跳过 settings.json 写入，
+        # v1 测试的 fixture 没有 v2 探测路径可用。
+        "mcal_vendor": None,
+        "mcal_vendor_home": None,
+        "chip_derivative": None,
+        "no_settings_json": True,
     }
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -179,6 +191,7 @@ class TestSprint8E1CoverageInitRunInitFlow:
             non_interactive=True,
             no_bswmd=True,
             refresh_bswmd=False,
+            no_settings_json=True,
         )
         assert rc == 0
         yaml_path = project / ".autoc" / "autoc.yaml"
@@ -216,6 +229,7 @@ class TestSprint8E1CoverageInitRunInitFlow:
             non_interactive=True,
             no_bswmd=True,
             refresh_bswmd=False,
+            no_settings_json=True,
         )
         assert rc == 0
         # yaml 应包含 fake_tresos 的路径
@@ -235,6 +249,7 @@ class TestSprint8E1CoverageInitRunInitFlow:
             non_interactive=True,
             no_bswmd=True,
             refresh_bswmd=False,
+            no_settings_json=True,
         )
         assert rc == 0
         # bswmd_root 应该被创建（init flow 创建）但内容为空
@@ -256,6 +271,7 @@ class TestSprint8E1CoverageInitRunInitFlow:
             non_interactive=True,
             no_bswmd=False,
             refresh_bswmd=False,
+            no_settings_json=True,
         )
         # 第二次：refresh=True，应仍 copy（copied>0）
         console2, buf2 = _make_console()
@@ -266,6 +282,7 @@ class TestSprint8E1CoverageInitRunInitFlow:
             non_interactive=True,
             no_bswmd=False,
             refresh_bswmd=True,
+            no_settings_json=True,
         )
         assert rc == 0
         out = buf2.getvalue()
@@ -295,6 +312,7 @@ class TestSprint8E1CoverageInitRunInitFlow:
             non_interactive=False,
             no_bswmd=True,
             refresh_bswmd=False,
+            no_settings_json=True,
         )
         assert rc == 0
         # tresos_home_arg 给了 → 不问 tresos_home（仅可能问 BSWMD copy，但 no_bswmd 跳过）
@@ -359,6 +377,7 @@ class TestSprint8E1CoverageInitRunInitFlow:
             non_interactive=False,
             no_bswmd=False,
             refresh_bswmd=False,
+            no_settings_json=True,
         )
         assert rc == 0
         # 没 copy

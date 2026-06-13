@@ -11,13 +11,13 @@ from pathlib import Path
 
 import pytest
 
-from autoc.cli.commands.export import build_parser as export_parser
-from autoc.cli.commands.export import run as export_run
-from autoc.cli.commands.log import build_parser as log_parser
-from autoc.cli.commands.log import run as log_run
-from autoc.cli.commands.session import build_parser as session_parser
-from autoc.cli.commands.session import run as session_run
-from autoc.cli.main import build_parser as main_parser
+from claude_autosar.cli.commands.export import build_parser as export_parser
+from claude_autosar.cli.commands.export import run as export_run
+from claude_autosar.cli.commands.log import build_parser as log_parser
+from claude_autosar.cli.commands.log import run as log_run
+from claude_autosar.cli.commands.session import build_parser as session_parser
+from claude_autosar.cli.commands.session import run as session_run
+from claude_autosar.cli.main import build_parser as main_parser
 
 # ---------------------------------------------------------------------------
 # in-process e2e：单进程调各命令
@@ -28,7 +28,7 @@ def _patch_session_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     cfg_dir = tmp_path / "fake_agent"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(
-        "autoc.utils.paths.user_config_dir",
+        "claude_autosar.utils.paths.user_config_dir",
         lambda *a, **kw: str(cfg_dir),
     )
 
@@ -72,9 +72,9 @@ def test_e2e_eb_save_then_session_list_then_log_then_export(
     # 1. eb save (stub) — 因 EB 流程需要 .xdm/.arxml 等真实文件，stub adapter 仍然会失败
     # 用 stub 走 modify_and_verify 的"无文件"分支会失败。改用直接构造 + recorder 的方式
     # 验证 e2e 链路：手工记录到 session 然后跑其它 CLI。
-    from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
-    from autoc.core.session.recorder import record_bsw_write_batch
-    from autoc.core.session.store import SessionStore
+    from claude_autosar.core.bsw.config import BSWParam, ParamType, ParamValue
+    from claude_autosar.core.session.recorder import record_bsw_write_batch
+    from claude_autosar.core.session.store import SessionStore
 
     store = SessionStore()
     rec = record_bsw_write_batch(
@@ -133,9 +133,9 @@ def test_e2e_eb_save_failure_does_not_write_session(
 ) -> None:
     """eb save 失败（stub modify_and_verify 报错）→ session 不被污染。"""
     _patch_session_dir(monkeypatch, tmp_path)
-    from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
-    from autoc.core.session.recorder import record_bsw_write_batch
-    from autoc.core.session.store import SessionStore
+    from claude_autosar.core.bsw.config import BSWParam, ParamType, ParamValue
+    from claude_autosar.core.session.recorder import record_bsw_write_batch
+    from claude_autosar.core.session.store import SessionStore
 
     store = SessionStore()
     # 显式传 success=False

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from autoc.core.settings.config import deep_merge, load_json, load_merged_settings
+from claude_autosar.core.settings.config import deep_merge, load_json, load_merged_settings
 
 # =============================================================================
 # deep_merge

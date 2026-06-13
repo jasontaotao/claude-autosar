@@ -6,8 +6,8 @@ from collections.abc import Iterator
 
 import pytest
 
-from autoc.core.session.store import Session, SessionEntry
-from autoc.core.session.tree import SessionTree
+from claude_autosar.core.session.store import Session, SessionEntry
+from claude_autosar.core.session.tree import SessionTree
 
 
 def _entry(
@@ -188,13 +188,13 @@ def test_fork_unknown_parent_raises() -> None:
 
 def test_tree_from_session_id_uses_store(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     """SessionTree.from_session_id(sid, store=...) 用 store.read 构造。"""
-    from autoc.core.session.store import SessionEntry, SessionStore
-    from autoc.core.session.tree import SessionTree
+    from claude_autosar.core.session.store import SessionEntry, SessionStore
+    from claude_autosar.core.session.tree import SessionTree
 
     cfg_dir = tmp_path / "fake_agent"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(
-        "autoc.utils.paths.user_config_dir",
+        "claude_autosar.utils.paths.user_config_dir",
         lambda *a, **kw: str(cfg_dir),
     )
     store = SessionStore()

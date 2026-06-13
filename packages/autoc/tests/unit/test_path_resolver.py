@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from autoc.core.bsw.ecuc import ECUCDocument, ECUCValue, list_paths
-from autoc.core.bsw.path_resolver import BSWPathResolver, ResolverResult
+from claude_autosar.core.bsw.ecuc import ECUCDocument, ECUCValue, list_paths
+from claude_autosar.core.bsw.path_resolver import BSWPathResolver, ResolverResult
 
 pytestmark = pytest.mark.arxml
 

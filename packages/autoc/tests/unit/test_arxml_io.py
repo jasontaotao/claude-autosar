@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from autoc.core.bsw.arxml_io import (
+from claude_autosar.core.bsw.arxml_io import (
     ARXMLDocument,
     ARXMLError,
     find_elements,
@@ -105,7 +105,7 @@ class TestWrite:
 
         with (
             patch(
-                "autoc.core.bsw.arxml_io.os.replace",
+                "claude_autosar.core.bsw.arxml_io.os.replace",
                 side_effect=OSError("simulated rename failure"),
             ),
             pytest.raises(ARXMLError),

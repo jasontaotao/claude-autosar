@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from autoc.adapters.protocol import (
+from claude_autosar.adapters.protocol import (
     CalcResult,
     EcuConfigProjectContext,
     SaveResult,
     VerifyResult,
 )
-from autoc.adapters.stub import StubDavinciAdapter, StubTresosAdapter
+from claude_autosar.adapters.stub import StubDavinciAdapter, StubTresosAdapter
 
 
 @pytest.fixture

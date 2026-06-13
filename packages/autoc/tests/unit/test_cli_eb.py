@@ -10,14 +10,14 @@ from pathlib import Path
 
 import pytest
 
-from autoc.adapters.protocol import (
+from claude_autosar.adapters.protocol import (
     CalcResult,
     EcuConfigProjectContext,
     SaveResult,
     VerifyResult,
 )
-from autoc.adapters.stub import StubTresosAdapter
-from autoc.cli.commands.eb import build_parser, run
+from claude_autosar.adapters.stub import StubTresosAdapter
+from claude_autosar.cli.commands.eb import build_parser, run
 
 pytestmark = pytest.mark.autosar
 
@@ -233,7 +233,7 @@ class TestRunSaveSession:
         cfg_dir = tmp_path / "fake_agent"
         cfg_dir.mkdir(parents=True, exist_ok=True)
         monkeypatch.setattr(
-            "autoc.utils.paths.user_config_dir",
+            "claude_autosar.utils.paths.user_config_dir",
             lambda *a, **kw: str(cfg_dir),
         )
 
@@ -252,7 +252,7 @@ class TestRunSaveSession:
         assert "session_id" in payload
 
         # session 文件应已写入
-        from autoc.core.session.store import SessionStore
+        from claude_autosar.core.session.store import SessionStore
 
         store = SessionStore()
         session = store.read(payload["session_id"])
@@ -274,7 +274,7 @@ class TestRunSaveSession:
         cfg_dir = tmp_path / "fake_agent"
         cfg_dir.mkdir(parents=True, exist_ok=True)
         monkeypatch.setattr(
-            "autoc.utils.paths.user_config_dir",
+            "claude_autosar.utils.paths.user_config_dir",
             lambda *a, **kw: str(cfg_dir),
         )
 
@@ -290,7 +290,7 @@ class TestRunSaveSession:
         exit_code = run(args, adapter_override=adapter)
         assert exit_code == 1
 
-        from autoc.core.session.store import SessionStore
+        from claude_autosar.core.session.store import SessionStore
 
         store = SessionStore()
         assert store.list_session_ids() == []

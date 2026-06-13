@@ -28,7 +28,7 @@ from pathlib import Path
 
 import pytest
 
-from autoc.core.bsw.bswmd import (
+from claude_autosar.core.bsw.bswmd import (
     BSWMDRegistry,
     ContainerDef,
     ModuleDef,

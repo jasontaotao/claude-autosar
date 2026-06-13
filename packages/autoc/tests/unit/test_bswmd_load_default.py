@@ -22,13 +22,13 @@ from pathlib import Path
 
 import pytest
 
-from autoc.core.bsw.bswmd import (
+from claude_autosar.core.bsw.bswmd import (
     BSWMDRegistry,
     ContainerDef,
     ModuleDef,
     ParamDef,
 )
-from autoc.core.config.project_config import ProjectConfig
+from claude_autosar.core.config.project_config import ProjectConfig
 
 # ---------------------------------------------------------------------------
 # 极简 fake ProjectConfig（不依赖 ProjectConfig.load()；契约 1 消费）

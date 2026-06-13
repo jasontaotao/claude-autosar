@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from autoc.core.bsw.config import BSWModule, BSWParam, ParamType, ParamValue
+from claude_autosar.core.bsw.config import BSWModule, BSWParam, ParamType, ParamValue
 
 # =============================================================================
 # ParamValue
@@ -217,7 +217,7 @@ class TestFromEcuc:
 
     def test_from_ecuc_5_types(self) -> None:
         """5 种类型各一例。"""
-        from autoc.core.bsw.ecuc import ECUCDocument, ECUCValue
+        from claude_autosar.core.bsw.ecuc import ECUCDocument, ECUCValue
 
         doc = ECUCDocument(
             path=Path("/tmp/x"),
@@ -242,7 +242,7 @@ class TestFromEcuc:
 
     def test_from_ecuc_does_not_mutate_source(self) -> None:
         """from_ecuc 不可变：原 ECUCDocument 不变。"""
-        from autoc.core.bsw.ecuc import ECUCDocument, ECUCValue
+        from claude_autosar.core.bsw.ecuc import ECUCDocument, ECUCValue
 
         original_values = (ECUCValue(path="Mcu/Freq", raw="80000000", type="INTEGER"),)
         doc = ECUCDocument(path=Path("/tmp/x"), module_name="Mcu", values=original_values)
@@ -251,7 +251,7 @@ class TestFromEcuc:
 
     def test_to_ecuc_round_trip(self) -> None:
         """构造 BSWModule → to_ecuc → values 一致。"""
-        from autoc.core.bsw.ecuc import ECUCDocument
+        from claude_autosar.core.bsw.ecuc import ECUCDocument
 
         m1 = BSWModule(
             "Mcu",

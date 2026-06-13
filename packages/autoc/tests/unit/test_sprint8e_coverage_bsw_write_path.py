@@ -29,17 +29,17 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from autoc.core.bsw.bsw_write_path import (
+from claude_autosar.core.bsw.bsw_write_path import (
     BSWWritePathError,
     validate_writes_against_bswmd,
 )
-from autoc.core.bsw.bswmd import (
+from claude_autosar.core.bsw.bswmd import (
     BSWMDRegistry,
     ContainerDef,
     ModuleDef,
     ParamDef,
 )
-from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
+from claude_autosar.core.bsw.config import BSWParam, ParamType, ParamValue
 
 pytestmark = pytest.mark.autosar
 
@@ -245,7 +245,7 @@ class TestBSWWritePathCoverageStripInstanceIndex:
 
     def test_strip_trailing_digit_index(self) -> None:
         """``Cfg_0`` → ``Cfg``（tail.isdigit() 命中 + head 非空）。"""
-        from autoc.core.bsw.bsw_write_path import _strip_instance_index
+        from claude_autosar.core.bsw.bsw_write_path import _strip_instance_index
 
         assert _strip_instance_index("McuClockSettingConfig_0") == "McuClockSettingConfig"
         assert _strip_instance_index("McuClockSettingConfig_12") == "McuClockSettingConfig"
@@ -253,7 +253,7 @@ class TestBSWWritePathCoverageStripInstanceIndex:
 
     def test_no_underscore_returns_unchanged(self) -> None:
         """无下划线 → 原样返回（行 177-178）。"""
-        from autoc.core.bsw.bsw_write_path import _strip_instance_index
+        from claude_autosar.core.bsw.bsw_write_path import _strip_instance_index
 
         assert _strip_instance_index("Mcu") == "Mcu"
         assert _strip_instance_index("Freq") == "Freq"
@@ -261,35 +261,35 @@ class TestBSWWritePathCoverageStripInstanceIndex:
 
     def test_underscore_but_tail_not_digit(self) -> None:
         """下划线但 tail 非数字（``My_Name``）→ 原样返回（行 184）。"""
-        from autoc.core.bsw.bsw_write_path import _strip_instance_index
+        from claude_autosar.core.bsw.bsw_write_path import _strip_instance_index
 
         assert _strip_instance_index("My_Name") == "My_Name"
         assert _strip_instance_index("A_B_C") == "A_B_C"  # tail="C" 不是数字
 
     def test_underscore_with_empty_head(self) -> None:
         """下划线在最前（``_0``）→ head 为空，return 原样（行 180-181）。"""
-        from autoc.core.bsw.bsw_write_path import _strip_instance_index
+        from claude_autosar.core.bsw.bsw_write_path import _strip_instance_index
 
         assert _strip_instance_index("_0") == "_0"
         assert _strip_instance_index("_123") == "_123"
 
     def test_underscore_with_mixed_tail(self) -> None:
         """``_0a`` → tail="0a" 不是纯数字 → 原样返回。"""
-        from autoc.core.bsw.bsw_write_path import _strip_instance_index
+        from claude_autosar.core.bsw.bsw_write_path import _strip_instance_index
 
         # rpartition('_') → ('Cfg', '_', '0a')，tail="0a".isdigit() = False
         assert _strip_instance_index("Cfg_0a") == "Cfg_0a"
 
     def test_ecuc_path_to_def_ref_strips_indices(self) -> None:
         """``_ecuc_path_to_def_ref`` 路径上的所有 instance index 被剥。"""
-        from autoc.core.bsw.bsw_write_path import _ecuc_path_to_def_ref
+        from claude_autosar.core.bsw.bsw_write_path import _ecuc_path_to_def_ref
 
         out = _ecuc_path_to_def_ref("Mcu/McuClockSettingConfig_0/McuClockFrequency_3", "AUTOSAR")
         assert out == "/AUTOSAR/Mcu/McuClockSettingConfig/McuClockFrequency"
 
     def test_ecuc_path_filters_empty_segments(self) -> None:
         """``/`` 开头 / 双 ``//`` 等产生的空段被过滤。"""
-        from autoc.core.bsw.bsw_write_path import _ecuc_path_to_def_ref
+        from claude_autosar.core.bsw.bsw_write_path import _ecuc_path_to_def_ref
 
         out = _ecuc_path_to_def_ref("/Mcu//Freq/", "AUTOSAR")
         # 过滤后是 ["Mcu", "Freq"]，前导加 "/AUTOSAR/"
@@ -306,7 +306,7 @@ class TestBSWWritePathCoverageTopLevelParent:
 
     def test_top_level_param_parent_path_empty(self) -> None:
         """单段 path → 父容器路径为 ``""``（行 254）。"""
-        from autoc.core.bsw.bsw_write_path import _parent_container_path
+        from claude_autosar.core.bsw.bsw_write_path import _parent_container_path
 
         assert _parent_container_path("Mcu/Freq") == "Mcu"  # 2 段：父 = "Mcu"
         assert _parent_container_path("Mcu") == ""  # 1 段：顶层
@@ -329,14 +329,14 @@ class TestBSWWritePathCoverageCountExistingInParent:
 
     def test_value_without_path_attr_skipped(self) -> None:
         """v 没有 .path 属性（如 int/None）→ skip（行 270-271）。"""
-        from autoc.core.bsw.bsw_write_path import _count_existing_in_parent
+        from claude_autosar.core.bsw.bsw_write_path import _count_existing_in_parent
 
         # v 是 int，没有任何属性
         assert _count_existing_in_parent((42, "str", None), "Mcu/Cfg") == 0
 
     def test_value_with_non_string_path_skipped(self) -> None:
         """v.path 不是 str → skip（行 271）。"""
-        from autoc.core.bsw.bsw_write_path import _count_existing_in_parent
+        from claude_autosar.core.bsw.bsw_write_path import _count_existing_in_parent
 
         class WeirdValue:
             path = 123  # 不是 str
@@ -345,7 +345,7 @@ class TestBSWWritePathCoverageCountExistingInParent:
 
     def test_top_level_parent_counts_single_segment_paths(self) -> None:
         """parent="" + v_path 是单段 → count + 1（行 272-276）。"""
-        from autoc.core.bsw.bsw_write_path import _count_existing_in_parent
+        from claude_autosar.core.bsw.bsw_write_path import _count_existing_in_parent
 
         class V:
             def __init__(self, p: str) -> None:
@@ -360,7 +360,7 @@ class TestBSWWritePathCoverageCountExistingInParent:
 
     def test_non_empty_parent_startswith_count(self) -> None:
         """v_path 在父容器下 → count（行 277 startswith 分支）。"""
-        from autoc.core.bsw.bsw_write_path import _count_existing_in_parent
+        from claude_autosar.core.bsw.bsw_write_path import _count_existing_in_parent
 
         class V:
             def __init__(self, p: str) -> None:
@@ -401,7 +401,7 @@ class TestBSWWritePathCoverageUnknownType:
         reg = BSWMDRegistry(modules={"Mcu": module}, root_package_name="AUTOSAR")
         p = BSWParam(path="Mcu/Freq", value=ParamValue(raw="anything", type=ParamType.INTEGER))
         # 不抛即过（行 354-359：unknown type fallback）
-        with caplog.at_level("DEBUG", logger="autoc.core.bsw.bsw_write_path"):
+        with caplog.at_level("DEBUG", logger="claude_autosar.core.bsw.bsw_write_path"):
             validate_writes_against_bswmd(reg, "Mcu", (), (p,))
         # 验证 debug log 至少出现一次
         assert any("unknown BSWMD type" in rec.message for rec in caplog.records)

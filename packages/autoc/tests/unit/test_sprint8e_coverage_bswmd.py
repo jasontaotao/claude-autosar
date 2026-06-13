@@ -38,7 +38,7 @@ from pathlib import Path
 from lxml import etree
 import pytest
 
-from autoc.core.bsw.bswmd import (
+from claude_autosar.core.bsw.bswmd import (
     BSWMDError,
     BSWMDRegistry,
     ContainerDef,
@@ -130,7 +130,7 @@ class TestBSWMDCoverageLoad:
             encoding="utf-8",
         )
 
-        from autoc.core.config.project_config import ProjectConfig
+        from claude_autosar.core.config.project_config import ProjectConfig
 
         cfg = ProjectConfig(
             project_root=project,
@@ -171,7 +171,7 @@ class TestBSWMDCoverageLoad:
             encoding="utf-8",
         )
 
-        from autoc.core.config.project_config import ProjectConfig
+        from claude_autosar.core.config.project_config import ProjectConfig
 
         cfg = ProjectConfig(
             project_root=project,
@@ -203,7 +203,7 @@ class TestBSWMDCoverageLoad:
             encoding="utf-8",
         )
 
-        from autoc.core.config.project_config import ProjectConfig
+        from claude_autosar.core.config.project_config import ProjectConfig
 
         cfg = ProjectConfig(
             project_root=project,
@@ -227,7 +227,7 @@ class TestBSWMDCoverageLoad:
         tresos = tmp_workspace / "empty_tresos"
         tresos.mkdir()
 
-        from autoc.core.config.project_config import ProjectConfig
+        from claude_autosar.core.config.project_config import ProjectConfig
 
         cfg = ProjectConfig(
             project_root=project,
@@ -252,7 +252,7 @@ class TestBSWMDCoverageLoad:
         # 写一个明显非法的 XML
         (corrupt_dir / "Bad.arxml").write_text("not <valid> xml", encoding="utf-8")
 
-        from autoc.core.config.project_config import ProjectConfig
+        from claude_autosar.core.config.project_config import ProjectConfig
 
         cfg = ProjectConfig(
             project_root=project,
@@ -463,7 +463,7 @@ class TestBSWMDCoverageParseModule:
 
     def test_module_without_short_name_returns_none(self) -> None:
         """行 572-574：module 无 SHORT-NAME → return None。"""
-        from autoc.core.bsw.bswmd import _parse_module_def
+        from claude_autosar.core.bsw.bswmd import _parse_module_def
 
         # 造一个没有 SHORT-NAME 的 module 元素
         elem = etree.fromstring(
@@ -476,7 +476,7 @@ class TestBSWMDCoverageParseModule:
 
     def test_module_with_empty_short_name_returns_none(self) -> None:
         """行 572-574：SHORT-NAME 为空字符串 → return None。"""
-        from autoc.core.bsw.bswmd import _parse_module_def
+        from claude_autosar.core.bsw.bswmd import _parse_module_def
 
         elem = etree.fromstring(
             """<ECUC-MODULE-DEF xmlns="http://autosar.org/schema/r4.0">
@@ -498,7 +498,7 @@ class TestBSWMDCoverageParseModuleBody:
     def test_module_with_comment_only_conts_block(self) -> None:
         """CONTAINERS 内只有注释子节点（lxml iter 跳过）→ 不会抛。"""
         # 注释在 lxml 中不是 element
-        from autoc.core.bsw.bswmd import _parse_module_body
+        from claude_autosar.core.bsw.bswmd import _parse_module_body
 
         elem = etree.fromstring(
             """<ECUC-MODULE-DEF xmlns="http://autosar.org/schema/r4.0">
@@ -523,7 +523,7 @@ class TestBSWMDCoverageParseContainer:
 
     def test_container_without_short_name_returns_none(self) -> None:
         """行 631-633：container 无 SHORT-NAME → None。"""
-        from autoc.core.bsw.bswmd import _parse_container_def
+        from claude_autosar.core.bsw.bswmd import _parse_container_def
 
         elem = etree.fromstring(
             """<ECUC-PARAM-CONF-CONTAINER-DEF xmlns="http://autosar.org/schema/r4.0">
@@ -610,7 +610,7 @@ class TestBSWMDCoverageParseParam:
 
     def test_unknown_param_def_type_returns_none(self) -> None:
         """行 683-685：未知 PARAM-DEF localname → None。"""
-        from autoc.core.bsw.bswmd import _parse_param_def
+        from claude_autosar.core.bsw.bswmd import _parse_param_def
 
         elem = etree.fromstring(
             """<ECUC-MY-CUSTOM-PARAM-DEF xmlns="http://autosar.org/schema/r4.0">
@@ -622,7 +622,7 @@ class TestBSWMDCoverageParseParam:
 
     def test_param_def_without_short_name_returns_none(self) -> None:
         """行 687-689：param 无 SHORT-NAME → None。"""
-        from autoc.core.bsw.bswmd import _parse_param_def
+        from claude_autosar.core.bsw.bswmd import _parse_param_def
 
         elem = etree.fromstring(
             """<ECUC-INTEGER-PARAM-DEF xmlns="http://autosar.org/schema/r4.0">
@@ -837,7 +837,7 @@ class TestBSWMDCoverageMultiplicity:
 
     def test_invalid_lower_text_falls_back_to_default(self) -> None:
         """行 540-541：LOWER-MULTIPLICITY 文本非整数 → lower_default。"""
-        from autoc.core.bsw.bswmd import _parse_multiplicity
+        from claude_autosar.core.bsw.bswmd import _parse_multiplicity
 
         elem = etree.fromstring(
             """<ELEM xmlns="http://x">
@@ -851,7 +851,7 @@ class TestBSWMDCoverageMultiplicity:
 
     def test_invalid_upper_text_falls_back_to_default(self) -> None:
         """行 550-551：UPPER-MULTIPLICITY 文本非整数 → upper_default。"""
-        from autoc.core.bsw.bswmd import _parse_multiplicity
+        from claude_autosar.core.bsw.bswmd import _parse_multiplicity
 
         elem = etree.fromstring(
             """<ELEM xmlns="http://x">
@@ -865,7 +865,7 @@ class TestBSWMDCoverageMultiplicity:
 
     def test_unbounded_upper_via_uppercase(self) -> None:
         """``unbounded`` 大小写不敏感（D5 决定）。"""
-        from autoc.core.bsw.bswmd import _parse_multiplicity
+        from claude_autosar.core.bsw.bswmd import _parse_multiplicity
 
         elem = etree.fromstring(
             """<ELEM xmlns="http://x">
@@ -887,7 +887,7 @@ class TestBSWMDCoverageDescend:
 
     def test_descend_param_def_leaf_returns_none(self) -> None:
         """行 763-764：ParamDef 是叶子 → ``_descend`` 返回 None。"""
-        from autoc.core.bsw.bswmd import _descend
+        from claude_autosar.core.bsw.bswmd import _descend
 
         p = ParamDef(short_name="X", full_path="/A/X", param_type="INTEGER")
         result = _descend(p, "Anything", prefer_param=True)
@@ -895,7 +895,7 @@ class TestBSWMDCoverageDescend:
 
     def test_descend_container_prefers_subcontainer_over_param(self) -> None:
         """``_descend`` ContainerDef：sub_container 优先于 param。"""
-        from autoc.core.bsw.bswmd import _descend
+        from claude_autosar.core.bsw.bswmd import _descend
 
         sub = ContainerDef(
             short_name="Sub",
@@ -916,7 +916,7 @@ class TestBSWMDCoverageDescend:
 
     def test_descend_container_falls_back_to_param_when_prefer_param(self) -> None:
         """``_descend`` ContainerDef：``prefer_param=True`` 走 param 分支。"""
-        from autoc.core.bsw.bswmd import _descend
+        from claude_autosar.core.bsw.bswmd import _descend
 
         p = ParamDef(short_name="P", full_path="/A/P", param_type="INTEGER")
         c = ContainerDef(
@@ -931,7 +931,7 @@ class TestBSWMDCoverageDescend:
 
     def test_descend_container_no_match_returns_none(self) -> None:
         """``_descend`` ContainerDef：无 sub_container 也不 prefer_param → None。"""
-        from autoc.core.bsw.bswmd import _descend
+        from claude_autosar.core.bsw.bswmd import _descend
 
         c = ContainerDef(
             short_name="C",

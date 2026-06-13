@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from autoc.cli.mcp_server import (
+from claude_autosar.cli.mcp_server import (
     _TOOL_NAMES,
     build_mcp_server,
 )
@@ -73,7 +73,7 @@ def test_mcp_server_registers_all_ten_tools() -> None:
 
 def test_dbc_parse_returns_messages_dict(tmp_path: Path) -> None:
     """dbc_parse happy path：返回 messages 数组。"""
-    from autoc.cli.mcp_server import dbc_parse
+    from claude_autosar.cli.mcp_server import dbc_parse
 
     dbc = tmp_path / "test.dbc"
     dbc.write_text(
@@ -114,7 +114,7 @@ BO_ 200 Msg2: 4 ECU1
 
 def test_dbc_parse_invalid_file_returns_error_dict(tmp_path: Path) -> None:
     """dbc_parse 错误路径：返回 success=False + error 字段。"""
-    from autoc.cli.mcp_server import dbc_parse
+    from claude_autosar.cli.mcp_server import dbc_parse
 
     not_a_dbc = tmp_path / "garbage.dbc"
     not_a_dbc.write_text("this is not a valid DBC", encoding="utf-8")
@@ -124,7 +124,7 @@ def test_dbc_parse_invalid_file_returns_error_dict(tmp_path: Path) -> None:
 
 
 def test_dbc_parse_missing_file_returns_error_dict(tmp_path: Path) -> None:
-    from autoc.cli.mcp_server import dbc_parse
+    from claude_autosar.cli.mcp_server import dbc_parse
 
     result = dbc_parse(str(tmp_path / "no_such.dbc"))
     assert result["success"] is False
@@ -137,7 +137,7 @@ def test_dbc_parse_missing_file_returns_error_dict(tmp_path: Path) -> None:
 
 def test_bsw_read_rejects_path_traversal() -> None:
     """H4 回归：bsw_read project 必须在允许的根之下。"""
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     result = bsw_read("Mcu", "ClockFreq", project="/etc")
     assert result["success"] is False
@@ -146,7 +146,7 @@ def test_bsw_read_rejects_path_traversal() -> None:
 
 def test_bsw_write_rejects_path_traversal() -> None:
     """H4 回归：bsw_write project 路径穿越被拒。"""
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     result = bsw_write(
         "Mcu",
@@ -158,7 +158,7 @@ def test_bsw_write_rejects_path_traversal() -> None:
 
 def test_bsw_write_rejects_bad_param_with_index() -> None:
     """H3 回归：bsw_write 缺字段时返回 param_index 帮 LLM 定位。"""
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     result = bsw_write(
         "Mcu",
@@ -175,7 +175,7 @@ def test_bsw_write_rejects_bad_param_with_index() -> None:
 
 def test_bsw_write_rejects_unknown_type() -> None:
     """H3 补充：未知 ParamType 给出可读错误 + param_index。"""
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     result = bsw_write(
         "Mcu",
@@ -200,9 +200,9 @@ def test_session_list_empty_store_returns_empty_list(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """空 store → session_list 返回 []。"""
-    from autoc.cli.mcp_server import session_list
+    from claude_autosar.cli.mcp_server import session_list
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     result = session_list()
     assert result == []
 
@@ -211,9 +211,9 @@ def test_session_show_returns_dict_with_entries(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """session_show happy：返回 dict 包含 id/started_at/entries。"""
-    from autoc.cli.mcp_server import session_show
+    from claude_autosar.cli.mcp_server import session_show
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     store = _build_store(tmp_path)
     _append_user_entry(store, "s1", "hello")
     _append_tool_entry(store, "s1", tool_name="bsw_write", tool_args={"x": 1})
@@ -235,9 +235,9 @@ def test_session_show_latest_resolves_by_mtime_not_name(
     """
     import os
 
-    from autoc.cli.mcp_server import session_show
+    from claude_autosar.cli.mcp_server import session_show
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     store = _build_store(tmp_path)
     # 先建 zzz（旧 mtime）
     _append_user_entry(store, "zzz", "old")
@@ -257,9 +257,9 @@ def test_session_show_latest_resolves_by_mtime_not_name(
 def test_session_show_missing_returns_error_dict(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from autoc.cli.mcp_server import session_show
+    from claude_autosar.cli.mcp_server import session_show
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     result = session_show("nonexistent_session_id_xyz")
     assert result["success"] is False
     assert "error" in result
@@ -272,9 +272,9 @@ def test_session_show_missing_returns_error_dict(
 
 def test_log_export_timeline_produces_text(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """log_export(view=timeline)：返回 dict 含 rendered text。"""
-    from autoc.cli.mcp_server import log_export
+    from claude_autosar.cli.mcp_server import log_export
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     store = _build_store(tmp_path)
     _append_user_entry(store, "s1", "go")
     _append_tool_entry(
@@ -290,9 +290,9 @@ def test_log_export_timeline_produces_text(tmp_path: Path, monkeypatch: pytest.M
 
 
 def test_log_export_by_url_produces_text(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from autoc.cli.mcp_server import log_export
+    from claude_autosar.cli.mcp_server import log_export
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     store = _build_store(tmp_path)
     _append_user_entry(store, "s1", "go")
     _append_tool_entry(
@@ -315,7 +315,7 @@ def test_log_export_by_url_produces_text(tmp_path: Path, monkeypatch: pytest.Mon
 
 def test_arxml_validate_happy_path(tmp_path: Path) -> None:
     """arxml_validate happy：返回 success=True + root tag + 元素数。"""
-    from autoc.cli.mcp_server import arxml_validate
+    from claude_autosar.cli.mcp_server import arxml_validate
 
     arxml = tmp_path / "ok.arxml"
     arxml.write_text(
@@ -331,7 +331,7 @@ def test_arxml_validate_happy_path(tmp_path: Path) -> None:
 
 def test_arxml_validate_broken_xml(tmp_path: Path) -> None:
     """arxml_validate broken：返回 success=False + error。"""
-    from autoc.cli.mcp_server import arxml_validate
+    from claude_autosar.cli.mcp_server import arxml_validate
 
     bad = tmp_path / "bad.arxml"
     bad.write_text("<<not xml>>", encoding="utf-8")
@@ -346,13 +346,13 @@ def test_arxml_validate_broken_xml(tmp_path: Path) -> None:
 
 def _build_store(tmp_path: Path):
     """构造一个指向 tmp_path 的 SessionStore。"""
-    from autoc.core.session.store import SessionStore
+    from claude_autosar.core.session.store import SessionStore
 
     return SessionStore(dir=tmp_path)
 
 
 def _append_user_entry(store, session_id: str, content: str) -> None:
-    from autoc.core.session.store import SessionEntry
+    from claude_autosar.core.session.store import SessionEntry
 
     e = SessionEntry(
         id="e1",
@@ -373,7 +373,7 @@ def _append_tool_entry(
     tool_args: dict | None = None,
     tool_result: str | None = None,
 ) -> None:
-    from autoc.core.session.store import SessionEntry
+    from claude_autosar.core.session.store import SessionEntry
 
     e = SessionEntry(
         id="e2",

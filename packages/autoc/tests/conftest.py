@@ -128,7 +128,7 @@ def global_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "autoc.utils.paths.user_config_dir",
+        "claude_autosar.utils.paths.user_config_dir",
         lambda *a, **kw: str(cfg_dir),
     )
     return settings

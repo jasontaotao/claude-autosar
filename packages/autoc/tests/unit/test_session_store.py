@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from autoc.core.session.store import (
+from claude_autosar.core.session.store import (
     SessionEntry,
     SessionStore,
     SessionStoreError,
@@ -60,7 +60,7 @@ def _patch_session_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     cfg_dir = tmp_path / "fake_agent"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(
-        "autoc.utils.paths.user_config_dir",
+        "claude_autosar.utils.paths.user_config_dir",
         lambda *a, **kw: str(cfg_dir),
     )
     return cfg_dir / "sessions"

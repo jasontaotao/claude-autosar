@@ -10,14 +10,14 @@ from pathlib import Path
 
 import pytest
 
-from autoc.adapters.protocol import (
+from claude_autosar.adapters.protocol import (
     EcuConfigProjectContext,
     SaveResult,
     VerifyResult,
 )
-from autoc.adapters.stub import StubTresosAdapter
-from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
-from autoc.core.bsw.validator import (
+from claude_autosar.adapters.stub import StubTresosAdapter
+from claude_autosar.core.bsw.config import BSWParam, ParamType, ParamValue
+from claude_autosar.core.bsw.validator import (
     ModifyRequest,
     ValidatorError,
     modify_and_verify,
@@ -120,7 +120,7 @@ class TestHappyPath:
         assert result.written_files == (project / "Mcu.xdm",)
 
         # 文件内容应被改了
-        from autoc.core.bsw.ecuc import load_module
+        from claude_autosar.core.bsw.ecuc import load_module
 
         doc = load_module(project / "Mcu.xdm", "Mcu")
         val = next(v for v in doc.values if v.path == _freq_path())

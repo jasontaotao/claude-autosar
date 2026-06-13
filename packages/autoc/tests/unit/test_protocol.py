@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from autoc.adapters.protocol import (
+from claude_autosar.adapters.protocol import (
     CalcResult,
     DavinciAdapter,
     EcuConfigProjectContext,
@@ -170,25 +170,25 @@ class TestProtocols:
 
     def test_stub_tresos_is_protocol(self) -> None:
         """Stub 实现满足 TresosAdapter Protocol（runtime_checkable）。"""
-        from autoc.adapters.stub import StubTresosAdapter
+        from claude_autosar.adapters.stub import StubTresosAdapter
 
         assert issubclass(StubTresosAdapter, TresosAdapter)
 
     def test_stub_davinci_is_protocol(self) -> None:
         """Stub 实现满足 DavinciAdapter Protocol。"""
-        from autoc.adapters.stub import StubDavinciAdapter
+        from claude_autosar.adapters.stub import StubDavinciAdapter
 
         assert issubclass(StubDavinciAdapter, DavinciAdapter)
 
     def test_real_tresos_is_protocol(self) -> None:
         """真实 TresosAdapter 满足 Protocol。"""
-        from autoc.adapters.tresos import TresosAdapter as RealTresos
+        from claude_autosar.adapters.tresos import TresosAdapter as RealTresos
 
         assert issubclass(RealTresos, TresosAdapter)
 
     def test_real_davinci_is_protocol(self) -> None:
         """真实 DavinciAdapter 满足 Protocol。"""
-        from autoc.adapters.davinci import DavinciAdapter as RealDavinci
+        from claude_autosar.adapters.davinci import DavinciAdapter as RealDavinci
 
         assert issubclass(RealDavinci, DavinciAdapter)
 
@@ -199,7 +199,7 @@ class TestProtocols:
         协议共同消费，不允许未来把 DTO 拆成 ``TresosProjectContext`` /
         ``DavinciProjectContext`` 两个子类。
         """
-        from autoc.adapters.stub import StubDavinciAdapter, StubTresosAdapter
+        from claude_autosar.adapters.stub import StubDavinciAdapter, StubTresosAdapter
 
         project = tmp_path / "p"
         project.mkdir()

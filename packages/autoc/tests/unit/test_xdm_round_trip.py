@@ -16,7 +16,7 @@ from typing import Any
 from lxml import etree
 import pytest
 
-from autoc.core.bsw.arxml_io import read, write
+from claude_autosar.core.bsw.arxml_io import read, write
 
 # ---------------------------------------------------------------------------
 # Module-level fixture: 5 个 EB-style fake XDM 文件
@@ -279,7 +279,7 @@ class TestXDMRoundTrip:
         _set_value_in_tree(doc.tree, "Mcu", "McuClockFrequency", "100000000")
 
         # monkeypatch os.replace 触发失败
-        import autoc.core.bsw.arxml_io as arxml_io_mod
+        import claude_autosar.core.bsw.arxml_io as arxml_io_mod
 
         def _raise_replace(*_args: object, **_kwargs: object) -> None:
             raise OSError("simulated atomic write failure")
@@ -287,7 +287,7 @@ class TestXDMRoundTrip:
         monkeypatch.setattr(arxml_io_mod.os, "replace", _raise_replace)
 
         # 写时必须抛 ARXMLError（与现状一致）但原文件不变
-        from autoc.core.bsw.arxml_io import ARXMLError
+        from claude_autosar.core.bsw.arxml_io import ARXMLError
 
         with pytest.raises(ARXMLError):
             write(doc.tree, target, atomic=True, preserve_format=True)

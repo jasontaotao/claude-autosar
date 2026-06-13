@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 import re
 
-from autoc.core.session.exporter import export_html, render_html
-from autoc.core.session.store import Session, SessionEntry
-from autoc.core.session.tree import SessionTree
+from claude_autosar.core.session.exporter import export_html, render_html
+from claude_autosar.core.session.store import Session, SessionEntry
+from claude_autosar.core.session.tree import SessionTree
 
 
 def _user(

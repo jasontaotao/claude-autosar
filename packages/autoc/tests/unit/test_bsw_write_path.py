@@ -24,25 +24,25 @@ from pathlib import Path
 
 import pytest
 
-from autoc.adapters.protocol import (
+from claude_autosar.adapters.protocol import (
     EcuConfigProjectContext,
     SaveResult,
     VerifyResult,
 )
-from autoc.adapters.stub import StubTresosAdapter
-from autoc.core.bsw.bsw_write_path import (
+from claude_autosar.adapters.stub import StubTresosAdapter
+from claude_autosar.core.bsw.bsw_write_path import (
     BSWWritePathError,
     validate_writes_against_bswmd,
 )
-from autoc.core.bsw.bswmd import (
+from claude_autosar.core.bsw.bswmd import (
     BSWMDRegistry,
     ContainerDef,
     ModuleDef,
     ParamDef,
 )
-from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
-from autoc.core.bsw.ecuc import ECUCValue
-from autoc.core.bsw.validator import (
+from claude_autosar.core.bsw.config import BSWParam, ParamType, ParamValue
+from claude_autosar.core.bsw.ecuc import ECUCValue
+from claude_autosar.core.bsw.validator import (
     ModifyRequest,
     modify_and_verify,
 )

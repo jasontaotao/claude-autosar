@@ -16,7 +16,7 @@ import io
 import pytest
 from rich.console import Console
 
-from autoc.cli.repl_skin import (
+from claude_autosar.cli.repl_skin import (
     AUTOC_THEME,
     ReplSkin,
     detect_no_color,

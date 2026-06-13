@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 import pytest
 
-from autoc.adapters.davinci import DavinciAdapter, DavinciAdapterError
-from autoc.adapters.protocol import EcuConfigProjectContext
+from claude_autosar.adapters.davinci import DavinciAdapter, DavinciAdapterError
+from claude_autosar.adapters.protocol import EcuConfigProjectContext
 
 
 class TestDavinciInitValidation:
@@ -76,7 +76,7 @@ class TestDvcfgPath:
 class TestDavinciSubprocess:
     """verify / save subprocess 包装（mock subprocess.run）。"""
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_verify_runs_autocverify(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """verify() 调 ``AutocVerify``。"""
         _build_fake_davinci(tmp_path)
@@ -89,7 +89,7 @@ class TestDavinciSubprocess:
         assert "AutocVerify" in mock_run.call_args[0][0]
         assert "PduR" in mock_run.call_args[0][0]
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_save_runs_save(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """save() 调 ``Save``。"""
         _build_fake_davinci(tmp_path)
@@ -102,7 +102,7 @@ class TestDavinciSubprocess:
         assert "Save" in mock_run.call_args[0][0]
         assert "EcuC" in mock_run.call_args[0][0]
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_save_extracts_written_files_arxml(
         self, mock_run: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
@@ -123,7 +123,7 @@ class TestDavinciSubprocess:
         assert "EcuC.arxml" in names
         assert "Com.arxml" in names
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_save_handles_no_written_files(
         self, mock_run: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
@@ -140,7 +140,7 @@ class TestDavinciSubprocess:
         assert result.success is True
         assert result.written_files == ()
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_save_ignores_natural_language_wrote_saved(
         self, mock_run: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
@@ -168,7 +168,7 @@ class TestDavinciSubprocess:
         assert len(result.written_files) == 1
         assert result.written_files[0].name == "EcuC.arxml"
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_verify_failure_captured(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """失败时 success=False。"""
         _build_fake_davinci(tmp_path)
@@ -179,7 +179,7 @@ class TestDavinciSubprocess:
         result = DavinciAdapter().verify(ctx)
         assert result.success is False
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_timeout_raises(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """subprocess 超时抛 DavinciAdapterError。"""
         _build_fake_davinci(tmp_path)
@@ -188,7 +188,7 @@ class TestDavinciSubprocess:
         with pytest.raises(DavinciAdapterError, match="timed out"):
             DavinciAdapter(default_timeout_s=1).verify(ctx)
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_filenotfound_raises(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """subprocess 不存在抛 DavinciAdapterError。"""
         _build_fake_davinci(tmp_path)
@@ -197,7 +197,7 @@ class TestDavinciSubprocess:
         with pytest.raises(DavinciAdapterError, match="FileNotFoundError"):
             DavinciAdapter().verify(ctx)
 
-    @patch("autoc.adapters.davinci.subprocess.run")
+    @patch("claude_autosar.adapters.davinci.subprocess.run")
     def test_permissionerror_raises(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """subprocess 抛 PermissionError 时包成 DavinciAdapterError。"""
         _build_fake_davinci(tmp_path)

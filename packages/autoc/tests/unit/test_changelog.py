@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from autoc.core.log.changelog import (
+from claude_autosar.core.log.changelog import (
     Change,
     extract_changes,
     render_by_url,
     render_timeline,
 )
-from autoc.core.session.store import Session, SessionEntry
-from autoc.core.session.tree import SessionTree
+from claude_autosar.core.session.store import Session, SessionEntry
+from claude_autosar.core.session.tree import SessionTree
 
 
 def _tool_entry(

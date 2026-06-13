@@ -10,13 +10,13 @@ from pathlib import Path
 
 import pytest
 
-from autoc.adapters.protocol import (
+from claude_autosar.adapters.protocol import (
     EcuConfigProjectContext,
     SaveResult,
     VerifyResult,
 )
-from autoc.adapters.stub import StubDavinciAdapter
-from autoc.cli.commands.davinci import build_parser, run
+from claude_autosar.adapters.stub import StubDavinciAdapter
+from claude_autosar.cli.commands.davinci import build_parser, run
 
 pytestmark = pytest.mark.autosar
 

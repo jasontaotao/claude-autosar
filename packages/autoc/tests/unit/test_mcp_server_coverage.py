@@ -24,7 +24,7 @@ pytestmark = pytest.mark.autosar
 def _snapshot_mcp_server_globals() -> Any:
     """保存并恢复 mcp_server 的模块级 mutable（_ALLOWED_PROJECT_ROOTS /
     _default_session_dir），避免测试间污染。"""
-    from autoc.cli import mcp_server
+    from claude_autosar.cli import mcp_server
 
     original_roots = mcp_server._ALLOWED_PROJECT_ROOTS
     original_default_dir = mcp_server._default_session_dir
@@ -91,7 +91,7 @@ def fake_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     )
     # H4 路径防御：把允许根限定到 tmp_path
     monkeypatch.setattr(
-        "autoc.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
+        "claude_autosar.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
         frozenset({tmp_path.resolve()}),
     )
     return project
@@ -103,7 +103,7 @@ def fake_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_bsw_read_happy_int(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     r = bsw_read("Mcu", "ClockFreq", project=str(fake_project))
     assert r["success"] is True
@@ -114,7 +114,7 @@ def test_bsw_read_happy_int(fake_project: Path) -> None:
 
 
 def test_bsw_read_happy_float(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     r = bsw_read("Mcu", "ClockTolerance", project=str(fake_project))
     assert r["success"] is True
@@ -124,7 +124,7 @@ def test_bsw_read_happy_float(fake_project: Path) -> None:
 
 
 def test_bsw_read_happy_bool(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     r = bsw_read("Mcu", "ClockEnable", project=str(fake_project))
     assert r["success"] is True
@@ -135,7 +135,7 @@ def test_bsw_read_happy_bool(fake_project: Path) -> None:
 
 
 def test_bsw_read_happy_string(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     r = bsw_read("Mcu", "ClockName", project=str(fake_project))
     assert r["success"] is True
@@ -144,7 +144,7 @@ def test_bsw_read_happy_string(fake_project: Path) -> None:
 
 def test_bsw_read_with_full_module_prefix(fake_project: Path) -> None:
     """H4 接口：path 已含 Mcu/ 前缀时不重拼。"""
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     r = bsw_read("Mcu", "Mcu/ClockFreq", project=str(fake_project))
     assert r["success"] is True
@@ -152,7 +152,7 @@ def test_bsw_read_with_full_module_prefix(fake_project: Path) -> None:
 
 
 def test_bsw_read_module_not_found(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     r = bsw_read("NoSuchModule", "X", project=str(fake_project))
     assert r["success"] is False
@@ -160,7 +160,7 @@ def test_bsw_read_module_not_found(fake_project: Path) -> None:
 
 
 def test_bsw_read_path_not_in_module(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     r = bsw_read("Mcu", "NonExistent", project=str(fake_project))
     assert r["success"] is False
@@ -171,10 +171,10 @@ def test_bsw_read_path_traversal_outside_root(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """H4：project 必须在 _ALLOWED_PROJECT_ROOTS 内。"""
-    from autoc.cli.mcp_server import bsw_read
+    from claude_autosar.cli.mcp_server import bsw_read
 
     monkeypatch.setattr(
-        "autoc.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
+        "claude_autosar.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
         frozenset({tmp_path.resolve()}),
     )
     r = bsw_read("Mcu", "X", project="/etc")
@@ -188,7 +188,7 @@ def test_bsw_read_path_traversal_outside_root(
 
 
 def test_bsw_write_rejects_empty_params(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     r = bsw_write("Mcu", [], project=str(fake_project))
     assert r["success"] is False
@@ -196,7 +196,7 @@ def test_bsw_write_rejects_empty_params(fake_project: Path) -> None:
 
 
 def test_bsw_write_rejects_non_list_params(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     r = bsw_write("Mcu", "not a list", project=str(fake_project))  # type: ignore[arg-type]
     assert r["success"] is False
@@ -204,7 +204,7 @@ def test_bsw_write_rejects_non_list_params(fake_project: Path) -> None:
 
 
 def test_bsw_write_rejects_non_dict_param(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     r = bsw_write(
         "Mcu",
@@ -218,7 +218,7 @@ def test_bsw_write_rejects_non_dict_param(fake_project: Path) -> None:
 
 def test_bsw_write_rejects_first_param_bad(fake_project: Path) -> None:
     """H3：param_index=0 时也要精确定位。"""
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     r = bsw_write(
         "Mcu",
@@ -233,7 +233,7 @@ def test_bsw_write_rejects_tresos_home_outside_project(
     fake_project: Path,
 ) -> None:
     """H4：tresos_home 必须在 project 之内。错误 dict 必须含 field='tresos_home'。"""
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     r = bsw_write(
         "Mcu",
@@ -252,10 +252,10 @@ def test_bsw_write_rejects_project_outside_root(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """H4：project 必须在 _ALLOWED_PROJECT_ROOTS 内。错误 dict 必须含 field='project'。"""
-    from autoc.cli.mcp_server import bsw_write
+    from claude_autosar.cli.mcp_server import bsw_write
 
     monkeypatch.setattr(
-        "autoc.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
+        "claude_autosar.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
         frozenset({tmp_path.resolve()}),
     )
     r = bsw_write(
@@ -271,8 +271,8 @@ def test_bsw_write_rejects_project_outside_root(
 
 def test_bsw_write_happy_path_with_stub_adapter(fake_project: Path) -> None:
     """完整 happy：patch 模块级 modify_and_verify → 5 种 ParamType 全跑通。"""
-    from autoc.cli.mcp_server import bsw_write
-    from autoc.core.bsw.validator import ModifyResult
+    from claude_autosar.cli.mcp_server import bsw_write
+    from claude_autosar.core.bsw.validator import ModifyResult
 
     fake_result = ModifyResult(
         success=True,
@@ -283,7 +283,7 @@ def test_bsw_write_happy_path_with_stub_adapter(fake_project: Path) -> None:
     )
 
     with mock.patch(
-        "autoc.core.bsw.validator.modify_and_verify",
+        "claude_autosar.core.bsw.validator.modify_and_verify",
         return_value=fake_result,
     ):
         r = bsw_write(
@@ -308,9 +308,9 @@ def test_bsw_write_happy_path_with_stub_adapter(fake_project: Path) -> None:
 
 def test_bsw_write_happy_path_default_type_is_integer(fake_project: Path) -> None:
     """H3 隐含：type 缺省 = integer。验证方式：捕获传给 modify_and_verify 的 request。"""
-    from autoc.cli.mcp_server import bsw_write
-    from autoc.core.bsw.config import ParamType
-    from autoc.core.bsw.validator import ModifyRequest, ModifyResult
+    from claude_autosar.cli.mcp_server import bsw_write
+    from claude_autosar.core.bsw.config import ParamType
+    from claude_autosar.core.bsw.validator import ModifyRequest, ModifyResult
 
     captured: dict[str, Any] = {}
 
@@ -324,7 +324,7 @@ def test_bsw_write_happy_path_default_type_is_integer(fake_project: Path) -> Non
             error=None,
         )
 
-    with mock.patch("autoc.core.bsw.validator.modify_and_verify", side_effect=_capture):
+    with mock.patch("claude_autosar.core.bsw.validator.modify_and_verify", side_effect=_capture):
         r = bsw_write(
             "Mcu",
             [{"path": "Mcu/ClockFreq", "value": 80000000}],  # 缺 type
@@ -337,8 +337,8 @@ def test_bsw_write_happy_path_default_type_is_integer(fake_project: Path) -> Non
 
 def test_bsw_write_propagates_modify_error(fake_project: Path) -> None:
     """modify_and_verify 返回 success=False 时 dict 透传 error。"""
-    from autoc.cli.mcp_server import bsw_write
-    from autoc.core.bsw.validator import ModifyResult
+    from claude_autosar.cli.mcp_server import bsw_write
+    from claude_autosar.core.bsw.validator import ModifyResult
 
     fake_result = ModifyResult(
         success=False,
@@ -348,7 +348,7 @@ def test_bsw_write_propagates_modify_error(fake_project: Path) -> None:
         error="BSW value validation failed",
     )
     with mock.patch(
-        "autoc.core.bsw.validator.modify_and_verify",
+        "claude_autosar.core.bsw.validator.modify_and_verify",
         return_value=fake_result,
     ):
         r = bsw_write(
@@ -367,10 +367,10 @@ def test_bsw_write_propagates_modify_error(fake_project: Path) -> None:
 
 
 def test_bsw_verify_happy_returns_stub_output(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_verify
+    from claude_autosar.cli.mcp_server import bsw_verify
 
     fake = mock.Mock(success=True, returncode=0, stdout="ok", stderr="")
-    with mock.patch("autoc.adapters.tresos.TresosAdapter.verify", return_value=fake):
+    with mock.patch("claude_autosar.adapters.tresos.TresosAdapter.verify", return_value=fake):
         r = bsw_verify("Mcu", project=str(fake_project))
     assert r["success"] is True
     assert r["returncode"] == 0
@@ -378,10 +378,10 @@ def test_bsw_verify_happy_returns_stub_output(fake_project: Path) -> None:
 
 
 def test_bsw_verify_rejects_path_traversal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from autoc.cli.mcp_server import bsw_verify
+    from claude_autosar.cli.mcp_server import bsw_verify
 
     monkeypatch.setattr(
-        "autoc.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
+        "claude_autosar.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
         frozenset({tmp_path.resolve()}),
     )
     r = bsw_verify("Mcu", project="/etc")
@@ -390,7 +390,7 @@ def test_bsw_verify_rejects_path_traversal(tmp_path: Path, monkeypatch: pytest.M
 
 
 def test_bsw_autocalc_empty_modules_returns_error(fake_project: Path) -> None:
-    from autoc.cli.mcp_server import bsw_autocalc
+    from claude_autosar.cli.mcp_server import bsw_autocalc
 
     r = bsw_autocalc([], project=str(fake_project))
     assert r["success"] is False
@@ -399,10 +399,10 @@ def test_bsw_autocalc_empty_modules_returns_error(fake_project: Path) -> None:
 
 def test_bsw_autocalc_runs_first_module_only(fake_project: Path) -> None:
     """协议限制：autocalc 只跑 modules[0]；其余标注但忽略。"""
-    from autoc.cli.mcp_server import bsw_autocalc
+    from claude_autosar.cli.mcp_server import bsw_autocalc
 
     fake = mock.Mock(success=True, returncode=0, stdout="calc ok", stderr="")
-    with mock.patch("autoc.adapters.tresos.TresosAdapter.autocalc", return_value=fake) as m:
+    with mock.patch("claude_autosar.adapters.tresos.TresosAdapter.autocalc", return_value=fake) as m:
         r = bsw_autocalc(["Mcu", "Port", "Dio"], project=str(fake_project))
     assert r["success"] is True
     assert r["modules_requested"] == ["Mcu", "Port", "Dio"]
@@ -414,10 +414,10 @@ def test_bsw_autocalc_runs_first_module_only(fake_project: Path) -> None:
 def test_bsw_autocalc_rejects_path_traversal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from autoc.cli.mcp_server import bsw_autocalc
+    from claude_autosar.cli.mcp_server import bsw_autocalc
 
     monkeypatch.setattr(
-        "autoc.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
+        "claude_autosar.cli.mcp_server._ALLOWED_PROJECT_ROOTS",
         frozenset({tmp_path.resolve()}),
     )
     r = bsw_autocalc(["Mcu"], project="/etc")
@@ -430,7 +430,7 @@ def test_bsw_autocalc_rejects_path_traversal(
 
 
 def test_arxml_validate_missing_file(tmp_path: Path) -> None:
-    from autoc.cli.mcp_server import arxml_validate
+    from claude_autosar.cli.mcp_server import arxml_validate
 
     r = arxml_validate(str(tmp_path / "no_such.arxml"))
     assert r["success"] is False
@@ -439,7 +439,7 @@ def test_arxml_validate_missing_file(tmp_path: Path) -> None:
 
 def test_arxml_validate_arxml_error(tmp_path: Path) -> None:
     """ARXMLError 路径被显式 catch。"""
-    from autoc.cli.mcp_server import arxml_validate
+    from claude_autosar.cli.mcp_server import arxml_validate
 
     # 写一个能 parse 但会让 arxml_io 内部报错的（空 root + 坏 namespace）
     bad = tmp_path / "badns.arxml"
@@ -457,8 +457,8 @@ def test_arxml_validate_arxml_error(tmp_path: Path) -> None:
 
 def test_arxml_validate_catchall_exception(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """catch-all Exception 路径：lxml / OSError 等。"""
-    from autoc.cli.mcp_server import arxml_validate
-    from autoc.core.bsw import arxml_io
+    from claude_autosar.cli.mcp_server import arxml_validate
+    from claude_autosar.core.bsw import arxml_io
 
     f = tmp_path / "x.arxml"
     f.write_text("<root/>", encoding="utf-8")
@@ -479,7 +479,7 @@ def test_arxml_validate_catchall_exception(tmp_path: Path, monkeypatch: pytest.M
 
 
 def test_dbc_parse_exception_returns_error_dict(tmp_path: Path) -> None:
-    from autoc.cli.mcp_server import dbc_parse
+    from claude_autosar.cli.mcp_server import dbc_parse
 
     # cantools 装了但 db 解析失败
     bad = tmp_path / "bad.dbc"
@@ -499,9 +499,9 @@ def test_dbc_parse_exception_returns_error_dict(tmp_path: Path) -> None:
 def test_session_list_with_data_returns_ids(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from autoc.cli.mcp_server import session_list
+    from claude_autosar.cli.mcp_server import session_list
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     # 直接落 2 个 session 文件
     (tmp_path / "alpha.jsonl").write_text("", encoding="utf-8")
     (tmp_path / "beta.jsonl").write_text("", encoding="utf-8")
@@ -512,37 +512,37 @@ def test_session_list_with_data_returns_ids(
 
 
 def test_session_show_latest_no_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from autoc.cli.mcp_server import session_show
+    from claude_autosar.cli.mcp_server import session_show
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     r = session_show("latest")
     assert r["success"] is False
     assert "no sessions found" in r["error"]
 
 
 def test_session_export_unsupported_fmt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from autoc.cli.mcp_server import session_export
+    from claude_autosar.cli.mcp_server import session_export
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     r = session_export("s1", fmt="json", session_dir=str(tmp_path))
     assert r["success"] is False
     assert "unsupported fmt" in r["error"]
 
 
 def test_session_export_latest_no_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from autoc.cli.mcp_server import session_export
+    from claude_autosar.cli.mcp_server import session_export
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     r = session_export("latest", session_dir=str(tmp_path))
     assert r["success"] is False
     assert "no sessions found" in r["error"]
 
 
 def test_session_export_happy_html(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from autoc.cli.mcp_server import session_export
-    from autoc.core.session.store import SessionEntry, SessionStore
+    from claude_autosar.cli.mcp_server import session_export
+    from claude_autosar.core.session.store import SessionEntry, SessionStore
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     store = SessionStore(dir=tmp_path)
     store.append(
         SessionEntry(
@@ -562,18 +562,18 @@ def test_session_export_happy_html(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
 
 def test_log_export_unsupported_view(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from autoc.cli.mcp_server import log_export
+    from claude_autosar.cli.mcp_server import log_export
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     r = log_export("s1", view="graphviz", session_dir=str(tmp_path))
     assert r["success"] is False
     assert "unsupported view" in r["error"]
 
 
 def test_log_export_latest_no_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from autoc.cli.mcp_server import log_export
+    from claude_autosar.cli.mcp_server import log_export
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     r = log_export("latest", session_dir=str(tmp_path))
     assert r["success"] is False
     assert "no sessions found" in r["error"]
@@ -583,10 +583,10 @@ def test_log_export_no_bsw_writes_yields_empty_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """空 session → change_count=0；timeline 文本非空（含 Timeline 标题）。"""
-    from autoc.cli.mcp_server import log_export
-    from autoc.core.session.store import SessionEntry, SessionStore
+    from claude_autosar.cli.mcp_server import log_export
+    from claude_autosar.core.session.store import SessionEntry, SessionStore
 
-    monkeypatch.setattr("autoc.cli.mcp_server._default_session_dir", lambda: tmp_path)
+    monkeypatch.setattr("claude_autosar.cli.mcp_server._default_session_dir", lambda: tmp_path)
     store = SessionStore(dir=tmp_path)
     # 只写 user entry，不写 bsw_write
     store.append(
@@ -614,7 +614,7 @@ def test_log_export_no_bsw_writes_yields_empty_changes(
 def test_resolve_safe_project_rejects_outside(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from autoc.cli import mcp_server
+    from claude_autosar.cli import mcp_server
 
     monkeypatch.setattr(mcp_server, "_ALLOWED_PROJECT_ROOTS", frozenset({tmp_path.resolve()}))
     with pytest.raises(PermissionError):
@@ -624,7 +624,7 @@ def test_resolve_safe_project_rejects_outside(
 def test_resolve_safe_project_accepts_inside(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from autoc.cli import mcp_server
+    from claude_autosar.cli import mcp_server
 
     monkeypatch.setattr(mcp_server, "_ALLOWED_PROJECT_ROOTS", frozenset({tmp_path.resolve()}))
     inside = tmp_path / "sub"
@@ -634,7 +634,7 @@ def test_resolve_safe_project_accepts_inside(
 
 
 def test_default_tresos_home_returns_subpath(tmp_path: Path) -> None:
-    from autoc.cli.mcp_server import _default_tresos_home
+    from claude_autosar.cli.mcp_server import _default_tresos_home
 
     p = tmp_path / "proj"
     p.mkdir()
@@ -647,7 +647,7 @@ def test_default_tresos_home_returns_subpath(tmp_path: Path) -> None:
 
 
 def test_tool_funcs_names_match_function_names() -> None:
-    from autoc.cli import mcp_server
+    from claude_autosar.cli import mcp_server
 
     for name, fn in mcp_server._TOOL_FUNCS.items():
         assert name == fn.__name__, f"_TOOL_FUNCS key {name!r} != function name {fn.__name__!r}"
@@ -655,7 +655,7 @@ def test_tool_funcs_names_match_function_names() -> None:
 
 def test_build_mcp_server_asserts_name_mismatch() -> None:
     """M2 防护：如果 _TOOL_FUNCS key 与 fn.__name__ 不一致则 AssertionError。"""
-    from autoc.cli import mcp_server
+    from claude_autosar.cli import mcp_server
 
     with (
         mock.patch.object(mcp_server, "_TOOL_FUNCS", {"wrong_name": mcp_server.bsw_read}),
@@ -666,7 +666,7 @@ def test_build_mcp_server_asserts_name_mismatch() -> None:
 
 def test_main_invokes_fastmcp_run() -> None:
     """main() 调用 build_mcp_server().run()（防回归：MCP server 启动入口）。"""
-    from autoc.cli import mcp_server
+    from claude_autosar.cli import mcp_server
 
     fake_server = mock.Mock()
     with mock.patch.object(mcp_server, "build_mcp_server", return_value=fake_server):

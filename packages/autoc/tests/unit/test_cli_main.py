@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from autoc.cli.main import build_parser, main
+from claude_autosar.cli.main import build_parser, main
 
 pytestmark = pytest.mark.autosar
 
@@ -130,7 +130,7 @@ def test_main_dispatches_to_session_list() -> None:
     """T5.1 dispatch 表路由到 session.run()."""
     # session list 在空 store 时会抛 SessionStoreError；我们不期待 exit 0
     # 但我们要确认 routing 命中（无 ImportError）
-    from autoc.cli.main import _DISPATCH  # type: ignore[attr-defined]
+    from claude_autosar.cli.main import _DISPATCH  # type: ignore[attr-defined]
 
     assert "session" in _DISPATCH
     assert _DISPATCH["session"][0] is not None  # register fn

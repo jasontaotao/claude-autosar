@@ -31,7 +31,7 @@ from unittest.mock import MagicMock
 from lxml import etree
 import pytest
 
-from autoc.core.bsw.arxml_io import (
+from claude_autosar.core.bsw.arxml_io import (
     WELL_KNOWN_NAMESPACE_URIS,
     ARXMLError,
     build_default_nsmap,
@@ -44,14 +44,14 @@ from autoc.core.bsw.arxml_io import (
     set_attribute,
     set_child_text,
 )
-from autoc.core.bsw.arxml_io import write as arxml_write
-from autoc.core.bsw.bswmd import BSWMDRegistry, ContainerDef, ModuleDef, ParamDef
-from autoc.core.bsw.config import BSWModule, BSWParam, ParamType, ParamValue
-from autoc.core.bsw.ecuc import (
+from claude_autosar.core.bsw.arxml_io import write as arxml_write
+from claude_autosar.core.bsw.bswmd import BSWMDRegistry, ContainerDef, ModuleDef, ParamDef
+from claude_autosar.core.bsw.config import BSWModule, BSWParam, ParamType, ParamValue
+from claude_autosar.core.bsw.ecuc import (
     load_module,
 )
-from autoc.core.bsw.ecuc import set_value as ecuc_set_value
-from autoc.core.bsw.validator import (
+from claude_autosar.core.bsw.ecuc import set_value as ecuc_set_value
+from claude_autosar.core.bsw.validator import (
     ModifyRequest,
     ValidatorError,
     modify_and_verify,
@@ -257,7 +257,7 @@ class TestSprint8E1CoverageArxmlIoWellKnown:
 
     def test_default_namespaces_alias_back_compat(self) -> None:
         """``DEFAULT_NAMESPACES`` 是 ``WELL_KNOWN_NAMESPACE_URIS`` 的 alias。"""
-        from autoc.core.bsw.arxml_io import DEFAULT_NAMESPACES
+        from claude_autosar.core.bsw.arxml_io import DEFAULT_NAMESPACES
 
         assert DEFAULT_NAMESPACES is WELL_KNOWN_NAMESPACE_URIS
 
@@ -331,7 +331,7 @@ class TestSprint8E1CoverageArxmlIoWrite:
         path = _make_module_xdm(tmp_path / "Cfg.xdm", "Mcu")
         tree = etree.parse(str(path))
         # 强制 _SurgicalPatchUnavailable 抛错
-        from autoc.core.bsw import arxml_io as aio_mod
+        from claude_autosar.core.bsw import arxml_io as aio_mod
 
         orig = aio_mod._write_surgical_patch
 
@@ -672,7 +672,7 @@ class TestSprint8E1CoverageEcucSetValue:
         path = _make_module_xdm(tmp_path / "Mcu.xdm", "Mcu")
         doc = load_module(path, "Mcu")
         # 确认 list_paths 行为
-        from autoc.core.bsw.ecuc import list_paths
+        from claude_autosar.core.bsw.ecuc import list_paths
 
         assert list_paths(doc) == tuple(sorted(p.path for p in doc.values))
 
@@ -682,7 +682,7 @@ class TestSprint8E1CoverageEcucInferType:
 
     def test_infer_type_bswmd_priority_over_dest(self) -> None:
         """BSWMD 命中 → 用 BSWMD 类型。"""
-        from autoc.core.bsw.ecuc import _infer_type
+        from claude_autosar.core.bsw.ecuc import _infer_type
 
         # BSWMD ParamDef.full_path 必须与 def_ref text 完全一致才会命中
         def_ref = etree.fromstring('<DEF REF="x" DEST="ECUC-INTEGER-PARAM-DEF">/AUTOSAR/X/x</DEF>')
@@ -706,7 +706,7 @@ class TestSprint8E1CoverageEcucInferType:
 
     def test_infer_type_fallback_dest_heuristic(self) -> None:
         """BSWMD miss → DEST 启发式。"""
-        from autoc.core.bsw.ecuc import _infer_type
+        from claude_autosar.core.bsw.ecuc import _infer_type
 
         def_ref = etree.fromstring('<DEF DEST="ECUC-FLOAT-PARAM-DEF">/x</DEF>')
         # BSWMD 返 None（def_ref.text 路径 miss）
@@ -715,14 +715,14 @@ class TestSprint8E1CoverageEcucInferType:
 
     def test_infer_type_dest_vendor_extension_falls_back_to_string(self) -> None:
         """DEST 不匹配 → STRING（最安全 fallback）。"""
-        from autoc.core.bsw.ecuc import _infer_type
+        from claude_autosar.core.bsw.ecuc import _infer_type
 
         def_ref = etree.fromstring('<DEF DEST="ECUC-VENDOR-SPECIFIC">/x</DEF>')
         assert _infer_type(def_ref, bswmd_registry=None) == "STRING"
 
     def test_infer_type_bswmd_miss_falls_back_to_dest(self) -> None:
         """BSWMD 给了但 path miss → fallback DEST。"""
-        from autoc.core.bsw.ecuc import _infer_type
+        from claude_autosar.core.bsw.ecuc import _infer_type
 
         def_ref = etree.fromstring('<DEF DEST="ECUC-STRING-PARAM-DEF">/no/such/path</DEF>')
         # BSWMD 命中 /no/such/path 返 None
@@ -732,7 +732,7 @@ class TestSprint8E1CoverageEcucInferType:
 
     def test_infer_type_bswmd_function_name_returns_string(self) -> None:
         """BSWMD param_type=FUNCTION_NAME（不在 ECUCType 范围）→ fallback DEST。"""
-        from autoc.core.bsw.ecuc import _infer_type
+        from claude_autosar.core.bsw.ecuc import _infer_type
 
         def_ref = etree.fromstring('<DEF DEST="ECUC-FUNCTION-NAME-DEF">/X/x</DEF>')
         bswmd = BSWMDRegistry(

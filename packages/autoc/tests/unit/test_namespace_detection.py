@@ -17,7 +17,7 @@ from pathlib import Path
 from lxml import etree
 import pytest
 
-from autoc.core.bsw.arxml_io import (
+from claude_autosar.core.bsw.arxml_io import (
     DEFAULT_NAMESPACES,
     WELL_KNOWN_NAMESPACE_URIS,
     build_default_nsmap,
@@ -320,20 +320,20 @@ class TestEcucLoadModuleMultiVersion:
     """ecuc.load_module 必须能从任意 r4.x URI 探测 + 解析。"""
 
     def test_load_module_r42(self, sample_arxml_r42: Path) -> None:
-        from autoc.core.bsw.ecuc import load_module
+        from claude_autosar.core.bsw.ecuc import load_module
 
         doc = load_module(sample_arxml_r42, "Mcu")
         assert doc.module_name == "Mcu"
         assert any(v.path.endswith("McuClockFrequency") for v in doc.values)
 
     def test_load_module_r46(self, sample_arxml_r46: Path) -> None:
-        from autoc.core.bsw.ecuc import load_module
+        from claude_autosar.core.bsw.ecuc import load_module
 
         doc = load_module(sample_arxml_r46, "Mcu")
         assert any("McuClockFrequency" in v.path for v in doc.values)
 
     def test_load_module_r47(self, sample_arxml_r47: Path) -> None:
-        from autoc.core.bsw.ecuc import load_module
+        from claude_autosar.core.bsw.ecuc import load_module
 
         doc = load_module(sample_arxml_r47, "Mcu")
         freq = next((v for v in doc.values if v.path.endswith("McuClockFrequency")), None)
@@ -343,7 +343,7 @@ class TestEcucLoadModuleMultiVersion:
 
     def test_set_value_with_explicit_nsmap_r44(self, sample_arxml_r44: Path) -> None:
         """ecuc.set_value 接受显式 nsmap kw（不破坏向后兼容）。"""
-        from autoc.core.bsw.ecuc import load_module, set_value
+        from claude_autosar.core.bsw.ecuc import load_module, set_value
 
         doc = load_module(sample_arxml_r44, "Mcu")
         # 不传 nsmap → 用默认探测路径；旧调用方不破

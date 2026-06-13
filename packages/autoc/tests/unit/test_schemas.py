@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoc.core.bsw.schemas import (
+from claude_autosar.core.bsw.schemas import (
     ECU_ABSTRACTION_MODULES,
     MCAL_MODULES,
     ModuleSchema,

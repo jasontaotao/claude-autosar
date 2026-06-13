@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from tests.conftest import _build_fake_tresos
 
-from autoc.adapters.tresos import TresosAdapter, TresosAdapterError
+from claude_autosar.adapters.tresos import TresosAdapter, TresosAdapterError
 
 # =============================================================================
 # __init__ 参数校验
@@ -74,7 +74,7 @@ class TestTresosCmdPath:
 class TestSubprocessWrappers:
     """verify / save / autocalc 的 subprocess 包装（mock subprocess.run）。"""
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_verify_runs_validate_subcommand(
         self, mock_run: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
@@ -92,7 +92,7 @@ class TestSubprocessWrappers:
         assert "--module" in call_args
         assert "Mcu" in call_args
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_windows_bat_uses_cmd_exe_not_shell(
         self, mock_run: pytest.MonkeyPatch, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -116,7 +116,7 @@ class TestSubprocessWrappers:
         assert cmd[1] == "/c"
         assert cmd[2].lower().endswith("tresos_cmd.bat")
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_non_windows_runs_bat_directly(
         self, mock_run: pytest.MonkeyPatch, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -137,7 +137,7 @@ class TestSubprocessWrappers:
         assert not cmd[0].lower().endswith("cmd.exe")
         assert cmd[0].endswith("tresos_cmd.sh")
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_verify_without_module_runs_full_validate(
         self, mock_run: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
@@ -152,7 +152,7 @@ class TestSubprocessWrappers:
         assert "--validate" in call_args
         assert "--module" not in call_args
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_save_returns_written_files(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """save() 解析 stdout 中的 "wrote *.xdm" 模式。"""
         _build_fake_tresos(tmp_path, chip_id="X", enabled_modules=["Mcu"])
@@ -170,7 +170,7 @@ class TestSubprocessWrappers:
         assert "Mcu.xdm" in names
         assert "Port.xdm" in names
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_save_failure_captured(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """save() 失败时 success=False。"""
         _build_fake_tresos(tmp_path, chip_id="X", enabled_modules=[])
@@ -182,7 +182,7 @@ class TestSubprocessWrappers:
         assert result.success is False
         assert result.returncode == 1
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_autocalc_runs_autocalc_subcommand(
         self, mock_run: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
@@ -196,7 +196,7 @@ class TestSubprocessWrappers:
         assert result.success is True
         assert "--autocalc" in mock_run.call_args[0][0]
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_timeout_raises(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """subprocess 超时抛 TresosAdapterError。"""
         _build_fake_tresos(tmp_path, chip_id="X", enabled_modules=[])
@@ -205,7 +205,7 @@ class TestSubprocessWrappers:
         with pytest.raises(TresosAdapterError, match="timed out"):
             TresosAdapter(default_timeout_s=1).verify(ctx)
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_filenotfound_raises(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """subprocess 不存在抛 TresosAdapterError。"""
         _build_fake_tresos(tmp_path, chip_id="X", enabled_modules=[])
@@ -214,7 +214,7 @@ class TestSubprocessWrappers:
         with pytest.raises(TresosAdapterError, match="FileNotFoundError"):
             TresosAdapter().verify(ctx)
 
-    @patch("autoc.adapters.tresos.subprocess.run")
+    @patch("claude_autosar.adapters.tresos.subprocess.run")
     def test_permissionerror_raises(self, mock_run: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """subprocess 抛 PermissionError（如 tool_home 无执行权限）时包成 TresosAdapterError。"""
         _build_fake_tresos(tmp_path, chip_id="X", enabled_modules=[])
@@ -291,7 +291,7 @@ class TestParseProjectXml:
 
 def _make_ctx(project: Path, tool_home: Path):  # type: ignore[no-untyped-def]
     """构造最小 EcuConfigProjectContext（仅用于路径/适配器测试）。"""
-    from autoc.adapters.protocol import EcuConfigProjectContext
+    from claude_autosar.adapters.protocol import EcuConfigProjectContext
 
     return EcuConfigProjectContext(
         project_path=project,
