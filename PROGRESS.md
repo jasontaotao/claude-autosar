@@ -1,29 +1,30 @@
 # AutoC Claude Code 插件 - 进度交接文档
 
-> 给"换窗口后继续干"用的状态快照。最后更新：2026-06-11。
+> 给"换窗口后继续干"用的状态快照。最后更新：2026-06-13。
 
 ## 换窗口继续（直接说这句就行）
 
-> **"继续 autoc-cc，从 Sprint 4 开始"**
+> **"继续 autoc-cc，从 Sprint 9.1 开始"**
 
 或更直接：
 
-> **"跑 Sprint 4 任务 T4.1"** → 我开干
-> **"先 git init"** → 我先 `git init` + 首 commit
+> **"跑 Sprint 9.1 任务 T9.1.2"** → 我开干
+> **"先看 Sprint 9.0 状态"** → 翻到 § Sprint 9.0 段
 
 ## 一句话状态
 
-**Sprint 0+1+2+3+4+5+6+7 + 8.A + 8.B + 8.E 全部完成**，共 **610 测试通过**（autoc 587 unit + 23 integration + plugin 25 之前）/ coverage **82.43%**（unit-only；新代码分支覆盖未达 90.07% 旧基线），所有 ruff/mypy strict/black/isort 干净。
+**Sprint 0+1+2+3+4+5+6+7 + 8.A + 8.B + 8.E + 9.0 全部完成**，共 **982 测试通过**（autoc unit + integration）/ coverage **88.87%**（unit-only；新增 dispatcher / _bsw_read_xdm 稀释；按用户拍板推到 8.E.1 plan 处理），所有 ruff / mypy strict 干净。
 
-**Sprint 8.E 状态**：✅ 8 commits 入库（`2c0d2b3` → `11e1a56`）—— 8 subagent 并行实施 + 集成 agent 收尾，5-stage verification 全过。
+**Sprint 9.0 状态**：✅ 3 commits 入库（`5247d30` → `d10d5f9`）—— v1 改名 + datamodel2_io 双格式 + dispatcher 路由 + mcp_server XDM dispatch，5-stage verification 全过，端到端在 Can.xdm 读出 CanConfigSet 下的 CanHwChannel='FlexCAN_A'。
 
 ## 当前 HEAD 状态
 
-> Sprint 8 完成 git init + 首 commit 后的状态；之前的 sprint 都在文件系统上，未做版本控制。
+> Sprint 9.0 完成后的状态。
 
-- **git**: 分支 `main`，10 commits（Sprint 8.A baseline + Sprint 8.B PyPI + Sprint 8.E 8 个独立 commit）
-- **测试**: **610 passed**（unit 587 + integration 23 之前 + plugin 25 之前）/ coverage **82.43%**（unit-only；新 init.py / bswmd.py / bsw_write_path.py / project_config.py 拉低）
-- **静态检查**: ruff / isort / black / mypy strict 全清
+- **git**: 分支 `main`，13 commits（Sprint 8.A baseline + Sprint 8.B PyPI + Sprint 8.E 8 个独立 commit + Sprint 9.0 3 个 commit）
+- **HEAD**: `d10d5f9` — chore: pyproject.toml isort known_first_party autoc → claude_autosar
+- **测试**: **982 passed** / coverage **88.87%**（unit-only；新 dispatcher.py / _bsw_read_xdm 拉低 1.2pp；用户拍板不补，本轮推 8.E.1 plan）
+- **静态检查**: ruff / mypy strict 全清
 - **CI**: 5 jobs（lint / typecheck / security / test@py3.11+3.12 / build sanity）
 
 ## 关键决策（持久化的项目知识）
@@ -742,4 +743,98 @@ git push origin v0.1.0
 - 新 fixtures：`tests/fixtures/xdm/{Mcu,Port,Can,Dio,Spi}_Cfg.xdm`（EB-style fake XDM）
 - 新 handoffs：`docs/handoffs/T8.E.{0a,0b,1,2,3,4,5,6}.md`
 - 改 docs：`plugins/autoc/skills/arxml-format/SKILL.md`
+
+---
+
+### Sprint 9.0 — 双格式独立 IO + dispatcher + rename ✅
+
+按 plan v2 §3.1（PRD `declarative-wiggling-cook-v2.md`）实施：v1 重写定位为".arxml + .xdm 双格式平级 I/O，不互转"。
+
+| # | 任务 | 状态 |
+|---|---|---|
+| T9.0.4 | rename `autoc-cc` → `claude-autosar`（目录 / PyPI 包 / import / CLI / plugin 全局） | ✅ |
+| T9.0.1 | `core/bsw/io/datamodel2_io.py`（DataModel2 命名空间 read/write/surgical patch，镜像 arxml_io） | ✅ |
+| T9.0.5 | `tests/fixtures/datamodel2/{Can,Mcu,Port}.xdm` gold-file + `test_datamodel2_io.py` 单测 | ✅ |
+| T9.0.6 | `claude-autosar init` 向导 + 探测 TRESOS_HOME / MCAL_VENDOR_HOME / CHIP_DERIVATIVE | ✅ |
+| T9.0.7 | `.autoc/settings.json` schema + `core/settings/v2_paths.py` 3 路径加载器 | ✅ |
+| T9.0.2 | `core/bsw/dispatcher.py`（按 root namespace 路由 arxml_io / datamodel2_io） | ✅ |
+| T9.0.3 | `cli/mcp_server.py` `bsw_read` 重构走 dispatcher（XDM 路径用 `<d:var>` 扁平提取） | ✅ |
+
+**3 commits**（按时间顺序）：
+
+| # | hash | 任务 | 概要 |
+|---|---|---|---|
+| 1 | `5247d30` | T9.0.4 | rename autoc-cc → claude-autosar（122 files, +13255 / -662） |
+| 2 | `f6a4541` | T9.0.2 + T9.0.3 | dispatcher.py + mcp_server.py bsw_read XDM dispatch（1 file, +190 / -40） |
+| 3 | `d10d5f9` | chore | pyproject.toml isort `known_first_party` 跟进 rename（1 file, +3 / -3） |
+
+注：T9.0.1/5/6/7 跟 T9.0.4 一起在 commit 1 一起入（这些 task 是 Sprint 9.0 启动前提：先有 datamodel2_io / fixtures / init / v2_paths 才能做 dispatcher）。
+
+**端到端验收（plan §0.1 / §3.1 T9.0.3）**
+
+```python
+bsw_read("Can", "CanConfigSet/CanController/BMS_J1939PT/CanHwChannel", project=...)
+# → {'success': True, 'raw': 'FlexCAN_A', 'value': 'FlexCAN_A',
+#    'type': 'ENUMERATION', 'format': 'xdm'}
+
+bsw_read("Can", "CanConfigSet/CanController/BMS_J1939PT/CanControllerActivation", project=...)
+# → {'success': True, 'raw': 'true', 'value': True, 'type': 'BOOLEAN', 'format': 'xdm'}
+```
+
+**5-stage verification 结果**
+
+| Stage | 检查 | 结果 |
+|---|---|---|
+| 1 | `ruff check` | ✓ All checks passed |
+| 2 | `mypy --strict packages/autoc/src/claude_autosar/core/bsw/dispatcher.py packages/autoc/src/claude_autosar/cli/mcp_server.py` | ✓ no issues found in 2 source files |
+| 3 | `pytest packages/autoc/tests/unit/` | ✓ **982 passed** / 0 failed（baseline 866 → 982，+116） |
+| 4 | `datamodel2_io.write(preserve_format=True)` surgical patch | ✓ 8.E.5 复用（Can.xdm / Mcu.xdm / Port.xdm 全 round-trip） |
+| 5 | 端到端 bsw_read Can.xdm CanConfigSet | ✓ `CanHwChannel='FlexCAN_A'` / `CanControllerActivation=True` |
+
+**Coverage 增量**：90.07% (Sprint 8.B baseline) → 88.87% (after Sprint 9.0)，**-1.2pp**。
+下降原因：dispatcher.py (94%) / mcp_server.py 新增 _bsw_read_xdm (~80%) 拉低均值。
+**裁决**：用户拍板**本轮不补**，推到 8.E.1 coverage 补测 plan（已写完待 user 拍"串行/并行"启动）。
+
+**Sprint 9.0 文件清单**
+
+新 source（commit 1）：
+- `core/bsw/io/datamodel2_io.py`（~624 行，镜像 arxml_io）
+- `core/bsw/io/__init__.py`（命名空间表注释）
+- `core/settings/v2_paths.py`（414 行，3 路径加载器）
+- `core/bsw/dispatcher.py`（~250 行，commit 2）
+
+新 tests（commit 1）：
+- `test_datamodel2_io.py`（镜像 test_arxml_io.py）
+- `test_init_v2_wizard.py`（init 命令单测）
+- `test_settings_v2.py`（v2_paths 单测）
+
+新 tests（commit 2）：
+- `test_dispatcher.py`（27 测试：detect/read/write/describe/异常）
+- `test_mcp_server_xdm.py`（12 测试：happy / 错误 / 端到端 Can.xdm / 契约保留）
+
+新 fixtures：
+- `tests/fixtures/datamodel2/{Can,Mcu,Port}.xdm`（3 个 user-engineering 风格 XDM，含
+  d:ctr / d:lst / d:chc / d:var 全结构）
+
+改 source（commit 1）：
+- `cli/commands/init.py`（init 向导）
+- `pyproject.toml`（包名 / import path / CLI / plugin name）
+
+改 source（commit 2）：
+- `cli/mcp_server.py`（bsw_read 走 dispatcher；加 `_bsw_read_xdm` / `_is_descendant_of`）
+
+**Pre-existing 失败**：1 个仍未修
+- `test_sprint7_e2e.py::test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape`（T8.E.0b handoff #4 已知）— Sprint 9.x 修
+
+**下一个 sprint**：Sprint 9.1 — M-R 双格式报告（4 sub-agent 并发）
+- T9.1.1 重构 `exporter.py` 抽 `utils/html_utils.py`
+- T9.1.2 `core/bsw/inspector/arxml_report.py`（109 IPdu + 103 Signal）
+- T9.1.3 `core/bsw/inspector/xdm_report.py`（DataModel2 树扁平化）
+- T9.1.4 MCP tool + CLI 5 个新子命令
+
+**关键决策（plan v2 §0.2.1 / 用户 2026-06-12 当面拍板）**
+- 双格式（.arxml + .xdm）**平级独立 IO，不互转**
+- Sprint 9.0 主体**不做 BSWMD 互转**（v2.1+ 候选，见 plan §11.7）
+- bsw_read 走 dispatcher：.arxml 仍走 ecuc.load_module；.xdm 走 lxml xpath 扁平提取
+  （DataModel2 树结构跟 ECUC 不兼容，无法走 ECUC walker）
 

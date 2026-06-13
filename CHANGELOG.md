@@ -1,8 +1,63 @@
 # Changelog
 
-All notable changes to `autoc` (the Python core package) are documented in
-this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+All notable changes to `claude-autosar` (the Python core package, formerly `autoc`) are
+documented in this file. The format is based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.0] - 2026-06-13 (Sprint 9.0 — 双格式独立 IO + dispatcher + rename)
+
+### Changed
+- **BREAKING**: Package renamed `autoc` → `claude-autosar`（PyPI name / import path
+  `claude_autosar.*` / CLI `claude-autosar` / plugin name `claude-autosar` / 仓库根
+  `claude-autosar`）。任何 import `from autoc.*` / CLI `autoc ...` 的下游需同步
+  迁移。
+- `bsw_read` MCP tool 走 dispatcher：按文件根 namespace 自动选 arxml_io（AUTOSAR
+  r4.x）或 datamodel2_io（EB tresos DataModel2）。响应加 `format` 字段。
+
+### Added
+- `core/bsw/io/datamodel2_io.py`：EB tresos DataModel2 命名空间
+  (`http://www.tresos.de/_projects/DataModel2/16/root.xsd`) 的 read / write /
+  surgical patch（镜像 arxml_io）。byte-identity ≥ 99%（对齐 Sprint 8.E.5 验收）。
+- `core/bsw/dispatcher.py`：薄壳路由层（detect_format / read / write / describe）。
+  支持根 xmlns 探测：AUTOSAR r4.0/4.2/4.4/4.6/4.7/4.8 + DataModel2 2.0 root + 1.0
+  alias。异常：`UnknownFormatError` / `FormatMismatchError` / `DispatcherError`。
+- `core/settings/v2_paths.py`：`.autoc/settings.json` schema + 3 路径加载器
+  （TRESOS_HOME / MCAL_VENDOR_HOME / CHIP_DERIVATIVE）。优先级链：
+  环境变量 > CLI > `.autoc/settings.json` > `init` 向导探测。
+- `cli/mcp_server.py::_bsw_read_xdm`：XDM 路径的扁平 `<d:var>` 提取（lxml xpath
+  在 `<d:chc name=module>` 容器下查找 d:ctr / d:lst / d:chc / d:var 任一类型）。
+- `cli/commands/init.py`：`claude-autosar init` 向导 — 启动时探测 3 路径，
+  找不到报错 + 提示配置（不靠猜，不静默用 default）。
+
+### Tests
+- `tests/unit/test_dispatcher.py`（27 测试）
+- `tests/unit/test_mcp_server_xdm.py`（12 测试，含 3 个端到端 Can.xdm 用例）
+- `tests/unit/test_datamodel2_io.py`（镜像 test_arxml_io.py）
+- `tests/unit/test_init_v2_wizard.py`（init 向导单测）
+- `tests/unit/test_settings_v2.py`（v2_paths 单测）
+- `tests/fixtures/datamodel2/{Can,Mcu,Port}.xdm`（3 个 user-engineering 风格 XDM）
+- **总测试数**：866 → 982（+116）
+- **Coverage**：90.07% → 88.87%（-1.2pp；推到 8.E.1 plan）
+
+### End-to-end Acceptance
+
+```python
+bsw_read("Can", "CanConfigSet/CanController/BMS_J1939PT/CanHwChannel", project=...)
+# → {'success': True, 'raw': 'FlexCAN_A', 'value': 'FlexCAN_A',
+#    'type': 'ENUMERATION', 'format': 'xdm'}
+```
+
+5-stage verification 全过：ruff / mypy strict / 982 pytest pass / XDM byte-identity /
+端到端 bsw_read。
+
+### Migration Notes (v0.1.x → v0.2.0)
+- 任何引用 `autoc` 包 / `autoc` CLI / `autoc` plugin 的下游必须迁移：
+  - `pip uninstall autoc && pip install claude-autosar`
+  - `from autoc.X import Y` → `from claude_autosar.X import Y`
+  - `autoc ...` CLI → `claude-autosar ...`
+  - Plugin marketplace 引用 `autoc` → `claude-autosar`
+- 配置文件路径 `~/.autoc/` 保留不变（用户数据向后兼容）
 
 ## [0.1.0] - 2026-06-12
 
