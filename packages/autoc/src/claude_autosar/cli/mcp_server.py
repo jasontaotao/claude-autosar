@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -49,7 +50,7 @@ _TOOL_NAMES: tuple[str, ...] = (
 
 def _default_session_dir() -> Path:
     """默认 session 目录：``~/.autoc/agent/sessions``。"""
-    from autoc.utils.paths import global_session_dir
+    from claude_autosar.utils.paths import global_session_dir
 
     return global_session_dir()
 
@@ -88,7 +89,7 @@ def _resolve_safe_project(project: str) -> Path:
 
 def _build_ctx(project: Path, tresos_home: Path, module: str) -> Any:
     """构造最小 ``EcuConfigProjectContext``（adapters 协议要求）。"""
-    from autoc.adapters.protocol import EcuConfigProjectContext
+    from claude_autosar.adapters.protocol import EcuConfigProjectContext
 
     return EcuConfigProjectContext(
         project_path=project,
@@ -110,12 +111,22 @@ def _build_ctx(project: Path, tresos_home: Path, module: str) -> Any:
 def bsw_read(module: str, path: str, *, project: str = ".") -> dict[str, Any]:
     """读 XDM/ARXML 中 ``module`` 模块下 ``path`` 路径的参数值。
 
+    Sprint 9.0 T9.0.3 改：用 :mod:`claude_autosar.core.bsw.dispatcher` 按文件
+    根 namespace 自动选 arxml_io（AUTOSAR r4.x）或 datamodel2_io（EB tresos
+    DataModel2）。XDM 路径用 ``<d:var>`` 扁平提取（DataModel2 树结构跟 ECUC
+    不兼容，无法走 ECUC walker）。
+
     :param module: BSW 模块名（如 ``Mcu``）
     :param path: ECUC 路径（如 ``Clock/ClockFreq``），会自动拼上 ``<module>/`` 前缀
     :param project: 工程根目录路径字符串，默认 cwd
-    :return: ``{"success": True, "module", "path", "raw", "type", "value"}`` 或 error dict
+    :return: ``{"success": True, "module", "path", "raw", "type", "value", "format"}`` 或 error dict
     """
-    from autoc.core.bsw.ecuc import get_value, load_module
+    from claude_autosar.core.bsw.dispatcher import (
+        detect_format,
+        UnknownFormatError,
+        DispatcherError,
+    )
+    from claude_autosar.core.bsw.ecuc import get_value, load_module
 
     try:
         project_path = _resolve_safe_project(project)
@@ -135,34 +146,173 @@ def bsw_read(module: str, path: str, *, project: str = ".") -> dict[str, Any]:
             "success": False,
             "error": f"module {module!r} not found in {project_path} (no .xdm or .arxml)",
         }
+    # T9.0.3: dispatch by root namespace
     try:
-        doc = load_module(f, module)
-    except (ValueError, FileNotFoundError) as e:
+        fmt = detect_format(f)
+    except UnknownFormatError as e:
+        return {"success": False, "error": str(e)}
+    except DispatcherError as e:
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except (OSError, FileNotFoundError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
     full_path = path if path.startswith(f"{module}/") else f"{module}/{path}"
-    val = get_value(doc, full_path)
-    if val is None:
-        return {"success": False, "error": f"path {full_path!r} not in module {module!r}"}
-    # M27: 派生 typed value（"80000000" → 80000000）
-    value_typed: int | float | bool | str = val.raw
+
+    if fmt == "arxml":
+        try:
+            doc = load_module(f, module)
+        except (ValueError, FileNotFoundError) as e:
+            return {"success": False, "error": f"{type(e).__name__}: {e}"}
+        val = get_value(doc, full_path)
+        if val is None:
+            return {"success": False, "error": f"path {full_path!r} not in module {module!r}"}
+        value_typed: int | float | bool | str = val.raw
+        try:
+            if isinstance(val.raw, str):
+                if val.raw.lower() in ("true", "false"):
+                    value_typed = val.raw.lower() == "true"
+                elif val.raw.isdigit() or (val.raw.startswith("-") and val.raw[1:].isdigit()):
+                    value_typed = int(val.raw)
+                else:
+                    value_typed = float(val.raw)
+        except ValueError:
+            pass  # 保留 str
+        return {
+            "success": True,
+            "module": module,
+            "path": val.path,
+            "raw": val.raw,
+            "value": value_typed,
+            "type": str(val.type),
+            "format": "arxml",
+        }
+    # fmt == "xdm"
+    result = _bsw_read_xdm(f, module, full_path)
+    if result.get("success"):
+        result["format"] = "xdm"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# XDM (DataModel2) value extraction — Sprint 9.0 T9.0.3
+# ---------------------------------------------------------------------------
+
+
+def _bsw_read_xdm(path: Path, module: str, full_path: str) -> dict[str, Any]:
+    """从 DataModel2 .xdm 读 ``<module>/<container>/.../<param>`` 路径下的值。
+
+    DataModel2 树结构跟 ECUC 完全不一样（扁平 ``<d:var name=... type=... value=...>``）
+    — 不能走 :func:`claude_autosar.core.bsw.ecuc.load_module`。本函数直接用
+    lxml xpath 在 ``<d:chc name=<module>>`` 容器下定位。
+
+    路径语义：每段对应一个 ``name`` 属性（container 或 var 同名空间）。例如
+    ``Mcu/McuClockSettingConfig_0/McuClockFrequency`` 在 XDM 里就是
+    ``<d:chc name=Mcu>`` → ``<d:ctr name=McuClockSettingConfig_0>`` →
+    ``<d:var name=McuClockFrequency>``。
+    """
+    from claude_autosar.core.bsw.io.datamodel2_io import (
+        DataModel2Error,
+        read as _xdm_read,
+    )
+
     try:
-        if isinstance(val.raw, str):
-            if val.raw.lower() in ("true", "false"):
-                value_typed = val.raw.lower() == "true"
-            elif val.raw.isdigit() or (val.raw.startswith("-") and val.raw[1:].isdigit()):
-                value_typed = int(val.raw)
-            else:
-                value_typed = float(val.raw)
-    except ValueError:
-        pass  # 保留 str
+        tree = _xdm_read(path)
+    except (DataModel2Error, OSError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    root = tree.getroot() if hasattr(tree, "getroot") else tree
+    nsmap = dict(root.nsmap) if getattr(root, "nsmap", None) else {}
+    default_ns = nsmap.get(None, "")
+
+    def _q(local: str) -> str:
+        return f"{{{default_ns}}}{local}" if default_ns else local
+
+    # 找 <d:chc name=<module>>（AR-ELEMENT 节点）
+    d_ns = "http://www.tresos.de/_projects/DataModel2/06/data.xsd"
+    module_xpath = f'.//d:chc[@name="{module}"]'
+    module_elems = root.xpath(
+        module_xpath, namespaces={"d": d_ns, "dm": default_ns} if default_ns else {"d": d_ns}
+    )
+    if not module_elems:
+        return {
+            "success": False,
+            "error": f"module {module!r} not found in {path} (no <d:chc name={module!r}>)",
+        }
+    module_elem = module_elems[0]
+
+    # 沿 path 段下钻。container 用 d:ctr 或 d:lst，leaf 用 d:var。
+    # EB tresos DataModel2 树里中间层节点类型有 3 种：d:ctr (container)、
+    # d:lst (list / map of children)、d:chc (choice)。所有中间层都有
+    # ``name`` 属性。leaf 一定是 d:var 带 ``value`` 属性。
+    segments = full_path.split("/")
+    if segments[0] == module:
+        segments = segments[1:]
+    current = module_elem
+    for i, seg in enumerate(segments):
+        next_el = current.xpath(
+            f'.//d:ctr[@name="{seg}"] | .//d:lst[@name="{seg}"] '
+            f'| .//d:chc[@name="{seg}"] | .//d:var[@name="{seg}"]',
+            namespaces={"d": d_ns},
+        )
+        if not next_el:
+            return {
+                "success": False,
+                "error": (
+                    f"path {full_path!r} not in module {module!r} "
+                    f"(segment {i + 1} {seg!r} not found)"
+                ),
+            }
+        candidate = next_el[0]
+        if not _is_descendant_of(candidate, current):
+            return {
+                "success": False,
+                "error": (
+                    f"path {full_path!r} not in module {module!r} "
+                    f"(segment {i + 1} {seg!r} not in subtree)"
+                ),
+            }
+        current = candidate
+    # current 应该是 d:var（leaf）；d:ctr 没有 value
+    value_attr = current.get("value")
+    type_attr = current.get("type")
+    if value_attr is None:
+        return {
+            "success": False,
+            "error": f"path {full_path!r} resolves to a container, not a leaf value",
+        }
+    # 类型派生
+    value_typed: int | float | bool | str = value_attr
+    inferred_type = type_attr or "STRING"
+    if isinstance(value_attr, str):
+        if value_attr.lower() in ("true", "false"):
+            value_typed = value_attr.lower() == "true"
+        elif value_attr.isdigit() or (value_attr.startswith("-") and value_attr[1:].isdigit()):
+            with contextlib.suppress(ValueError):
+                value_typed = int(value_attr)
+        else:
+            with contextlib.suppress(ValueError):
+                value_typed = float(value_attr)
     return {
         "success": True,
         "module": module,
-        "path": val.path,
-        "raw": val.raw,
+        "path": full_path,
+        "raw": value_attr,
         "value": value_typed,
-        "type": str(val.type),
+        "type": str(inferred_type).upper(),
     }
+
+
+def _is_descendant_of(candidate: Any, ancestor: Any) -> bool:
+    """判断 ``candidate`` 是否是 ``ancestor`` 的后代（lxml ``iterancestors`` 路径检查）。
+
+    用于 XDM path walker 防 xpath 上跳（参见 :func:`_bsw_read_xdm`）。
+    """
+    try:
+        # iterancestors() 返回所有 ancestor（从最近到 root）
+        return any(anc is ancestor for anc in candidate.iterancestors())
+    except (AttributeError, TypeError):
+        # 防御：candidate 不是 lxml 元素
+        return False
 
 
 def bsw_write(
@@ -179,9 +329,9 @@ def bsw_write(
     :param project: 工程根目录
     :param tresos_home: EB tresos 安装目录（默认 ``<project>/tresos_home``）
     """
-    from autoc.adapters.tresos import TresosAdapter
-    from autoc.core.bsw.config import BSWParam, ParamType, ParamValue
-    from autoc.core.bsw.validator import ModifyRequest, modify_and_verify
+    from claude_autosar.adapters.tresos import TresosAdapter
+    from claude_autosar.core.bsw.config import BSWParam, ParamType, ParamValue
+    from claude_autosar.core.bsw.validator import ModifyRequest, modify_and_verify
 
     # H3: 入参 schema 校验前置
     if not isinstance(params, list) or not params:
@@ -281,7 +431,7 @@ def bsw_verify(
     module: str, *, project: str = ".", tresos_home: str | None = None
 ) -> dict[str, Any]:
     """调用 ``tresos_cmd verify``（只 verify，不改值）。"""
-    from autoc.adapters.tresos import TresosAdapter
+    from claude_autosar.adapters.tresos import TresosAdapter
 
     try:
         project_path = _resolve_safe_project(project)
@@ -322,7 +472,7 @@ def bsw_autocalc(
     注：当前协议只支持单 ctx 触发，所以 ``modules[1:]`` 会被忽略。响应里
     用 ``autocalc_triggered_module`` 字段明确告诉 LLM 实际跑了哪个。
     """
-    from autoc.adapters.tresos import TresosAdapter
+    from claude_autosar.adapters.tresos import TresosAdapter
 
     try:
         project_path = _resolve_safe_project(project)
@@ -361,7 +511,7 @@ def bsw_autocalc(
 
 def arxml_validate(path: str) -> dict[str, Any]:
     """ARXML 解析校验（parse-only：Sprint 5 范围内不接 XSD）。"""
-    from autoc.core.bsw.arxml_io import ARXMLError, read
+    from claude_autosar.core.bsw.arxml_io import ARXMLError, read
 
     p = Path(path)
     if not p.is_file():
@@ -433,7 +583,7 @@ def dbc_parse(path: str) -> dict[str, Any]:
 
 def session_list(*, session_dir: str | None = None) -> list[str]:
     """列出所有 session id。"""
-    from autoc.core.session.store import SessionStore
+    from claude_autosar.core.session.store import SessionStore
 
     d = Path(session_dir) if session_dir else _default_session_dir()
     return SessionStore(dir=d).list_session_ids()
@@ -444,11 +594,11 @@ def session_show(session_id: str, *, session_dir: str | None = None) -> dict[str
 
     支持特殊值 ``"latest"``：解析为 session_dir 下 mtime 最大的 session。
     """
-    from autoc.core.session.store import SessionStore, SessionStoreError
+    from claude_autosar.core.session.store import SessionStore, SessionStoreError
 
     d = Path(session_dir) if session_dir else _default_session_dir()
     if session_id == "latest":
-        from autoc.core.session.store import resolve_latest_session_id
+        from claude_autosar.core.session.store import resolve_latest_session_id
 
         latest = resolve_latest_session_id(d)
         if latest is None:
@@ -488,15 +638,15 @@ def session_export(
     session_dir: str | None = None,
 ) -> dict[str, Any]:
     """导出 session 为 ``fmt`` 格式（当前仅支持 ``html``）。"""
-    from autoc.core.session.exporter import export_html
-    from autoc.core.session.store import SessionStore, SessionStoreError
-    from autoc.core.session.tree import SessionTree
+    from claude_autosar.core.session.exporter import export_html
+    from claude_autosar.core.session.store import SessionStore, SessionStoreError
+    from claude_autosar.core.session.tree import SessionTree
 
     if fmt != "html":
         return {"success": False, "error": f"unsupported fmt: {fmt!r} (only 'html')"}
     d = Path(session_dir) if session_dir else _default_session_dir()
     if session_id == "latest":
-        from autoc.core.session.store import resolve_latest_session_id
+        from claude_autosar.core.session.store import resolve_latest_session_id
 
         latest = resolve_latest_session_id(d)
         if latest is None:
@@ -526,15 +676,15 @@ def log_export(
     session_dir: str | None = None,
 ) -> dict[str, Any]:
     """从 session 提取 ``bsw_write`` entry，渲染成 timeline / by-url 文本。"""
-    from autoc.core.log.changelog import extract_changes, render_by_url, render_timeline
-    from autoc.core.session.store import SessionStore, SessionStoreError
-    from autoc.core.session.tree import SessionTree
+    from claude_autosar.core.log.changelog import extract_changes, render_by_url, render_timeline
+    from claude_autosar.core.session.store import SessionStore, SessionStoreError
+    from claude_autosar.core.session.tree import SessionTree
 
     if view not in {"timeline", "by-url"}:
         return {"success": False, "error": f"unsupported view: {view!r}"}
     d = Path(session_dir) if session_dir else _default_session_dir()
     if session_id == "latest":
-        from autoc.core.session.store import resolve_latest_session_id
+        from claude_autosar.core.session.store import resolve_latest_session_id
 
         latest = resolve_latest_session_id(d)
         if latest is None:
