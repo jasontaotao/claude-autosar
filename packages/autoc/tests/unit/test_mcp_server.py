@@ -37,6 +37,10 @@ _EXPECTED_TOOLS = {
     "session_show",
     "session_export",
     "log_export",
+    # Sprint 9.1 T9.1.4 — 3 个 inspect tool
+    "arxml_inspect",
+    "xdm_inspect",
+    "bsw_inspect",
 }
 
 
@@ -49,13 +53,13 @@ def test_build_mcp_server_returns_fastmcp_instance() -> None:
 
 
 def test_tool_names_constant_matches_spec() -> None:
-    """_TOOL_NAMES 是 T3.1 节规定的 10 个 tool 名集合（顺序独立）。"""
+    """_TOOL_NAMES 是 10 个原 tool + Sprint 9.1 新增 3 个 inspect tool（顺序独立）。"""
     assert set(_TOOL_NAMES) == _EXPECTED_TOOLS
-    assert len(_TOOL_NAMES) == 10
+    assert len(_TOOL_NAMES) == 13
 
 
 def test_mcp_server_registers_all_ten_tools() -> None:
-    """FastMCP 内部 _tool_manager 能查到全部 10 个 tool。"""
+    """FastMCP 内部 _tool_manager 能查到全部 13 个 tool。"""
     server = build_mcp_server()
     tm = getattr(server, "_tool_manager", None)
     assert tm is not None

@@ -33,7 +33,8 @@ from mcp.server.fastmcp import FastMCP
 # 模块级常量和工厂
 # ---------------------------------------------------------------------------
 
-#: T3.1 节规定的 10 个 tool 名称（顺序无意义，集合用于注册自检）
+#: T3.1 节规定的 10 个 tool 名称 + Sprint 9.1 T9.1.4 新增 3 个 inspect tool
+#: （顺序无意义，集合用于注册自检）
 _TOOL_NAMES: tuple[str, ...] = (
     "bsw_read",
     "bsw_write",
@@ -45,6 +46,10 @@ _TOOL_NAMES: tuple[str, ...] = (
     "session_show",
     "session_export",
     "log_export",
+    # Sprint 9.1 T9.1.4
+    "arxml_inspect",
+    "xdm_inspect",
+    "bsw_inspect",
 )
 
 
@@ -706,6 +711,164 @@ def log_export(
 
 
 # ---------------------------------------------------------------------------
+# Sprint 9.1 — T9.1.4 inspector tools（ARXML / XDM / dispatcher wrapper）
+# ---------------------------------------------------------------------------
+# 复用 :mod:`core.bsw.inspector.arxml_report` 和 ``xdm_report``；路径防御
+# 走 :func:`_resolve_safe_project`（R6：project 路径必须是 cwd 子目录）。
+# ``include_lint`` 占位参数：Sprint 9.4 M4 lint 实现后再启用，本 sprint 忽略。
+#
+# 注：``path`` 参数（待 inspect 的文件）**不**做 project 子目录校验 — 测试用
+# tmp_path 时可能落在 cwd 之外（且 ``bsw_read`` 工具自身也只对 ``project``
+# 做防御）。这是测试 + 简化实现的折中；后续若需要可加 ``allowed_inspect_roots``
+# 防御层。
+
+
+def _inspect_resolve_input(path: str, *, project: str = ".") -> Path:
+    """解析 inspector 工具的 ``path`` 输入 + 校验 ``project`` 在允许根内。
+
+    :raises PermissionError: project 不在 allowed roots
+    :raises FileNotFoundError: 输入文件不存在
+    """
+    # 强制走 _resolve_safe_project：project 参数必须在 allowed roots 内
+    _resolve_safe_project(project)
+    src = Path(path).resolve()
+    if not src.is_file():
+        raise FileNotFoundError(f"file not found: {src}")
+    return src
+
+
+def arxml_inspect(
+    path: str,
+    output: str | None = None,
+    *,
+    include_lint: bool = False,  # noqa: ARG001 - placeholder (Sprint 9.4 M4)
+    project: str = ".",
+) -> dict[str, Any]:
+    """读单个 ``.arxml`` → 渲染一页式 HTML 报告（IPdu / Signal / 关键参数）。
+
+    :param path: ``.arxml`` 文件路径（相对 project 根或绝对）
+    :param output: 输出 HTML 路径；``None`` = ``<input>.report.html``
+    :param include_lint: 占位参数（Sprint 9.4 M4 lint 启用后再用）
+    :param project: 工程根目录（默认 cwd）
+    :return: ``{"success": True, "format": "arxml", "report_path": ..., "path": ...}``
+        或 error dict
+    """
+    from claude_autosar.core.bsw.inspector.arxml_report import export_arxml_report
+
+    try:
+        src = _inspect_resolve_input(path, project=project)
+    except PermissionError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except FileNotFoundError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    out_path = Path(output) if output else None
+    try:
+        written = export_arxml_report(src, output=out_path)
+    except (OSError, ValueError, TypeError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    return {
+        "success": True,
+        "format": "arxml",
+        "path": str(src),
+        "report_path": str(written),
+    }
+
+
+def xdm_inspect(
+    path: str,
+    output: str | None = None,
+    *,
+    include_lint: bool = False,  # noqa: ARG001 - placeholder (Sprint 9.4 M4)
+    project: str = ".",
+) -> dict[str, Any]:
+    """读单个 ``.xdm`` (DataModel2) → 渲染一页式 HTML 报告。
+
+    :param path: ``.xdm`` 文件路径（相对 project 根或绝对）
+    :param output: 输出 HTML 路径；``None`` = ``<input>.report.html``
+    :param include_lint: 占位参数（Sprint 9.4 M4 lint 启用后再用）
+    :param project: 工程根目录（默认 cwd）
+    :return: ``{"success": True, "format": "xdm", "report_path": ..., "path": ...}``
+        或 error dict
+    """
+    from claude_autosar.core.bsw.inspector.xdm_report import export_xdm_report
+
+    try:
+        src = _inspect_resolve_input(path, project=project)
+    except PermissionError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except FileNotFoundError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    out_path = Path(output) if output else None
+    try:
+        written = export_xdm_report(src, output=out_path)
+    except (OSError, ValueError, TypeError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    return {
+        "success": True,
+        "format": "xdm",
+        "path": str(src),
+        "report_path": str(written),
+    }
+
+
+def bsw_inspect(
+    path: str,
+    output: str | None = None,
+    *,
+    project: str = ".",
+) -> dict[str, Any]:
+    """dispatcher：按文件根 namespace 自动选 arxml / xdm 渲染器。
+
+    :param path: 输入文件路径（按根 xmlns 自动选，不依赖后缀）
+    :param output: 输出 HTML 路径；``None`` = ``<input>.report.html``
+    :param project: 工程根目录（默认 cwd）
+    :return: ``{"success": True, "format": <arxml|xdm>, "report_path": ..., "path": ...}``
+        或 error dict
+    """
+    from claude_autosar.core.bsw.dispatcher import (
+        detect_format,
+        DispatcherError,
+        UnknownFormatError,
+    )
+    from claude_autosar.core.bsw.inspector.arxml_report import export_arxml_report
+    from claude_autosar.core.bsw.inspector.xdm_report import export_xdm_report
+
+    try:
+        src = _inspect_resolve_input(path, project=project)
+    except PermissionError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except FileNotFoundError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    try:
+        fmt = detect_format(src)
+    except (UnknownFormatError, DispatcherError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+    except FileNotFoundError as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    out_path = Path(output) if output else None
+    try:
+        if fmt == "arxml":
+            written = export_arxml_report(src, output=out_path)
+        else:  # fmt == "xdm"
+            written = export_xdm_report(src, output=out_path)
+    except (OSError, ValueError, TypeError) as e:
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    return {
+        "success": True,
+        "format": fmt,
+        "path": str(src),
+        "report_path": str(written),
+    }
+
+
+# ---------------------------------------------------------------------------
 # FastMCP server factory
 # ---------------------------------------------------------------------------
 
@@ -722,6 +885,10 @@ _TOOL_FUNCS: dict[str, Callable[..., Any]] = {
     "session_show": session_show,
     "session_export": session_export,
     "log_export": log_export,
+    # Sprint 9.1 T9.1.4
+    "arxml_inspect": arxml_inspect,
+    "xdm_inspect": xdm_inspect,
+    "bsw_inspect": bsw_inspect,
 }
 
 

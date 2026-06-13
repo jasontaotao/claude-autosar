@@ -26,7 +26,17 @@ def _register_command(name: str, module: Any) -> None:
 # Importing command modules and registering into the dispatch table.
 # Imported at module load (not lazily inside main()) so that callers/tests
 # can introspect _DISPATCH.
-from claude_autosar.cli.commands import davinci, eb, export, init, log, session  # noqa: E402, PLC0415
+from claude_autosar.cli.commands import (  # noqa: E402, PLC0415
+    arxml_inspect,
+    bsw_inspect,
+    davinci,
+    eb,
+    export,
+    init,
+    log,
+    session,
+    xdm_inspect,
+)
 
 _register_command("eb", eb)
 _register_command("davinci", davinci)
@@ -34,6 +44,9 @@ _register_command("session", session)
 _register_command("log", log)
 _register_command("export", export)
 _register_command("init", init)
+_register_command("arxml-inspect", arxml_inspect)
+_register_command("xdm-inspect", xdm_inspect)
+_register_command("bsw-inspect", bsw_inspect)
 
 
 def build_parser() -> argparse.ArgumentParser:
