@@ -3,9 +3,8 @@
 自包含（inline CSS，无外部资源依赖），可被任意浏览器离线打开。
 
 设计要点：
-- 轻量 inline Markdown 解析（**bold**、`code`、[link](url)），不引外部 lib
-- 改参 callout 三色：add=绿、modify=黄、delete=红
-- XSS 安全：所有动态内容经 ``html.escape``，仅对 callout class 做受控 HTML 生成
+- 委托 ``utils.html_utils`` 处理 XSS escape / URL 白名单 / 三色 callout / 文档组装
+  （Sprint 9.1 T9.1.1：HTML 工具从 session export 抽出到共享 utils）
 - 入口：``render_html(tree) -> str`` 与 ``export_html(tree, path) -> Path``
 """
 
@@ -13,129 +12,15 @@ from __future__ import annotations
 
 import html
 from pathlib import Path
-import re
 
 from claude_autosar.core.log.changelog import Change, extract_changes
 from claude_autosar.core.session.store import SessionEntry
 from claude_autosar.core.session.tree import SessionTree
-
-# ---------------------------------------------------------------------------
-# 轻量 inline Markdown
-# ---------------------------------------------------------------------------
-
-# 顺序很重要：先 link，再 code，再 bold（避免 `code` 误匹配 link 内的方括号）
-_MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
-_MD_CODE_RE = re.compile(r"`([^`]+)`")
-_MD_BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
-
-# URL scheme 白名单：拒掉 javascript: / data: / vbscript: 等可执行 scheme。
-# 文件:// 本地浏览器导航可接受（用户主动打开的本地 HTML）。
-_ALLOWED_URL_SCHEMES = ("http://", "https://", "mailto:", "file:")
-
-
-def _is_safe_url(url: str) -> bool:
-    """URL scheme 必须在白名单中（大小写不敏感），否则视为不安全。"""
-    lower = url.strip().lower()
-    return any(lower.startswith(scheme) for scheme in _ALLOWED_URL_SCHEMES)
-
-
-def _render_inline_md(text: str) -> str:
-    """把 inline markdown 子集转 HTML。已 escape。"""
-    # 先收集所有匹配的位置，避免后续替换破坏已写入的标签
-    # 简化：分阶段替换，每阶段用占位符，结束后还原
-    placeholders: list[str] = []
-
-    def _stash(html_fragment: str) -> str:
-        placeholders.append(html_fragment)
-        return f"\x00PH{len(placeholders) - 1}\x00"
-
-    s = text
-    # link — scheme 白名单过滤
-    s = _MD_LINK_RE.sub(
-        lambda m: _stash(
-            (
-                f'<a href="{html.escape(m.group(2), quote=True)}"'
-                f' rel="noopener noreferrer">{html.escape(m.group(1))}</a>'
-            )
-            if _is_safe_url(m.group(2))
-            else html.escape(m.group(1))  # scheme 不安全 → 只显示 link text
-        ),
-        s,
-    )
-    # code
-    s = _MD_CODE_RE.sub(
-        lambda m: _stash(f"<code>{html.escape(m.group(1))}</code>"),
-        s,
-    )
-    # bold
-    s = _MD_BOLD_RE.sub(
-        lambda m: _stash(f"<strong>{html.escape(m.group(1))}</strong>"),
-        s,
-    )
-    # escape 剩余的纯文本
-    s = html.escape(s)
-    # 还原占位符
-    s = re.sub(
-        r"\x00PH(\d+)\x00",
-        lambda m: placeholders[int(m.group(1))],
-        s,
-    )
-    # 行内换行
-    s = s.replace("\n", "<br>")
-    return s
-
-
-# ---------------------------------------------------------------------------
-# CSS（inline）
-# ---------------------------------------------------------------------------
-
-_CSS = """
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    max-width: 960px;
-    margin: 2rem auto;
-    padding: 0 1rem;
-    color: #1a1a1a;
-    line-height: 1.5;
-    background: #fafafa;
-}
-h1, h2, h3 { color: #222; }
-.meta { color: #666; font-size: 0.9em; margin-bottom: 1.5rem; }
-.entry {
-    border-left: 3px solid #ccc;
-    padding: 0.5rem 0.75rem;
-    margin: 0.75rem 0;
-    background: #fff;
-}
-.entry.user { border-color: #4a90e2; }
-.entry.assistant { border-color: #888; }
-.entry.tool { border-color: #f5a623; }
-.entry.tool_result { border-color: #aaa; }
-.entry .ts { color: #999; font-size: 0.8em; }
-.callout {
-    display: inline-block;
-    padding: 0.25rem 0.6rem;
-    border-radius: 4px;
-    font-weight: bold;
-    margin: 0.25rem 0;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 0.9em;
-}
-.callout.add    { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-.callout.modify { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-.callout.delete { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-.changes-section { margin-top: 2rem; }
-.changes-section pre {
-    background: #fff;
-    padding: 0.75rem;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    overflow-x: auto;
-    font-size: 0.9em;
-}
-.footer { margin-top: 3rem; color: #999; font-size: 0.8em; text-align: center; }
-""".strip()
-
+from claude_autosar.utils.html_utils import (
+    render_callout,
+    render_html_doc,
+    render_inline_md,
+)
 
 # ---------------------------------------------------------------------------
 # 入口
@@ -144,22 +29,15 @@ h1, h2, h3 { color: #222; }
 
 def render_html(tree: SessionTree) -> str:
     """把 SessionTree 渲染为完整 HTML 字符串。"""
-    parts: list[str] = [
-        "<!DOCTYPE html>",
-        '<html lang="zh-CN">',
-        "<head>",
-        '<meta charset="utf-8">',
-        f"<title>AutoC Session {html.escape(tree.session.id)}</title>",
-        f"<style>{_CSS}</style>",
-        "</head>",
-        "<body>",
-    ]
-    parts.extend(_render_header(tree))
-    parts.extend(_render_entries(tree))
-    parts.extend(_render_changes(tree))
-    parts.append('<div class="footer">Generated by AutoC</div>')
-    parts.append("</body></html>")
-    return "\n".join(parts) + "\n"
+    body_parts: list[str] = []
+    body_parts.extend(_render_header(tree))
+    body_parts.extend(_render_entries(tree))
+    body_parts.extend(_render_changes(tree))
+    return render_html_doc(
+        title=f"AutoC Session {tree.session.id}",
+        body_parts=body_parts,
+        footer='<div class="footer">Generated by AutoC</div>',
+    )
 
 
 def export_html(tree: SessionTree, output_path: Path | str) -> Path:
@@ -199,7 +77,7 @@ def _render_entry(entry: SessionEntry) -> str:
     ts = html.escape(entry.timestamp)
     cls = f"entry {kind}"
     # content 用 inline md 渲染（先 escape 后替换为受控 HTML）
-    content_html = _render_inline_md(entry.content)
+    content_html = render_inline_md(entry.content)
     body = f'<div class="content">{content_html}</div>'
     if entry.tool_name:
         # 工具调用：显示为改参 callout（如果 tool_args 是 bsw_write 风格）
@@ -220,20 +98,24 @@ def _render_tool_args(entry: SessionEntry) -> str:
         return ""
     args = entry.tool_args or {}
     op = str(args.get("op", "modify"))
-    module = html.escape(str(args.get("module", "")))
-    path = html.escape(str(args.get("path", "")))
-    value = html.escape(repr(args.get("value")))
+    module = str(args.get("module", ""))
+    path = str(args.get("path", ""))
+    value_repr = repr(args.get("value"))
     old_value = args.get("old_value")
     url = f"{module}/{path}" if module else path
-    op_class = op if op in ("add", "modify", "delete") else "modify"
     detail = ""
     if op == "modify" and old_value is not None:
-        detail = f' <span class="ts">' f"{html.escape(repr(old_value))} → {value}" f"</span>"
+        detail = (
+            f'<span class="ts">{html.escape(repr(old_value))} '
+            f"→ {html.escape(value_repr)}</span>"
+        )
     elif op == "add":
-        detail = f' <span class="ts">= {value}</span>'
+        detail = f'<span class="ts">= {html.escape(value_repr)}</span>'
     elif op == "delete":
-        detail = f' <span class="ts">(was: {html.escape(repr(old_value))})</span>'
-    return f'<div class="callout {op_class}">' f"{op.upper()} {url}" f"{detail}" f"</div>"
+        detail = (
+            f'<span class="ts">(was: {html.escape(repr(old_value))})</span>'
+        )
+    return render_callout(op=op, label=f"{op.upper()} {url}", detail=detail)
 
 
 def _render_changes(tree: SessionTree) -> list[str]:
