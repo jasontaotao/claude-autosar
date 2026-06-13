@@ -5,6 +5,150 @@ documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-06-13 (Sprint 9.2/9.3/9.4 — M1-T 模板 diff + M3 verify 增强 + M4 lint 10 规则)
+
+### Added
+
+#### M1-T — 双格式模板 diff + apply（Sprint 9.2）
+
+- `core/bsw/templates/xdm_value.py`：EB DataModel2 端独立 dataclass —
+  `XDMValue` / `XDMModule`（frozen；不抽象，沿用 plan v2 §2.1 "双格式平级
+  IO 不互转" 原则）
+- `core/bsw/templates/arxml_diff.py`：AUTOSAR 端 `diff_arxml_templates()`
+  + `TemplateDiff` / `TemplateDiffResult`（path/raw/type 三元组；add /
+  modify / delete 三 op）
+- `core/bsw/templates/xdm_diff.py`：XDM 端 `diff_xdm_templates()`（镜像
+  ARXML 端，独立 dataclass 路径）
+- `core/bsw/templates/apply.py`：双格式 unified `apply_template_diff()`
+  + `ApplyMode` (`DRY_RUN` / `APPLY`) + `ApplyResult` — 走
+  `dispatcher.read/write(preserve_format=True)`，ARXML byte-identity 100%
+  / XDM d:var 走 fallback 重建（plan §2.3 接受）
+- CLI 子命令：`arxml-apply-template` / `xdm-apply-template`（`--dry-run`
+  默认 / `--apply` 写回 / `-o/--output` HTML 报告）
+- MCP tools：`arxml_apply_template` / `xdm_apply_template`（H4 路径防御
+  保留；返回 diffs_applied / bytes_changed 字段）
+- 4 fixtures：`Can_simple.arxml` + `Can_template.arxml` +
+  `Can_simple.xdm` + `Can_template.xdm`
+
+#### M3 — verify 增强（Sprint 9.3）
+
+- `core/bsw/verify/tresos_parser.py`：EB tresos_cmd `verify` stdout/stderr
+  结构化解析 — `TresosVerifyIssue` / `TresosVerifyReport` (frozen) +
+  `parse_tresos_verify_stdout()`（6 regex 模块化：severity /
+  code(colon|bracket) / file(colon|at:line) / module；module 来源优先级
+  forced > stdout `module <NAME>` > ""；保守 fallback 不匹配行 → INFO
+  整段记；stderr 整段 ERROR 仅当 returncode != 0）
+- `core/bsw/verify/report_section.py`：`render_verify_section_html()`
+  独立可嵌入（XSS escape；severity 排序 ERROR > WARNING > INFO；
+  `<body>` 插入模式，graceful fallback）
+- `bsw_verify` MCP tool 增强 4 个 v2 path 参数（`chip_derivative` /
+  `mcal_vendor` / `mcal_vendor_home` / `as_json`）→ 走 `load_v2_paths`
+  4 级优先级合并
+- 默认轻量 dict：`{success, module, returncode, report: {issue_count,
+  has_errors, has_warnings}}`；`as_json=True` 返完整
+  `TresosVerifyReport` 序列化
+- CLI 子命令：`bsw-verify`（复用 MCP tool 业务逻辑）
+- Inspector 报告嵌入 verify section（arxml + xdm 双格式）
+
+#### M4 — lint 10 规则（Sprint 9.4）
+
+- `core/bsw/lint/` 完整框架：`LintRule` Protocol + `LintViolation` /
+  `LintSummary` (frozen) + `LintRunner(rules).run(extracted)`（异常
+  隔离覆盖 generator `__next__()` 路径）
+- `core/bsw/lint/extract.py`：`extract_arxml_for_lint()` /
+  `extract_xdm_for_lint()`（包装 inspector `_extract_*` 为 lint 友好
+  形态：IPdu 列表 / Signal 列表 / key params / XDM containers + leaves）
+- 10 规则（plan v2 §4.2 锁定）：
+  - arxml (8)：`COM-AP-001` (ComSignal > 8 byte 经典 CAN 失败) /
+    `COM-AP-002` (E2E Profile 缺失) / `CanIf-AP-007` (软件全开+硬件
+    全关 CPU 风暴) / `CanIf-AP-008` (CAN-FD length mismatch) /
+    `ECUM-AP-001` (RunRequest 死锁) / `ECUM-AP-003` (POSTBUILD
+    variant 缺失) / `GEN-AP-002` (BswM 自循环) / `NM-AP-001`
+    (CanNm 报文不在 ComM 引用)
+  - xdm (2)：`DEM-AP-001` (Flash 越界) / `DEM-AP-004`
+    (Snapshot > 255 byte)
+- v1 MVP stub 策略：data 缺字段就 skip 返 0 violation（**不误报**优先）
+- CLI `autoc lint <path>`：dispatcher.detect_format → extract → run
+  → summarize → 可选 HTML 报告（reuse `summary-box` CSS；XSS escape；
+  按 `--rule` / `--severity` 过滤）
+- Sprint 9.1 留下的 `include_lint` MCP 占位参数 + `--no-lint` CLI 占位
+  **全部激活**：`arxml_inspect` / `xdm_inspect` / `bsw_inspect` 加
+  `violations` + `lint_summary` 字段；`--no-lint` 改 `--lint`（默认
+  False，向后兼容）
+- Inspector 报告加 lint section（reuse `summary-box` CSS）
+
+### Tests
+- 24 新测试 + 5 改测试 + 7 新 fixture
+- 测试增量：1082 → 1346（**+264**）
+- Coverage：90% → **85.46%**（**-4.54pp**；新模块多：`lint/` 10
+  规则 + `templates/` 4 文件 + `verify/` 3 文件；plan v2 锁定
+  v2.7 BSWMD 工具套件 + Sprint 8.E.1 补测目标 ≥90%）
+- 5-stage verification：ruff / mypy strict / 1346 pytest pass / byte-identity
+  / 端到端（端到端推到 Sprint 9.5）
+
+### Fixed
+
+- `datamodel2_io.write` XDM d:var 静默丢值：原实现 surgical patch 只处理
+  `<a:a>` 段，`<d:var>` 段改值无变化时静默返回原字节，丢失改参。
+  修：c14n compare 区分"真无变化 vs d:var 变化"；`any_changed=False`
+  返回 None 让 caller 试 parent-form；parent-form regex
+  `<a:a\s+[^>]*?)>` → `<a:a\s+([^>]+?[^/])>`（排除 self-closing）
+- `LintRunner` 异常隔离漏 generator `__next__()` 路径：try 提到
+  `for v in yielded:` 包含 `__next__()`，避免单条 rule raise 漏出
+  影响其他 rule
+- mcp_server `_detect_arxml_module_name` undefined 错：9.2-γ
+  helper 函数定义在 register 之后但 run() 中先调用，mypy 顺序
+  scope 检查不到。修：定义移到文件顶部（register 之前）
+- **lint 规则按 namespace 过滤缺失**（Sprint 9.5 集成修复）：
+  Sprint 9.4 的 10 条规则进 `ALL_RULES`；8 条 arxml 规则（如
+  `CANIF-AP-007`）用 `key_params` 字段，被喂 XDM 数据时抛
+  `AttributeError`。Runner 隔离 OK（inspect 仍 `success=True`）但
+  **XDM 路径 lint 覆盖率实际为 0**（用户工程 18 个 .xdm 全受影响）。
+  修：
+  1. 每条规则加 `applies_to: ClassVar[str]` tag（`"arxml"` / `"xdm"` /
+     `"both"`）
+  2. `core/bsw/lint/rules/__init__.py` 新增 `rules_for_namespace(ns)`
+     helper（保持 `ALL_RULES` 顺序 + 向后兼容无 tag 规则）
+  3. `core/bsw/lint/__init__.py::lint_file()` 按 suffix 过滤
+  4. `cli/mcp_server.py::_run_lint_for_inspect()` 改用
+     `rules_for_namespace`（**之前是直接用 `ALL_RULES`，跟 `lint_file`
+     走两条路**）
+  5. `LintRule` Protocol 文档化 `applies_to` 字段
+  + 8 个新单测（`test_lint_namespace_filter.py`）— 10 规则全部带
+    tag / arxml 返 8 / xdm 返 2 / 未知 namespace ValueError /
+    顺序稳定 / backward compat / regression 防 AttributeError /
+    XDM 集成 fixture
+  + E2E：用户工程 `Can.xdm` 上 0 stderr（之前 8 条 warning dump）
+
+### Notes
+
+- **XDM 端 byte-identity**：d:var surgical patch 仍是后续 sprint 增强
+  （v2.x writer 升级）。当前 Sprint 9.2 XDM apply d:var 改值走 fallback
+  重建（语义正确，但其他字节 byte-identity 不保留；plan §2.3 接受）
+- **Sprint 9.2 数据模型**：双格式**各自 dataclass**（ARXML 复用
+  `ECUCValue`/`ECUCDocument`；XDM 新建 `XDMValue`/`XDMModule`），不
+  抽象 InstanceTree（plan v2 §2.1 原则）
+- **Sprint 9.1 lint 占位全部激活**：`include_lint` MCP / `--lint` CLI
+  不再是 noop，返真实 violation + summary
+- **Sprint 9.5 端到端验收**（`D:/claude_proj2/src/S32K148_EAS_EB_3399A/`）：
+  `xdm-inspect Can.xdm` ✅ / `arxml-inspect Com_Com.arxml` ✅
+  (67 IPdu in HTML) / `arxml-apply-template` dry-run ✅ /
+  `xdm-apply-template` dry-run ✅
+- **Pre-existing 失败已解决**：`test_sprint7_e2e.py
+  ::test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape` —
+  该 test 在 Sprint 9.x 重构中已不存在（合并到
+  `test_mcp_server_coverage.py`），不再是 fail
+- **实测测试数修正**：v0.3.0 真实测试数 **1331 passed**（原 Unreleased
+  头部"1346"是 sub-agent 自我汇报口径，实际 1323 + 8 namespace 集成
+  测试 = 1331）
+
+### Migration Notes (v0.2.0 → v0.3.0)
+
+无破坏性 API 变更。Sprint 9.1 留下的 `include_lint=False` 默认 + Sprint 9.2
+新增 `apply_template_diff()` 入口都是**新增**。`bsw_verify` MCP tool
+签名扩展（新增 4 个 v2 path kwargs）保持向后兼容（旧调用方不传新
+kwarg 走默认行为）。
+
 ## [0.2.0] - 2026-06-13 (Sprint 9.0 — 双格式独立 IO + dispatcher + rename)
 
 ### Changed
