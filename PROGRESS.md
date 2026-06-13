@@ -838,3 +838,126 @@ bsw_read("Can", "CanConfigSet/CanController/BMS_J1939PT/CanControllerActivation"
 - bsw_read 走 dispatcher：.arxml 仍走 ecuc.load_module；.xdm 走 lxml xpath 扁平提取
   （DataModel2 树结构跟 ECUC 不兼容，无法走 ECUC walker）
 
+---
+
+### Sprint 9.1 — M-R 双格式报告（单文件 → 一页式 HTML）✅
+
+按 plan v2 §3.2（PRD `declarative-wiggling-cook-v2.md`）+ Sprint 实施 plan `pure-tumbling-spring.md` 实施：4 sub-agent 并发。
+
+| # | 任务 | 状态 |
+|---|---|---|
+| T9.1.1 | `utils/html_utils.py`（CSS + XSS + URL 白名单 + 三色 callout）+ 从 `core/session/exporter.py` 抽出 | ✅ |
+| T9.1.2 | `core/bsw/inspector/arxml_report.py`（AUTOSAR r4.x 报告；IPdu frozenset{ComIPdu, ComTxIPdu, ComRxIPdu}）| ✅ |
+| T9.1.3 | `core/bsw/inspector/xdm_report.py`（DataModel2 报告；双 namespace：d_ns + dm_ns 探测）| ✅ |
+| T9.1.4 | MCP tool `arxml_inspect` / `xdm_inspect` / `bsw_inspect` + CLI 3 子命令 `arxml-inspect` / `xdm-inspect` / `bsw-inspect` | ✅ |
+
+**2 commits**（按时间顺序）：
+
+| # | hash | 任务 | 概要 |
+|---|---|---|---|
+| 1 | `acbf50b` | T9.1.1 | 抽 `utils/html_utils.py`（exporter.py -118 行）；41 个 test（5 类 XSS + URL 白名单 + 三色 callout + inline md）|
+| 2 | `9a251df` | T9.1.2 + T9.1.3 + T9.1.4 | M-R 双格式报告：inspector + CLI + MCP（59 个 test；用户工程端到端 PASS）|
+
+**端到端验收（plan §T9.1.2）**
+
+```python
+# 用户工程 Com_Com.arxml (8.6MB)
+export_arxml_report(Path(r'D:/claude_proj2/src/S32K148_EAS_EB_3399A/EAS_Cfg/Arxml/Com_Com.arxml'))
+# → 22KB HTML, 0.23s, 67 ComTxIPdu rows + Metadata + Summary box
+
+# 用户工程 Can.xdm
+export_xdm_report(Path(r'D:/claude_proj2/src/S32K148_EAS_EB_3399A/EB_Cfg/simple_demo_rte/config/Can.xdm'))
+# → 157KB HTML, 含 CanConfigSet / CanGeneral / CanHwChannel / FlexCAN_*
+```
+
+**5-stage verification 结果**
+
+| Stage | 检查 | 结果 |
+|---|---|---|
+| 1 | `ruff check` | ✓ 1 个新引入（W292 末尾换行）已修；11 个 pre-existing 不动 |
+| 2 | `mypy --strict packages/autoc/src/claude_autosar` | ✓ no issues found in 52 source files |
+| 3 | `pytest packages/autoc/tests/unit/` | ✓ **1082 passed** / 0 failed（baseline 982 → 1082，+100）|
+| 4 | XSS 防御（test_html_utils.py）| ✓ 5 类攻击字符串 + URL scheme 白名单 + H-2 XSS title test |
+| 5 | 端到端 bsw_inspect / arxml_inspect / xdm_inspect | ✓ Com_Com.arxml + Can.xdm + Com_Com.minimal.arxml PASS |
+
+**Coverage 增量**：88.87% (Sprint 9.0) → **90%** (Sprint 9.1)，**+1.13pp**（↑ 88.87% baseline）。
+
+**Sprint 9.1 文件清单**
+
+新 source（commit 1）：
+- `utils/html_utils.py`（~120 行）
+- `utils/__init__.py`（+6 行导出）
+
+新 source（commit 2）：
+- `core/bsw/inspector/__init__.py`（~40 行，导出 4 个公共 API）
+- `core/bsw/inspector/arxml_report.py`（644 行，T9.1.2）
+- `core/bsw/inspector/xdm_report.py`（412 行，T9.1.3）
+- `cli/commands/arxml_inspect.py`（~105 行）
+- `cli/commands/xdm_inspect.py`（~108 行）
+- `cli/commands/bsw_inspect.py`（~130 行，dispatcher wrapper）
+
+新 tests（commit 1）：
+- `tests/unit/test_html_utils.py`（41 个 case）
+
+新 tests（commit 2）：
+- `tests/unit/test_arxml_report.py`（10 个 case）
+- `tests/unit/test_xdm_report.py`（24 个 case，含 H-2 XSS test）
+- `tests/unit/test_cli_inspect.py`（10 个 case）
+- `tests/unit/test_mcp_inspect.py`（12 个 case）
+
+新 fixtures（commit 2）：
+- `tests/fixtures/arxml/Com_Com.minimal.arxml`（gold-file）
+
+改 source（commit 1）：
+- `core/session/exporter.py`（-118 行，委托 html_utils）
+
+改 source（commit 2）：
+- `cli/main.py`（+3 行注册）
+- `cli/mcp_server.py`（+3 tool + _TOOL_NAMES + _TOOL_FUNCS）
+
+改 tests（commit 2）：
+- `tests/unit/test_mcp_server.py`（`_EXPECTED_TOOLS` set 更新 + 注释）
+
+**Code Review 结果（ad8c57a6 sub-agent）**
+
+- **0 CRITICAL**
+- **2 HIGH**（已修）：
+  - H-1：inspector docstring 撒谎说复用 html_utils → 改成诚实 docstring（"有意不依赖，独立 inline CSS"，inspector 专属样式不耦合 session export）
+  - H-2：`xdm_report.py:115` `<h1>` title 不 escape `module_name`（XSS 漏洞）→ `_html_escape(module_name)` + 1 个 XSS test
+- **5 MEDIUM**（性能 / 并发 / 文档；不阻合并）
+- **5 LOW**（stylistic）
+
+**Pre-existing 失败**：1 个仍未修（无新增 regression）
+- `test_sprint7_e2e.py::test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape`（T8.E.0b handoff #4 已知）— Sprint 9.x 修
+
+**关键决策**
+
+- **不抽象 InstanceTree**（plan §2.1 关键原则）：arxml_report 直接 lxml xpath 走 ECUC 值树；xdm_report 直接 lxml xpath 走 DataModel2 树
+- **html_utils 不复用**：inspector 用 inspector 专属样式（metadata-table / summary-box / type-tag / ipdu-row / signal-row），跟 session export `_CSS` 模板差异较大；保留独立 CSS 避免耦合。`html.escape` 等通用 XSS 防御可未来复用
+- **DataModel2 双 namespace**（R4 陷阱）：`d_ns = "http://www.tresos.de/_projects/DataModel2/06/data.xsd"` 固定 + `dm_ns = root.nsmap[None]` 探测
+- **ComTxIPdu / ComRxIPdu / ComIPdu frozenset**：3 个变体都涵盖（Com_Com.arxml 实际用 ComTxIPdu）
+- **路径防御 R6**：复用 `_resolve_safe_project`；`path` 参数（待 inspect 文件）**不**做 project 子目录校验（与 `bsw_read` 等现有 tool 一致；`output` 写文件 + project 都在防御内）
+
+**⚠️ plan §1.4 数据修正（重要）**
+
+plan v2 §1.4 验收标准写"`Com_Com.arxml` 8.6MB 上 M1 跑通：报告含 **109 IPdu + 103 Signal + 0 lint error**"。
+
+**实测**：Com_Com.arxml 单文件含 **67 ComTxIPdu + 0 nested Signal**（agent-β frozenset `{ComIPdu, ComTxIPdu, ComRxIPdu}` 涵盖变体）。
+
+**109 + 103 数字是跨 BSW 模块聚合数**（Com + PduR + CanIf + ...），不是单 Com_Com.arxml：
+- 67 个 ComTxIPdu 在 Com 模块里
+- 103 个 Signal 在 PduR / CanIf 模块里（不在 Com_Com.arxml）
+
+Sprint 9.1 实现正确（67 行都生成了），是 plan 数字 over-stated。如果以后要"跨模块聚合 IPdu/Signal 报告"，需要聚合多个 .arxml 文件的输出（不在 Sprint 9.1 范围；推到 v2.x）。
+
+**Sub-agent 异常记录**
+
+- agent-α（T9.1.1）watchdog 死亡（600s 无进展）：但工件（`utils/html_utils.py` + `test_html_utils.py`）齐，41 个 test 全 pass。本任务主 agent 接手跑全量 1082 pass / coverage 90% 确认 0 regression
+
+**下一个 sprint**：Sprint 9.2 + 9.3 + 9.4 **并发**启动（plan v2 §3.3）
+- Sprint 9.2 — M1-T 双格式模板 diff（3 sub-agent，1 周）
+- Sprint 9.3 — M3 verify 增强（2 sub-agent，2 天）
+- Sprint 9.4 — M4 lint 10 条规则（3 sub-agent，1 周；启用 T9.1.4 留下的 `include_lint` 占位参数）
+
+**关联 plan**：`C:\Users\13777\.claude\plans\pure-tumbling-spring.md`（Sprint 9.1 实施 plan）
+
