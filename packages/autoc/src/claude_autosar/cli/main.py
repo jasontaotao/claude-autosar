@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 # Dispatch table: subcommand name -> (register_fn, run_fn).
 # Driven by tests/unit/test_cli_main.py::_DISPATCH lookup.
@@ -66,7 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"autoc {__version__}",
+        version=f"claude-autosar {__version__}",
     )
     parser.add_argument(
         "--project",
@@ -142,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv_list)
     if args.command is None:
         # 无子命令：占位（保留 Sprint 3 前的行为）
-        print(f"autoc {__version__}（开发中）", file=sys.stderr)
+        print(f"claude-autosar {__version__}（开发中）", file=sys.stderr)
         print(f"工作目录: {args.project or Path.cwd()}", file=sys.stderr)
         return 0
 

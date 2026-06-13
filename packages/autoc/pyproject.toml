@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "claude-autosar"
-version = "0.1.0"
-description = "claude-autosar - AUTOSAR BSW AI 配置助手 Python 核心"
+version = "0.3.0"
+description = "claude-autosar - AUTOSAR BSW 双格式 (.arxml + .xdm) 配置 IO / 模板 diff / lint / verify 工具集"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["autosar", "bsw", "tresos", "davinci", "arxml", "ecu", "embedded", "mcp"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Automotive Engineers",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",

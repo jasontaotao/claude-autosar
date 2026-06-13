@@ -25,7 +25,7 @@ MCP 协议对接。
 ## 安装
 
 ```bash
-pip install autoc
+pip install claude-autosar
 ```
 
 开发模式（含 dev 依赖）：
