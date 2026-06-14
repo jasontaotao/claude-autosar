@@ -15,8 +15,8 @@ authors = [
 keywords = ["autosar", "bsw", "tresos", "davinci", "arxml", "ecu", "embedded", "mcp"]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Intended Audience :: Automotive Engineers",
     "Intended Audience :: Developers",
+    "Intended Audience :: Manufacturing",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Operating System :: Microsoft :: Windows",

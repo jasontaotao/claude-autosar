@@ -1142,16 +1142,52 @@ Sprint 9.1 实现正确（67 行都生成了），是 plan 数字 over-stated。
 - 5-stage 重跑：1331 pass / ruff 0 / mypy 0 / coverage 85.86% / lint
   exception 全清
 
-**Sprint 9.5 状态**：✅ 集成完成 + 4 commit 准备就绪（待提交）
+**Sprint 9.5 状态**：✅ 集成完成（3 commit + 1 tag 完成）
 - T9.5.1 ✅ 端到端验收
 - T9.5.2 ✅ PROGRESS.md changelog（本段）
-- T9.5.3 ⏳ CHANGELOG.md 0.3.0 entry
-- T9.5.4 ⏳ git commit（9.2 / 9.3 / 9.4 / 集成修复；4 个独立 commit，暂不 tag）
+- T9.5.3 ✅ CHANGELOG.md 0.3.0 entry
+- T9.5.4 ✅ git commit（3 个独立 commit：`9700a28` feat / `63eea65` docs /
+  `4bb70e5` chore）
+- T9.5.5 ✅ git tag v0.3.0（annotated, HEAD at `4bb70e5`）
+
+**v0.3.0 发布就绪**（发布动作暂停，等 user 决定）：
+
+构建产物（`packages/autoc/dist/`）：
+- `claude_autosar-0.3.0-py3-none-any.whl` (196 KB) — py.typed 包含
+- `claude_autosar-0.3.0.tar.gz` (147 KB)
+- `twine check` PASSED × 2
+
+隔离 venv 烟测（`/tmp/cas_venv`）：
+- `claude-autosar --version` → "claude-autosar 0.3.0"
+- `import claude_autosar` + 10 lint rules（8 arxml + 2 xdm）✓
+- CLI 13 子命令全部可发现
+- py.typed 在 wheel 里（PEP 561）
+
+发布路径（任选其一）：
+
+(A) **GitHub Actions trusted publishing**（推荐）：
+```bash
+# 1. user 在 github.com/new 创 autoc-cc repo（5 字段 / 2 勾选）
+# 2. user 把 URL 贴回来
+git remote add origin <URL>
+git push origin main v0.3.0   # tag push 触发 .github/workflows/release.yml
+# 3. GH Actions 跑 build + smoke test + PyPI 上传
+```
+
+(B) **本地 twine upload**（要 PyPI API token）：
+```bash
+TWINE_USERNAME=__token__ TWINE_PASSWORD=pypi-xxx twine upload packages/autoc/dist/*
+```
+
+⏸ **暂停原因**：user 明确说不愿意手动创 GitHub repo；`gh` CLI 装不上
+（winget 0x8007029c 失败）；本地无 PyPI token。dist/ + tag v0.3.0 已
+落盘，任何时候走任一路径都能 1 步发布。
 
 **下一阶段候选**（plan §11 优先级，user 拍板后启动）：
 1. v2.1.1 EAS 工具集成（用户工程用了 EAS）
 2. v2.1.4 BswM 规则 + ComM 链路（v2 主体 M4 跑通后再补深度）
-3. v2.6.1 PyPI 0.3.0 发布（v2 主体跑通即可发）
+3. v2.6.1 PyPI 0.3.0 发布 — **构建完成 / 发布暂停**（dist/ + tag
+   v0.3.0 落盘；等 user 走 GH trusted publishing 或贴 PyPI token）
 4. v2.4.1 lint 10 → 39 条
 5. 8.E.1 coverage 补测（→ 90.07%；3 task 待 user 拍"串行/并行"启动）
 
