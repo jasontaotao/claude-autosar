@@ -1,6 +1,6 @@
 # AutoC Claude Code 插件 - 进度交接文档
 
-> 给"换窗口后继续干"用的状态快照。最后更新：2026-06-13。
+> 给"换窗口后继续干"用的状态快照。最后更新：2026-06-15。
 
 ## 换窗口继续（直接说这句就行）
 
@@ -13,19 +13,22 @@
 
 ## 一句话状态
 
-**Sprint 0+1+2+3+4+5+6+7 + 8.A + 8.B + 8.E + 9.0 全部完成**，共 **982 测试通过**（autoc unit + integration）/ coverage **88.87%**（unit-only；新增 dispatcher / _bsw_read_xdm 稀释；按用户拍板推到 8.E.1 plan 处理），所有 ruff / mypy strict 干净。
+**Sprint 0+1+2+3+4+5+6+7 + 8.A + 8.B + 8.E + 9.0–9.5 + 8.E.1 全部完成**，共 **1535 测试通过**（autoc unit + integration）/ coverage **90.38%**（unit-only；v0.3.0 published 时 85.86% 已被 Sprint 8.E.1 coverage 补测推到 ≥ 90.07% 目标之上），所有 ruff / mypy strict 干净。
+
+**Sprint 8.E.1 状态**：✅ 2 commits 入库（`f92610a` → `2726a2b`）—— coverage 补测：Task A CLI error path（5 文件 127 tests / -184 missing）+ Task B mcp_server 直接 tool handler（1 文件 53 tests / -65 missing）；5-stage verification 全过，coverage 88.00% → 89.27% → **90.38%**。Task C/D 跳过（目标已达成 + 边际收益递减，主 agent 按 plan §12.3 拍板）。
 
 **Sprint 9.0 状态**：✅ 3 commits 入库（`5247d30` → `d10d5f9`）—— v1 改名 + datamodel2_io 双格式 + dispatcher 路由 + mcp_server XDM dispatch，5-stage verification 全过，端到端在 Can.xdm 读出 CanConfigSet 下的 CanHwChannel='FlexCAN_A'。
 
 ## 当前 HEAD 状态
 
-> Sprint 9.0 完成后的状态。
+> Sprint 8.E.1 完成后的状态（待 user 拍板 tag v0.3.1）。
 
-- **git**: 分支 `main`，13 commits（Sprint 8.A baseline + Sprint 8.B PyPI + Sprint 8.E 8 个独立 commit + Sprint 9.0 3 个 commit）
-- **HEAD**: `d10d5f9` — chore: pyproject.toml isort known_first_party autoc → claude_autosar
-- **测试**: **982 passed** / coverage **88.87%**（unit-only；新 dispatcher.py / _bsw_read_xdm 拉低 1.2pp；用户拍板不补，本轮推 8.E.1 plan）
+- **git**: 分支 `main`，17 commits（v0.3.0 published 后 + Sprint 8.E.1 2 commit + chore commits）
+- **HEAD**: `2726a2b` — test(autoc): Sprint 8.E.1 Task B — mcp_server.py direct tool handler tests
+- **测试**: **1535 passed** / coverage **90.38%**（unit-only；超 90.07% 目标 0.31pp）
 - **静态检查**: ruff / mypy strict 全清
 - **CI**: 5 jobs（lint / typecheck / security / test@py3.11+3.12 / build sanity）
+- **未拍板**：v0.3.1 tag（建议等 pyproject.toml bump 一起打）
 
 ## 关键决策（持久化的项目知识）
 
@@ -1177,12 +1180,76 @@ Sprint 9.1 实现正确（67 行都生成了），是 plan 数字 over-stated。
 - 修复：A 重指向 `2b0aa92` + B 改 classifier，重 build + 重传 ✓
 - 首次发布后 trusted publishing 留作后续版本（v0.3.1+）自动路径
 
+### Sprint 8.E.1 — Coverage 补测 → 90.38%（2026-06-15）✅
+
+按 plan `C:\Users\13777\.claude\plans\steady-covering-phoenix.md` 串行执行 4 task 中的 2 task，目标 ≥ 90.07% 在 Task B 后已达成，主 agent 按 plan §12.3 拍板跳过 Task C/D（边际收益递减）。
+
+**Task 拆分与执行**
+
+| Task | 范围 | 提交 | 5 target 增量 | 状态 |
+|---|---|---|---|---|
+| A | CLI error paths: `arxml_apply_template` + `xdm_apply_template` + `eb` + `davinci` + `lint` | `f92610a` | -184 missing lines（81% reduction） | ✅ 127 tests, 5 files |
+| B | `mcp_server.py` 直接 tool handler 单测（10+ top-level handler） | `2726a2b` | -65 missing lines（mcp_server 78% → 90%） | ✅ 53 tests, 1 file |
+| C | Inspector / apply / extract helper | — | （未执行） | ⏭️ 跳过 |
+| D | Small CLI tail | — | （未执行） | ⏭️ 跳过 |
+
+**Coverage 演进**
+
+```
+85.86% (v0.3.0 published) 
+  → 88.00% (实际跑；24 tests 残留差)
+  → 89.27% (Task A 后)
+  → 90.38% (Task B 后；超目标 0.31pp)
+```
+
+**5-stage verification 结果（Task B 后全量）**
+
+| Stage | 检查 | 结果 |
+|---|---|---|
+| 1 | `ruff check` + `isort --check` | ✅ All checks passed! |
+| 2 | `mypy --strict packages/autoc/src/claude_autosar` | ✅ 0 issues / 80 source files |
+| 3 | `pytest packages/autoc/tests` + coverage | ✅ 1535 passed / 0 fail / 90.38% |
+| 4 | byte-identity（XDM + ARXML） | ✅ Task A/B 不动产品代码，沿用 Task A 入库前 100% |
+| 5 | `bandit -r packages/autoc/src -q` | ✅ 0 issue |
+
+**新 test file 清单（6 个）**
+
+1. `packages/autoc/tests/unit/test_cli_apply_template_errors.py`（461 行，22 tests）
+2. `packages/autoc/tests/unit/test_cli_xdm_apply_template_errors.py`（464 行，15 tests）
+3. `packages/autoc/tests/unit/test_cli_eb_errors.py`（745 行，34 tests）
+4. `packages/autoc/tests/unit/test_cli_davinci_errors.py`（579 行，30 tests）
+5. `packages/autoc/tests/unit/test_cli_lint_errors.py`（640 行，26 tests）
+6. `packages/autoc/tests/unit/test_mcp_server_extra_coverage.py`（1204 行，53 tests）⚠️ 超 800 行 guideline（后续 code-review 可拆为 2 文件）
+
+**关键决策（user 拍板，2026-06-15）**
+
+| # | 决策项 | 拍板 |
+|---|---|---|
+| 1 | Task A / B 串行（不并发） | 避免 9.2-9.4 watchdog 死亡（当时 2 个 600s 死亡） |
+| 2 | Task C / D 跳过 | 90.07% 目标在 Task B 后已达成 + 边际收益递减（再 +50 lines 只能推到 ~91%） |
+| 3 | 不发 PyPI / 不打 tag | 等 user 拍板 v0.3.1 release（pyproject.toml bump 0.3.0 → 0.3.1 + 重建 + twine） |
+
+**2 commits**（按时间顺序）
+
+| # | hash | 任务 | 概要 |
+|---|---|---|---|
+| 1 | `f92610a` | Task A | 5 个 CLI error path test file；226 → 42 missing（-184 lines）|
+| 2 | `2726a2b` | Task B | mcp_server 直接 tool handler test file；118 → 53 missing（-65 lines）；1535 / 90.38% |
+
+**未完成 / 异常**
+
+- `test_mcp_server_extra_coverage.py` 行数 1204 > 800 guideline：agent 优先保 coverage 目标，code-review 阶段可拆为 2 文件（`test_mcp_server_errors.py` + `test_mcp_helpers.py`）。
+- v0.3.1 PyPI 发布：等 user 拍板（要 bump pyproject + build + twine）；trusted publishing 配好可走 GH Actions 自动化（v0.3.0 时跑通过但当时 classifier 修在 tag 之后，trust 路径只跑过一次）。
+- 1 pre-existing fail（`test_namespace_detection.py` 偶发 Windows mtime cache 失效）：在 Task A 跑后自然消失（lru_cache 重置）；如再次出现，跑前 `find . -name __pycache__ -exec rm -rf {} +` 清缓存。
+
+**Sprint 8.E.1 状态**：✅ 主体完成（2 commit + 1 plan + 0 product code change）
+
 **下一阶段候选**（plan §11 优先级，user 拍板后启动）：
 1. v2.1.1 EAS 工具集成（用户工程用了 EAS）
 2. v2.1.4 BswM 规则 + ComM 链路（v2 主体 M4 跑通后再补深度）
 3. ~~v2.6.1 PyPI 0.3.0 发布~~ — ✅ **2026-06-14 完成**（twine 首发 + classifier
    fix + GH Actions release.yml 修通；trusted publishing 留作 v0.3.1+ 自动化）
 4. v2.4.1 lint 10 → 39 条
-5. 8.E.1 coverage 补测（→ 90.07%；3 task 待 user 拍"串行/并行"启动）
+5. 8.E.1 coverage 补测（→ 90.07%；3 task 待 user 拍"串行/并行"启动）→ ✅ **2026-06-15 完成**（2 task：CLI error paths + mcp_server 直接 tool handler；90.38% / 1535 tests；C/D 跳过）
 
 

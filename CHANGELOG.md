@@ -5,6 +5,24 @@ documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-06-15 (Sprint 8.E.1 — Coverage 补测，待 user 拍板发 PyPI)
+
+### Maintenance
+
+- **Coverage 补测**：Sprint 8.E.1 串行执行 2 task（4 task 中 Task C/D 跳过，目标已达成 + 边际收益递减）。
+  - 2 commits：`f92610a` + `2726a2b`
+  - 6 新 test file：5 个 CLI error path（127 tests / -184 missing）+ 1 个 mcp_server 直接 tool handler（53 tests / -65 missing）
+  - Coverage：85.86% → **90.38%**（超 90.07% 目标 0.31pp）
+  - 测试总数：1331 → **1535 passed** / 0 fail
+  - **无产品代码变更**，纯补测
+- **5-stage verify 全过**：ruff 0 / mypy strict 0 / pytest 1535 / coverage 90.38% / byte-identity 100% 沿用
+
+### Notes
+
+- v0.3.1 release 待 user 拍板：pyproject.toml bump 0.3.0 → 0.3.1 + 重 build + twine（trusted publishing 配好可走 GH Actions 自动路径）
+- `test_mcp_server_extra_coverage.py` 行数 1204 > 800 guideline：code-review 阶段可拆为 2 文件
+- 1 pre-existing fail（`test_namespace_detection.py` Windows mtime cache 偶发）已消失（清缓存）
+
 ## [0.3.0] - 2026-06-14 (PUBLISHED to PyPI — Sprint 9.2/9.3/9.4/9.5 集成)
 
 ### Added
