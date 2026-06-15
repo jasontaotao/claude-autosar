@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>claude-autosar v0.3.0 — 安装与使用教程</title>
+<style>
+  :root{
+    --bg:#0e1116; --bg-soft:#161b22; --bg-card:#1b2230; --bg-code:#0b1118;
+    --fg:#e6edf3; --fg-soft:#9aa6b2; --fg-dim:#6e7681;
+    --border:#30363d; --accent:#58a6ff; --accent-2:#7ee787; --warn:#ffa657;
+    --danger:#ff7b72; --shadow:0 1px 0 rgba(0,0,0,.4);
+    --radius:10px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,pre,kbd,samp{font-family:var(--mono);font-size:13.5px}
+  code{background:var(--bg-code);padding:2px 6px;border-radius:5px;color:#d2a8ff;
+    border:1px solid var(--border);white-space:nowrap}
+  pre{background:var(--bg-code);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;overflow:auto;line-height:1.55;color:#e6edf3;
+    box-shadow:var(--shadow)}
+  pre code{background:transparent;border:0;padding:0;color:inherit;white-space:pre}
+  .page{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.hero{background:linear-gradient(180deg,#161b22 0%,transparent 100%);
+    border-bottom:1px solid var(--border);padding:48px 0 32px;margin-bottom:24px}
+  header.hero h1{font-size:32px;margin:0 0 6px;letter-spacing:-.3px}
+  header.hero p.lead{margin:6px 0 16px;color:var(--fg-soft);font-size:15.5px;max-width:780px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .meta .tag{background:var(--bg-card);border:1px solid var(--border);border-radius:999px;
+    padding:3px 10px;font-size:12px;color:var(--fg-soft)}
+  .meta .tag.ok{color:var(--accent-2);border-color:#2ea043}
+  .meta .tag.warn{color:var(--warn);border-color:#9e6a03}
+  .meta .tag.info{color:var(--accent);border-color:#1f6feb}
+  nav.toc{background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 18px;margin:0 0 28px;position:sticky;top:0;z-index:5;backdrop-filter:blur(8px)}
+  nav.toc h4{margin:0 0 8px;font-size:13px;color:var(--fg-dim);letter-spacing:.4px;text-transform:uppercase}
+  nav.toc ol{margin:0;padding-left:20px;columns:3;column-gap:24px}
+  nav.toc li{margin:3px 0;break-inside:avoid}
+  nav.toc a{color:var(--fg-soft);font-size:13.5px}
+  nav.toc a:hover{color:var(--accent)}
+  section{scroll-margin-top:90px;margin:0 0 44px}
+  section h2{font-size:24px;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  section h3{font-size:18px;margin:26px 0 10px;color:#e6edf3}
+  section h4{font-size:15px;margin:18px 0 8px;color:var(--fg-soft)}
+  section p{margin:8px 0;color:#d0d7de}
+  section ul,section ol{padding-left:22px;color:#d0d7de}
+  section li{margin:4px 0}
+  section table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  section th,section td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  section th{background:var(--bg-soft);color:var(--fg-soft);font-weight:600;font-size:13px}
+  section tr:hover td{background:rgba(255,255,255,.02)}
+  .callout{border-left:4px solid var(--accent);background:var(--bg-card);
+    border-radius:0 var(--radius) var(--radius) 0;padding:12px 16px;margin:14px 0}
+  .callout.warn{border-color:var(--warn)}
+  .callout.danger{border-color:var(--danger)}
+  .callout.ok{border-color:var(--accent-2)}
+  .callout strong{color:#fff}
+  .callout p{margin:4px 0}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+  .card h4{margin:0 0 6px;font-size:14.5px;color:var(--accent)}
+  .card p{margin:0;font-size:13.5px;color:var(--fg-soft)}
+  .rule{display:grid;grid-template-columns:130px 1fr 100px;gap:8px;padding:8px 0;
+    border-bottom:1px dashed var(--border);font-size:13.5px}
+  .rule .id{font-family:var(--mono);color:var(--accent);font-weight:600}
+  .rule .ns{font-family:var(--mono);color:var(--fg-soft);font-size:12px;align-self:center;text-align:right}
+  .rule .ns.arxml{color:#7ee787}.rule .ns.xdm{color:#ffa657}
+  .tree{background:var(--bg-code);border:1px solid var(--border);border-radius:var(--radius);
+    padding:12px 14px;font-family:var(--mono);font-size:13px;line-height:1.7;color:#d0d7de;white-space:pre}
+  footer{border-top:1px solid var(--border);padding:20px 0 40px;color:var(--fg-dim);
+    font-size:13px;text-align:center;margin-top:40px}
+  @media (max-width:760px){
+    nav.toc ol{columns:1}
+    header.hero h1{font-size:24px}
+    .rule{grid-template-columns:1fr;gap:2px}
+    .rule .ns{text-align:left}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="page">
+    <h1>claude-autosar <span style="color:var(--accent-2)">v0.3.0</span> 安装与使用教程</h1>
+    <p class="lead">
+      AUTOSAR BSW 配置 <b>双格式 IO</b>（<code>.arxml</code> + <code>.xdm</code>）的 Python CLI + Claude Code 插件。
+      本教程基于本地仓库 <code>D:\claude_proj2\autoc-cc\</code>（HEAD <code>c597874</code> + tag <code>v0.3.0</code>）。
+    </p>
+    <div class="meta">
+      <span class="tag ok">1331 tests pass</span>
+      <span class="tag ok">coverage 85.86%</span>
+      <span class="tag ok">ruff + mypy strict 0 issue</span>
+      <span class="tag info">Python ≥ 3.11</span>
+      <span class="tag info">MIT License</span>
+      <span class="tag ok">v0.3.0 PUBLISHED to PyPI</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc page">
+  <h4>目录</h4>
+  <ol>
+    <li><a href="#overview">项目概览</a></li>
+    <li><a href="#prereq">前置条件</a></li>
+    <li><a href="#install-pkg">安装 Python 包</a></li>
+    <li><a href="#install-plugin">加载 Claude Code 插件</a></li>
+    <li><a href="#verify">安装验证</a></li>
+    <li><a href="#cli">CLI 子命令</a></li>
+    <li><a href="#mcp">MCP 工具</a></li>
+    <li><a href="#plugin-cmds">插件斜杠命令</a></li>
+    <li><a href="#plugin-skills">插件技能 / Agent</a></li>
+    <li><a href="#lint">10 条 Lint 规则</a></li>
+    <li><a href="#e2e">端到端示例</a></li>
+    <li><a href="#dev">开发与测试</a></li>
+    <li><a href="#trouble">排错指南</a></li>
+    <li><a href="#uninstall">卸载</a></li>
+  </ol>
+</nav>
+
+<div class="page">
+
+<!-- ============== 1. 概览 ============== -->
+<section id="overview">
+  <h2>1. 项目概览</h2>
+  <p>
+    <code>claude-autosar</code> 是 <a href="https://www.autoc-tool.com/">autoc-tool.com</a> 的 Python 复刻版，外加 Claude Code 插件外壳。
+    仓库采用 monorepo：Python 核心 + Claude Code 插件。v0.3.0（Sprint 9.5 集成）交付 M1-T / M3 / M4 三大模块，<b>已发布到 PyPI</b>。
+  </p>
+  <ul>
+    <li><b>M1-T 双格式模板 diff + apply</b>：<code>.arxml</code> 和 <code>.xdm</code> 模板对比与回写</li>
+    <li><b>M3 verify 增强</b>：EB tresos <code>verify</code> 输出的结构化解析（6 类正则 + 严重度）</li>
+    <li><b>M4 lint 10 规则</b>：8 条 arxml 规则 + 2 条 xdm 规则，<code>applies_to</code> 命名空间过滤</li>
+  </ul>
+
+  <h3>仓库结构</h3>
+  <div class="tree">autoc-cc/
+├── pyproject.toml                # workspace 根
+├── packages/
+│   ├── autoc/                    # Python CLI 核心（已发布 claude-autosar 0.3.0）
+│   │   ├── pyproject.toml        # name = claude-autosar, version 0.3.0
+│   │   ├── src/claude_autosar/   # 13 个 CLI 子命令 + MCP server
+│   │   │   ├── cli/main.py       # argparse 入口
+│   │   │   ├── cli/mcp_server.py # FastMCP stdio server
+│   │   │   ├── core/bsw/         # IO / dispatcher / lint / templates / verify
+│   │   │   └── core/{config,session,log,settings}/
+│   │   ├── tests/                # 1331 个测试
+│   │   └── dist/                 # ⚠️ 旧产物（autoc-0.1.0-*），重 build 才是新名
+│   └── plugin/                   # Claude Code 插件外壳
+│       └── plugins/claude-autosar/
+│           ├── .claude-plugin/plugin.json
+│           ├── commands/         # 7 个斜杠命令
+│           ├── agents/           # bsw-config Agent
+│           ├── skills/           # 7 个技能
+│           ├── hooks/            # ARXML guard / XDM verify
+│           └── docs/             # install / dev-guide / troubleshooting
+├── tresos_home/                  # 离线 EB 工程样本
+├── dist/                         # 顶层 wheel/sdist 备份（同上旧产物）
+└── docs/                         # 项目文档
+</div>
+
+  <h3>PyPI 状态</h3>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>项目地址</td><td><a href="https://pypi.org/project/claude-autosar/">pypi.org/project/claude-autosar</a></td></tr>
+    <tr><td>当前版本</td><td><code>0.3.0</code>（2026-06-14T00:49 UTC 上线）</td></tr>
+    <tr><td>wheel</td><td><code>claude_autosar-0.3.0-py3-none-any.whl</code> 200 KB</td></tr>
+    <tr><td>sdist</td><td><code>claude_autosar-0.3.0.tar.gz</code> 151 KB</td></tr>
+    <tr><td>Python 兼容</td><td>3.11 / 3.12 / 3.13</td></tr>
+    <tr><td>License</td><td>MIT</td></tr>
+  </table>
+</section>
+
+<!-- ============== 2. 前置 ============== -->
+<section id="prereq">
+  <h2>2. 前置条件</h2>
+  <table>
+    <tr><th>依赖</th><th>最低版本</th><th>是否必须</th><th>说明</th></tr>
+    <tr><td>Python</td><td>3.11+</td><td>必需</td><td>用了 <code>dict | None</code>、<code>tomllib</code>、<code>match-case</code></td></tr>
+    <tr><td>Claude Code</td><td>0.2.0+</td><td>必需（用插件时）</td><td>支持 plugin marketplace</td></tr>
+    <tr><td>lxml</td><td>5.0+</td><td>自动安装</td><td>ARXML 解析 + guard hook</td></tr>
+    <tr><td>cantools</td><td>39.0+</td><td>自动安装</td><td>DBC 解析</td></tr>
+    <tr><td>rich</td><td>13.0+</td><td>自动安装</td><td>终端输出美化</td></tr>
+    <tr><td>mcp</td><td>0.9+</td><td>自动安装</td><td>MCP server（FastMCP）</td></tr>
+    <tr><td>EB tresos Studio</td><td>24.x / 26.x</td><td>可选</td><td>改 EB 工程时需要</td></tr>
+    <tr><td>Vector DaVinci Configurator</td><td>5.x</td><td>可选</td><td>改 DaVinci 工程时需要</td></tr>
+  </table>
+  <div class="callout ok">
+    <strong>检查 Python 版本</strong>
+    <pre><code>python --version    # 应 ≥ Python 3.11.0
+where python       # Windows
+which python       # macOS / Linux</code></pre>
+  </div>
+</section>
+
+<!-- ============== 3. 安装 Python 包 ============== -->
+<section id="install-pkg">
+  <h2>3. 安装 Python 包</h2>
+
+  <h3>3.1 从 PyPI 安装（推荐 - 一行搞定）</h3>
+  <p><code>claude-autosar 0.3.0</code> 已于 <b>2026-06-14</b> 上线 PyPI，全世界 <code>pip install</code> 即可：</p>
+  <pre><code>pip install claude-autosar==0.3.0
+
+# 验证
+claude-autosar --version
+# → claude-autosar 0.3.0
+
+python -c "import claude_autosar; print(claude_autosar.__file__)"
+# → .../site-packages/claude_autosar/__init__.py</code></pre>
+  <p>产物信息（来自 <a href="https://pypi.org/pypi/claude-autosar/json">PyPI JSON API</a>）：</p>
+  <table>
+    <tr><th>文件名</th><th>大小</th><th>上传时间</th></tr>
+    <tr><td><code>claude_autosar-0.3.0-py3-none-any.whl</code></td><td>200 KB</td><td>2026-06-14T00:49:47Z</td></tr>
+    <tr><td><code>claude_autosar-0.3.0.tar.gz</code></td><td>151 KB</td><td>2026-06-14T00:49:48Z</td></tr>
+  </table>
+
+  <h3>3.2 从本地源码安装（开发场景 - 改源码即生效）</h3>
+  <p>从仓库根 editable install 绑定源码（适合改 Python 核心 / 跑 5-stage 验证）：</p>
+  <pre><code>cd D:\claude_proj2\autoc-cc
+
+# editable install 含 dev 依赖（pytest / ruff / mypy / black / isort / bandit / pre-commit）
+pip install -e packages\autoc[dev]
+
+# 验证 CLI 进入 PATH
+claude-autosar --version
+# → claude-autosar 0.3.0
+
+claude-autosar --help
+# → 列出 13 个子命令</code></pre>
+
+  <h3>3.3 从本地 wheel / sdist 离线安装（生产/内网）</h3>
+  <p>仓库根 <code>dist/</code> 现有产物仍是早期构建的旧版（文件名 <code>autoc-0.1.0-*</code>，66KB+51KB），<b>未上传 PyPI</b>。
+  PyPI 上的新版 <code>claude_autosar-0.3.0-*</code>（200KB+151KB）已发布。
+  若要在本地重新构建一份同名 wheel：</p>
+  <pre><code>cd D:\claude_proj2\autoc-cc
+rm dist\*
+cd packages\autoc
+python -m build
+# → dist\claude_autosar-0.3.0-py3-none-any.whl
+# → dist\claude_autosar-0.3.0.tar.gz
+
+cd ..\..
+pip install --force-reinstall dist\claude_autosar-0.3.0-py3-none-any.whl
+claude-autosar --version   # → claude-autosar 0.3.0</code></pre>
+
+  <h3>3.4 升级 / 重装</h3>
+  <pre><code># 从 PyPI 升级
+pip install --upgrade claude-autosar
+
+# 从本地源码重装（含 dev 依赖）
+pip install --upgrade --force-reinstall -e D:\claude_proj2\autoc-cc\packages\autoc[dev]
+
+# 从本地 wheel 重装（重 build 后）
+pip install --upgrade --force-reinstall D:\claude_proj2\autoc-cc\dist\claude_autosar-0.3.0-py3-none-any.whl</code></pre>
+
+  <h3>3.5 v0.3.0 已发布但 4 处小瑕疵（用户决定"先不动"）</h3>
+  <table>
+    <tr><th>#</th><th>瑕疵</th><th>影响</th><th>修法</th></tr>
+    <tr>
+      <td>1</td>
+      <td><b>本地 <code>dist/</code> 是旧产物</b>：<code>autoc-0.1.0-*.whl</code> 66KB + 51KB</td>
+      <td>仅本地产物失真；PyPI 上 v0.3.0 不受影响</td>
+      <td>重新 <code>rm dist/* && python -m build</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><b><code>project_urls</code> 错指</b> <code>autoc-cc/autoc-cc</code>，实际 remote 是 <code>jasontaotao/claude-autosar</code></td>
+      <td>PyPI 页面 README 链接点过去 404</td>
+      <td>改 <code>pyproject.toml</code> 重新发布（PyPI 链接不可 in-place 改）</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><b>没签名</b>（<code>sig=False</code>）</td>
+      <td>下游 <code>pip install --require-hashes</code> 不能验证</td>
+      <td>配 GPG key + <code>twine upload --sign</code></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><b>PyPI <code>description</code> 还停留在 Sprint 2 旧 README</b>（"不可变数据模型"）</td>
+      <td>PyPI 项目页第一眼是老版文档</td>
+      <td>同 #2，发 0.3.1 时一起修</td>
+    </tr>
+  </table>
+  <div class="callout">
+    <strong>本次决策：先不动</strong>
+    <p>4 处瑕疵不影响 v0.3.0 安装 / 使用，等下次 release（0.3.1 或 0.4.0）一起清理。</p>
+  </div>
+</section>
+
+<!-- ============== 4. 加载插件 ============== -->
+<section id="install-plugin">
+  <h2>4. 加载 Claude Code 插件</h2>
+
+  <h3>方式 A：local plugin dir（开发推荐）</h3>
+  <p>从仓库根启动 Claude Code 并显式指定插件目录：</p>
+  <pre><code>cd D:\claude_proj2\autoc-cc
+claude --plugin-dir .\packages\plugin\plugins\claude-autosar --debug</code></pre>
+  <p>启动后 session 顶部应出现 <code>SessionStart</code> hook 输出：</p>
+  <pre><code>[claude-autosar plugin] SessionStart hook detected project:
+- EB tresos 工程（.project）
+- 用 `/claude-autosar:eb-save` 改参</code></pre>
+
+  <h3>方式 B：marketplace + install（生产）</h3>
+  <pre><code># 1. 在 Claude Code 对话中加 marketplace
+&gt; /plugin marketplace add D:\claude_proj2\autoc-cc\packages\plugin
+
+# 2. 安装 claude-autosar 插件
+&gt; /plugin install claude-autosar
+
+# 3. 验证
+&gt; /plugin validate claude-autosar
+&gt; /plugin list</code></pre>
+  <p>应看到：</p>
+  <pre><code>installed plugins:
+  - claude-autosar (0.1.0)  ✓ valid</code></pre>
+</section>
+
+<!-- ============== 5. 验证 ============== -->
+<section id="verify">
+  <h2>5. 安装验证</h2>
+  <h3>5.1 5-Stage 验证（与 CI 对齐）</h3>
+  <pre><code>cd D:\claude_proj2\autoc-cc
+
+# Stage 1: format check
+ruff check packages\autoc\src packages\autoc\tests
+black --check packages\autoc\src packages\autoc\tests
+isort --check-only packages\autoc\src packages\autoc\tests
+
+# Stage 2: type check (strict)
+mypy --strict packages\autoc\src\claude_autosar
+
+# Stage 3: tests + coverage
+pytest packages\autoc\tests --cov=packages\autoc\src\claude_autosar --cov-fail-under=80
+
+# Stage 4: byte-identity
+pytest packages\autoc\tests\test_arxml_byte_identity.py -v
+
+# Stage 5: 端到端（用户工程）
+claude-autosar lint .\tresos_home\Can\Can_simple.arxml
+claude-autosar bsw-verify --project D:\claude_proj2\src\S32K148_EAS_EB_3399A</code></pre>
+
+  <h3>5.2 端到端冒烟（隔离 venv + PyPI 装）</h3>
+  <pre><code>python -m venv .venv-smoke
+.venv-smoke\Scripts\activate
+pip install claude-autosar==0.3.0
+claude-autosar --version
+# → claude-autosar 0.3.0
+deactivate</code></pre>
+
+  <h3>5.3 验证 PyPI 装出来的可发现性</h3>
+  <pre><code>python -c "import claude_autosar; print(claude_autosar.__file__)"
+claude-autosar --help
+# → 13 个子命令
+claude-autosar lint --help
+# → 列出 --rule / --severity / --html 选项</code></pre>
+</section>
+
+<!-- ============== 6. CLI ============== -->
+<section id="cli">
+  <h2>6. CLI 子命令（共 13 个）</h2>
+  <p>CLI 入口：<code>claude-autosar &lt;sub&gt; [args...]</code>，全局参数 <code>--project</code> / <code>--verbose</code> / <code>--no-color</code>。</p>
+
+  <table>
+    <tr><th>分类</th><th>子命令</th><th>作用</th></tr>
+    <tr><td rowspan="2">工程初始化</td><td><code>init</code></td><td>在当前目录创建 <code>.claude-autosar/</code> 工作区</td></tr>
+    <tr><td><code>session</code></td><td>管理 session（list / show / new / archive）</td></tr>
+    <tr><td rowspan="2">配置 IO</td><td><code>eb &lt;read|write|verify|list-modules&gt;</code></td><td>EB tresos <code>.xdm</code> + <code>.arxml</code> 读写与 verify</td></tr>
+    <tr><td><code>davinci &lt;read|write|verify&gt;</code></td><td>DaVinci 工程读写与 verify</td></tr>
+    <tr><td rowspan="3">检查 / 浏览</td><td><code>arxml-inspect &lt;file.arxml&gt;</code></td><td>ARXML 提取 IPdu / Signal / E2E Profile + lint section</td></tr>
+    <tr><td><code>xdm-inspect &lt;file.xdm&gt;</code></td><td>XDM 提取 containers / leaves + lint section</td></tr>
+    <tr><td><code>bsw-inspect &lt;path&gt;</code></td><td>自动检测 arxml / xdm 并 inspect（含 lint section）</td></tr>
+    <tr><td rowspan="2">模板 diff</td><td><code>arxml-apply-template --dry-run</code></td><td>ARXML 模板对比 + 报告（HTML 输出）</td></tr>
+    <tr><td><code>xdm-apply-template --apply</code></td><td>XDM 模板写回</td></tr>
+    <tr><td rowspan="2">验证 / Lint</td><td><code>lint &lt;path&gt;</code></td><td>10 条规则（8 arxml + 2 xdm），支持 <code>--rule</code> / <code>--severity</code> 过滤 + HTML 报告</td></tr>
+    <tr><td><code>bsw-verify</code></td><td>EB tresos <code>verify</code> 结构化解析（severity / code / file / module）</td></tr>
+    <tr><td rowspan="2">导出 / 日志</td><td><code>export</code></td><td>导出 session / 配置 / 日志</td></tr>
+    <tr><td><code>log</code></td><td>查看 plugin / CLI 日志</td></tr>
+  </table>
+
+  <h3>常用示例</h3>
+  <pre><code># 1) lint 单个文件，输出 ERROR 级问题
+claude-autosar lint .\tresos_home\Can\Can_simple.arxml --severity ERROR
+
+# 2) lint 整个工程目录
+claude-autosar lint .\tresos_home\ --html report.html
+
+# 3) 只跑 COM-AP-001 规则
+claude-autosar lint .\tresos_home\Com\Com_Com.arxml --rule COM-AP-001
+
+# 4) 模板 diff (dry-run)
+claude-autosar arxml-apply-template --base Can_simple.arxml --template Can_template.arxml --dry-run -o diff.html
+
+# 5) 模板 apply
+claude-autosar xdm-apply-template --base Can_simple.xdm --template Can_template.xdm --apply
+
+# 6) 读 .xdm 看 modules
+claude-autosar eb list-modules --project D:\claude_proj2\src\S32K148_EAS_EB_3399A
+
+# 7) 改一个参数
+claude-autosar eb write --module Mcu --param Mcu/ClockSettingConfig_0/McuClockReferencePointFrequency=80000000
+
+# 8) verify
+claude-autosar bsw-verify --project D:\claude_proj2\src\S32K148_EAS_EB_3399A --chip-derivative S32K148 --mcal-vendor NXP</code></pre>
+</section>
+
+<!-- ============== 7. MCP ============== -->
+<section id="mcp">
+  <h2>7. MCP 工具</h2>
+  <p>CLI 内置 FastMCP stdio server（<code>python -m claude_autosar.cli.mcp_server</code>），Claude Code 通过 <code>.mcp.json</code> 自动注册为工具。</p>
+
+  <h3>工具列表</h3>
+  <div class="grid">
+    <div class="card"><h4>bsw_read</h4><p>读取 BSW 配置（自动检测 arxml / xdm），返回模块树 + key params。</p></div>
+    <div class="card"><h4>bsw_write</h4><p>写 BSW 参数，<code>preserve_format=True</code> 保留字节级格式。</p></div>
+    <div class="card"><h4>bsw_verify</h4><p>EB tresos <code>verify</code> 结构化结果（severity 排序 + module 推断）。</p></div>
+    <div class="card"><h4>bsw_autocalc</h4><p>触发 EB autocalc，刷新派生参数。</p></div>
+    <div class="card"><h4>arxml_validate</h4><p>ARXML schema 校验 + IPdu / Signal / E2E 提取。</p></div>
+    <div class="card"><h4>arxml_apply_template</h4><p>ARXML 模板 diff + apply，<code>--dry-run</code> / <code>--apply</code>。</p></div>
+    <div class="card"><h4>xdm_inspect</h4><p>XDM 容器 / 叶子节点提取 + lint section。</p></div>
+    <div class="card"><h4>xdm_apply_template</h4><p>XDM 模板 diff + apply，<code>preserve_format=True</code>。</p></div>
+    <div class="card"><h4>dbc_parse</h4><p>DBC 解析（cantools），返回 message / signal 列表。</p></div>
+    <div class="card"><h4>lint</h4><p>10 条规则，<code>--rule</code> / <code>--severity</code> 过滤。</p></div>
+    <div class="card"><h4>session_list / show / export</h4><p>Session 元数据查询 + 导出。</p></div>
+    <div class="card"><h4>log_export</h4><p>导出 plugin / CLI 日志为 JSONL / Markdown。</p></div>
+  </div>
+
+  <h3>手动启动 MCP server（调试用）</h3>
+  <pre><code>python -m claude_autosar.cli.mcp_server
+# 应进入 stdio 监听，不打印 banner</code></pre>
+
+  <h3>.mcp.json 示例</h3>
+  <pre><code>{
+  "mcpServers": {
+    "claude-autosar": {
+      "command": "python",
+      "args": ["-m", "claude_autosar.cli.mcp_server"],
+      "env": {
+        "PYTHONPATH": "D:/claude_proj2/autoc-cc/packages/autoc/src"
+      }
+    }
+  }
+}</code></pre>
+</section>
+
+<!-- ============== 8. 插件命令 ============== -->
+<section id="plugin-cmds">
+  <h2>8. 插件斜杠命令</h2>
+  <p>在 Claude Code 对话中以 <code>/claude-autosar:&lt;cmd&gt;</code> 触发（共 7 个）：</p>
+
+  <table>
+    <tr><th>命令</th><th>作用</th><th>典型用法</th></tr>
+    <tr>
+      <td><code>/claude-autosar:bsw-config</code></td>
+      <td>BSW 模块配置入口（重点：改参 / 读参 / 触发 verify）</td>
+      <td><code>/claude-autosar:bsw-config --module Mcu --param Mcu/ClockSettingConfig_0/McuClockReferencePointFrequency=80000000</code></td>
+    </tr>
+    <tr>
+      <td><code>/claude-autosar:eb-save</code></td>
+      <td>EB tresos 工程：保存 + 自动 verify + lint</td>
+      <td><code>/claude-autosar:eb-save</code></td>
+    </tr>
+    <tr>
+      <td><code>/claude-autosar:davinci-verify</code></td>
+      <td>DaVinci 工程 verify</td>
+      <td><code>/claude-autosar:davinci-verify</code></td>
+    </tr>
+    <tr>
+      <td><code>/claude-autosar:arxml-validate</code></td>
+      <td>单文件 ARXML 验证 + lint</td>
+      <td><code>/claude-autosar:arxml-validate ./Can_Com.arxml</code></td>
+    </tr>
+    <tr>
+      <td><code>/claude-autosar:export</code></td>
+      <td>导出 session / 配置 / 日志</td>
+      <td><code>/claude-autosar:export session</code></td>
+    </tr>
+    <tr>
+      <td><code>/claude-autosar:log</code></td>
+      <td>查看 plugin / CLI 日志</td>
+      <td><code>/claude-autosar:log tail -n 50</code></td>
+    </tr>
+    <tr>
+      <td><code>/claude-autosar:session-tree</code></td>
+      <td>展示 session 树状结构</td>
+      <td><code>/claude-autosar:session-tree</code></td>
+    </tr>
+  </table>
+</section>
+
+<!-- ============== 9. 技能 / Agent ============== -->
+<section id="plugin-skills">
+  <h2>9. 插件技能 / Agent</h2>
+  <p>插件在 Claude Code 上下文内提供 7 个技能（按需自动加载）+ 1 个 Agent。</p>
+
+  <h3>技能清单</h3>
+  <table>
+    <tr><th>技能</th><th>触发场景</th></tr>
+    <tr><td><code>arxml-format</code></td><td>讨论 ARXML 格式 / namespace / 元素顺序</td></tr>
+    <tr><td><code>autosar-naming</code></td><td>AUTOSAR 命名规范 / 缩写 / ECU ID 规则</td></tr>
+    <tr><td><code>bsw-knowledge</code></td><td>BSW 模块行为、API、配置参数背景</td></tr>
+    <tr><td><code>change-traceability</code></td><td>需求 → 设计 → 配置的追溯</td></tr>
+    <tr><td><code>davinci-configurator</code></td><td>DaVinci 工具链 / Davinci.cfg 解析</td></tr>
+    <tr><td><code>dbc-can</code></td><td>CAN / DBC 信号 / 网络管理</td></tr>
+    <tr><td><code>eb-tresos</code></td><td>EB tresos 工具链 / <code>tresos_cmd</code> / xdm 规范</td></tr>
+  </table>
+
+  <h3>Agent</h3>
+  <ul>
+    <li><b>bsw-config</b>：自动委派 BSW 配置任务给本地 Python CLI；<br>
+    使用方式：<code>/claude-autosar:bsw-config &lt;需求描述&gt;</code> 或在对话中提到 <code>@bsw-config</code>。</li>
+  </ul>
+</section>
+
+<!-- ============== 10. Lint ============== -->
+<section id="lint">
+  <h2>10. 10 条 Lint 规则</h2>
+  <p>v0.3.0 内置 10 条 lint 规则，每条带 <code>applies_to</code> 标签（<code>arxml</code> / <code>xdm</code> / <code>both</code>），自动按文件类型过滤。
+  数据缺字段时 <b>skip 返回 0 violation</b>（不误报优先）。</p>
+
+  <h3>ARXML 规则（8 条）</h3>
+  <div class="rule"><span class="id">COM-AP-001</span><span>ComSignal &gt; 8 byte 在经典 CAN 失败（CAN FD 才允许）</span><span class="ns arxml">arxml</span></div>
+  <div class="rule"><span class="id">COM-AP-002</span><span>E2E Profile 缺失或未引用有效 ProfileConfig</span><span class="ns arxml">arxml</span></div>
+  <div class="rule"><span class="id">CanIf-AP-007</span><span>软件全开 + 硬件全关：可能导致 CPU 风暴</span><span class="ns arxml">arxml</span></div>
+  <div class="rule"><span class="id">CanIf-AP-008</span><span>CAN-FD length mismatch（PDU length vs DLC）</span><span class="ns arxml">arxml</span></div>
+  <div class="rule"><span class="id">ECUM-AP-001</span><span>EcuM RunRequest 死锁：循环引用未释放</span><span class="ns arxml">arxml</span></div>
+  <div class="rule"><span class="id">ECUM-AP-003</span><span>POSTBUILD variant 缺失（生产配置无 variant）</span><span class="ns arxml">arxml</span></div>
+  <div class="rule"><span class="id">GEN-AP-002</span><span>BswM 自循环 action / rule（A 触发 A）</span><span class="ns arxml">arxml</span></div>
+  <div class="rule"><span class="id">NM-AP-001</span><span>CanNm 报文未在 ComM 引用（孤儿 NmPdu）</span><span class="ns arxml">arxml</span></div>
+
+  <h3>XDM 规则（2 条）</h3>
+  <div class="rule"><span class="id">DEM-AP-001</span><span>DemEventMemoryEntry 的 StorageAddress 越出 Flash 范围</span><span class="ns xdm">xdm</span></div>
+  <div class="rule"><span class="id">DEM-AP-004</span><span>DemFreezeFrameFreezeFrameClassMaxLength &gt; 255 byte 触发 UDS 限制</span><span class="ns xdm">xdm</span></div>
+
+  <h3>运行 lint</h3>
+  <pre><code># 单文件
+claude-autosar lint .\tresos_home\Com\Com_Com.arxml
+
+# 整个工程 + HTML 报告
+claude-autosar lint .\tresos_home\ --html .\lint_report.html
+
+# 按规则过滤
+claude-autosar lint .\tresos_home\ --rule COM-AP-001
+
+# 按严重度过滤
+claude-autosar lint .\tresos_home\ --severity ERROR
+
+# MCP 调用
+&gt; 用 lint 工具扫 ./tresos_home，规则 COM-AP-001, COM-AP-002</code></pre>
+</section>
+
+<!-- ============== 11. 端到端 ============== -->
+<section id="e2e">
+  <h2>11. 端到端示例（用户工程 S32K148_EAS_EB_3399A）</h2>
+  <p>v0.3.0 已在用户工程 <code>D:/claude_proj2/src/S32K148_EAS_EB_3399A/</code> 完成端到端验证（<b>Com_Com.arxml: 67 IPdu + 0 Signal</b>，跨模块聚合 <code>109+103</code>）。
+  一个典型流程：</p>
+
+  <pre><code>cd D:\claude_proj2\src\S32K148_EAS_EB_3399A
+
+# 1) 列模块
+claude-autosar eb list-modules
+# → BswM / Can / CanIf / Com / ComM / Dem / Det / EcuC / ...
+
+# 2) 读 Can 模块
+claude-autosar arxml-inspect .\Can_Plugin\Can\Can_Can.arxml --lint | head -50
+# → IPdu 列表 / Signal 列表 / E2E Profile / lint section
+
+# 3) 改一个参数
+claude-autosar eb write --module Can \
+  --param Can/CanConfigSet/CanController/CanController0/CanControllerBaudRate=500000
+
+# 4) verify
+claude-autosar bsw-verify --chip-derivative S32K148 --mcal-vendor NXP
+# → TresosVerifyReport: success / issue_count / has_errors / has_warnings
+
+# 5) lint 整个工程
+claude-autosar lint .\ --html .\lint.html
+# → 8 arxml rules + 2 xdm rules filtered per file type
+
+# 6) MCP 通道：对话式
+# &gt; 帮我把 CanController0 的 baud rate 改成 500000 然后跑 verify 和 lint
+# Claude 自动委派 bsw-config Agent → bsw_write / bsw_verify / lint MCP tools</code></pre>
+</section>
+
+<!-- ============== 12. 开发 ============== -->
+<section id="dev">
+  <h2>12. 开发与测试</h2>
+
+  <h3>12.1 项目布局</h3>
+  <pre><code>packages\autoc\
+├── pyproject.toml                # name=claude-autosar 0.3.0, deps, scripts
+├── src\claude_autosar\
+│   ├── cli\{main,mcp_server,repl_skin}.py
+│   ├── cli\commands\             # 13 个子命令
+│   └── core\bsw\
+│       ├── arxml_io.py           # lxml-based ARXML IO
+│       ├── dispatcher.py         # 自动检测 arxml / xdm
+│       ├── templates\{arxml,xdm,apply}_*  # M1-T
+│       ├── lint\                 # M4
+│       ├── verify\               # M3
+│       └── inspector\
+└── tests\
+    ├── unit\                     # 单测
+    ├── integration\              # 集成
+    ├── fixtures\                 # Can_simple / Com_Com / Dem / 等
+    └── conftest.py</code></pre>
+
+  <h3>12.2 常用命令</h3>
+  <table>
+    <tr><th>操作</th><th>命令</th></tr>
+    <tr><td>单测</td><td><code>pytest packages\autoc\tests</code></td></tr>
+    <tr><td>Coverage（≥ 80%）</td><td><code>pytest --cov=packages\autoc\src\claude_autosar --cov-fail-under=80</code></td></tr>
+    <tr><td>Lint</td><td><code>ruff check packages\autoc\src packages\autoc\tests</code></td></tr>
+    <tr><td>Format</td><td><code>black packages\autoc\src packages\autoc\tests</code></td></tr>
+    <tr><td>Import sort</td><td><code>isort packages\autoc\src packages\autoc\tests</code></td></tr>
+    <tr><td>Type check</td><td><code>mypy --strict packages\autoc\src\claude_autosar</code></td></tr>
+    <tr><td>Security</td><td><code>bandit -r packages\autoc\src\claude_autosar -ll</code></td></tr>
+    <tr><td>Pre-commit</td><td><code>pre-commit install</code>（首次） / <code>pre-commit run --all-files</code></td></tr>
+  </table>
+
+  <h3>12.3 构建 wheel / sdist</h3>
+  <pre><code>cd packages\autoc
+python -m build
+# → dist\claude_autosar-0.3.0-py3-none-any.whl
+# → dist\claude_autosar-0.3.0.tar.gz
+
+# PEP 561 py.typed 已自动包含
+# `pip install` 后其它项目 `import claude_autosar` 即可拿到类型提示</code></pre>
+
+  <h3>12.4 当前测试规模</h3>
+  <ul>
+    <li><b>1331 tests pass</b>（无 skip / xfail）</li>
+    <li><b>Coverage 85.86%</b>（高于 80% 阈值）</li>
+    <li><b>5-stage verification</b>：ruff / mypy strict / pytest / byte-identity / 端到端</li>
+  </ul>
+</section>
+
+<!-- ============== 13. 排错 ============== -->
+<section id="trouble">
+  <h2>13. 排错指南</h2>
+
+  <h3>13.1 <code>claude-autosar</code> 不在 PATH</h3>
+  <p><b>症状</b>：<code>'claude-autosar' 不是内部或外部命令</code> / plugin 报 <code>未跑 verify：claude-autosar CLI 不在 PATH</code></p>
+  <pre><code># A 路径：从 PyPI 装（推荐）
+pip install claude-autosar==0.3.0
+claude-autosar --version    # → claude-autosar 0.3.0
+
+# B 路径：从本地源码装
+pip install -e D:\claude_proj2\autoc-cc\packages\autoc[dev]
+where claude-autosar        # Windows</code></pre>
+
+  <h3>13.2 加载插件失败 — <code>marketplace.json not found</code></h3>
+  <p>检查 <code>packages\plugin\.claude-plugin\marketplace.json</code> 存在；如缺失需从 git 拉取。</p>
+
+  <h3>13.3 MCP server 启动失败 — <code>No module named 'claude_autosar.cli.mcp_server'</code></h3>
+  <pre><code># 1) 装包
+pip install -e packages\autoc[dev]
+
+# 2) 检查 .mcp.json 中 env.PYTHONPATH 指向
+#    D:/claude_proj2/autoc-cc/packages/autoc/src
+
+# 3) 单独跑确认 stdio server 起来
+python -m claude_autosar.cli.mcp_server</code></pre>
+
+  <h3>13.4 ARXML guard 误拒合法文件</h3>
+  <p><b>症状</b>：<code>ARXML guard: ARXML schema invalid: ...</code>（实际文件合法）</p>
+  <p>可能原因：namespace prefix 非 <code>ar:</code>、含 <code>&lt;?xml-stylesheet ?&gt;</code> 处理指令、lxml 解析严于浏览器。</p>
+  <p>绕过：改用 <code>Edit</code> 工具（matcher 包含但 path 解析不同）；或升级 guard
+  <code>packages\plugin\plugins\claude-autosar\hooks\pretooluse_arxml_guard.py</code>。</p>
+
+  <h3>13.5 lint 规则报 <code>AttributeError</code></h3>
+  <p>这是 9.5 集成修复前的旧 bug — 当前版本已加 <code>applies_to</code> tag + <code>rules_for_namespace</code> helper，
+  8 条 arxml 规则在 XDM 路径下自动 skip。如果仍遇到，确认版本为 v0.3.0：</p>
+  <pre><code>claude-autosar --version    # 必须 ≥ 0.3.0
+pip show claude-autosar     # Name / Version / Location</code></pre>
+
+  <h3>13.6 端到端 verify 返回 <code>returncode != 0</code></h3>
+  <p>tresos_cmd 不在 PATH / 缺 license / chip-derivative 拼错。提供完整 v2 路径即可：</p>
+  <pre><code>claude-autosar bsw-verify \
+  --chip-derivative S32K148 \
+  --mcal-vendor NXP \
+  --mcal-vendor-home "C:\NXP\SW32K1_S32M1xx_R21-11_4.0.0\eMcem" \
+  --tresos-home "C:\EB\tresos"</code></pre>
+</section>
+
+<!-- ============== 14. 卸载 ============== -->
+<section id="uninstall">
+  <h2>14. 卸载</h2>
+  <pre><code># 1) 移除 marketplace / 插件
+&gt; /plugin marketplace remove claude-autosar-marketplace
+&gt; /plugin uninstall claude-autosar
+
+# 2) 卸载 Python 包
+pip uninstall claude-autosar
+
+# 3) （可选）删除工作区配置
+rmdir /S /Q .claude-autosar</code></pre>
+
+  <div class="callout ok">
+    <strong>更多资料</strong>
+    <ul style="margin:6px 0">
+      <li>PyPI 项目：<a href="https://pypi.org/project/claude-autosar/">pypi.org/project/claude-autosar</a>（v0.3.0 已发布）</li>
+      <li>GitHub：<a href="https://github.com/jasontaotao/claude-autosar">github.com/jasontaotao/claude-autosar</a>（HEAD <code>c597874</code>，tag <code>v0.3.0</code> 同步指向）</li>
+      <li>本地 README：<code>D:\claude_proj2\autoc-cc\README.md</code></li>
+      <li>CHANGELOG：<code>D:\claude_proj2\autoc-cc\CHANGELOG.md</code>（v0.3.0 详细 release notes）</li>
+      <li>PROGRESS：<code>D:\claude_proj2\autoc-cc\PROGRESS.md</code>（Sprint 0-9.5 全量记录）</li>
+      <li>插件 install：<code>packages\plugin\plugins\claude-autosar\docs\install.md</code></li>
+      <li>插件 dev-guide：<code>packages\plugin\plugins\claude-autosar\docs\dev-guide.md</code></li>
+      <li>插件 troubleshooting：<code>packages\plugin\plugins\claude-autosar\docs\troubleshooting.md</code></li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <div class="page">
+    <p>claude-autosar v0.3.0 · 本地教程 · 2026-06-14 更新（PyPI 已发布） · 仓库 <code>D:\claude_proj2\autoc-cc\</code> · HEAD <code>c597874</code> · <a href="https://pypi.org/project/claude-autosar/">PyPI</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

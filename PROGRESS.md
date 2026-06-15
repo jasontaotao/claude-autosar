@@ -1150,44 +1150,38 @@ Sprint 9.1 实现正确（67 行都生成了），是 plan 数字 over-stated。
   `4bb70e5` chore）
 - T9.5.5 ✅ git tag v0.3.0（annotated, HEAD at `4bb70e5`）
 
-**v0.3.0 发布就绪**（发布动作暂停，等 user 决定）：
+**v0.3.0 已发布**（2026-06-14 via 手动 twine，https://pypi.org/project/claude-autosar/0.3.0/）：
 
 构建产物（`packages/autoc/dist/`）：
 - `claude_autosar-0.3.0-py3-none-any.whl` (196 KB) — py.typed 包含
 - `claude_autosar-0.3.0.tar.gz` (147 KB)
 - `twine check` PASSED × 2
+- classifier fix：替换 `Intended Audience :: Automotive Engineers`（不在
+  PyPI 官方 trove）→ `Intended Audience :: Manufacturing`
 
-隔离 venv 烟测（`/tmp/cas_venv`）：
+隔离 venv 烟测：
 - `claude-autosar --version` → "claude-autosar 0.3.0"
 - `import claude_autosar` + 10 lint rules（8 arxml + 2 xdm）✓
 - CLI 13 子命令全部可发现
 - py.typed 在 wheel 里（PEP 561）
+- PyPI 端下载安装烟测过：`pip install claude-autosar==0.3.0` 干净 venv OK
 
-发布路径（任选其一）：
-
-(A) **GitHub Actions trusted publishing**（推荐）：
-```bash
-# 1. user 在 github.com/new 创 autoc-cc repo（5 字段 / 2 勾选）
-# 2. user 把 URL 贴回来
-git remote add origin <URL>
-git push origin main v0.3.0   # tag push 触发 .github/workflows/release.yml
-# 3. GH Actions 跑 build + smoke test + PyPI 上传
-```
-
-(B) **本地 twine upload**（要 PyPI API token）：
-```bash
-TWINE_USERNAME=__token__ TWINE_PASSWORD=pypi-xxx twine upload packages/autoc/dist/*
-```
-
-⏸ **暂停原因**：user 明确说不愿意手动创 GitHub repo；`gh` CLI 装不上
-（winget 0x8007029c 失败）；本地无 PyPI token。dist/ + tag v0.3.0 已
-落盘，任何时候走任一路径都能 1 步发布。
+发布路径（已走完）：
+- 仓库：https://github.com/jasontaotao/claude-autosar
+- 国内 GitHub TCP/443 被掐，走本地 Clash proxy `127.0.0.1:7897` + git
+  proxy config 解决
+- 走 **(B) 手动 twine upload**（PyPI trusted publishing 配好但 publish
+  步骤挂——根因 A：tag v0.3.0 指向 `4bb70e5`，workflow 修复在它之上
+  的新 commit，GH 跑 tag push 时 checkout 老 commit 拿到老 workflow；
+  根因 B：classifier `Automotive Engineers` 不合法）
+- 修复：A 重指向 `2b0aa92` + B 改 classifier，重 build + 重传 ✓
+- 首次发布后 trusted publishing 留作后续版本（v0.3.1+）自动路径
 
 **下一阶段候选**（plan §11 优先级，user 拍板后启动）：
 1. v2.1.1 EAS 工具集成（用户工程用了 EAS）
 2. v2.1.4 BswM 规则 + ComM 链路（v2 主体 M4 跑通后再补深度）
-3. v2.6.1 PyPI 0.3.0 发布 — **构建完成 / 发布暂停**（dist/ + tag
-   v0.3.0 落盘；等 user 走 GH trusted publishing 或贴 PyPI token）
+3. ~~v2.6.1 PyPI 0.3.0 发布~~ — ✅ **2026-06-14 完成**（twine 首发 + classifier
+   fix + GH Actions release.yml 修通；trusted publishing 留作 v0.3.1+ 自动化）
 4. v2.4.1 lint 10 → 39 条
 5. 8.E.1 coverage 补测（→ 90.07%；3 task 待 user 拍"串行/并行"启动）
 

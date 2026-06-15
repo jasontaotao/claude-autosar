@@ -5,7 +5,7 @@ documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2026-06-13 (Sprint 9.2/9.3/9.4 — M1-T 模板 diff + M3 verify 增强 + M4 lint 10 规则)
+## [0.3.0] - 2026-06-14 (PUBLISHED to PyPI — Sprint 9.2/9.3/9.4/9.5 集成)
 
 ### Added
 
