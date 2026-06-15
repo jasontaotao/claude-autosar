@@ -99,7 +99,7 @@
 - 追加测试：`test_config.py`（+TestFromEcuc 4 个 case）
 
 ### Sprint 0 — 仓库骨架 ✅
-- monorepo 根 `D:\claude_proj2\autoc-cc\` + `packages/autoc/` 包
+- monorepo 根 `D:\claude_proj2\claude-autosar\` + `packages/autoc/` 包
 - `pyproject.toml`（workspace + autoc） + `.pre-commit-config.yaml` + `.gitignore`
 - `.github/workflows/ci.yml`（5 jobs: lint / typecheck / security / test / build）
 - `.github/PULL_REQUEST_TEMPLATE.md`
@@ -127,12 +127,12 @@
 ## 当前所有检查通过状态
 
 ```bash
-cd D:/claude_proj2/autoc-cc
-ruff check packages/autoc/src packages/autoc/tests      # All checks passed
-isort --check packages/autoc/src packages/autoc/tests   # All done
-black --check packages/autoc/src packages/autoc/tests   # 31 files left unchanged
-mypy --strict packages/autoc/src/autoc                  # 17 source files, 0 issues
-pytest packages/autoc/tests -q --cov=packages/autoc/src/autoc --cov-fail-under=80
+cd D:/claude_proj2/claude-autosar
+ruff check packages/autoc/src/claude_autosar packages/autoc/tests      # All checks passed
+isort --check packages/autoc/src/claude_autosar packages/autoc/tests   # All done
+black --check packages/autoc/src/claude_autosar packages/autoc/tests   # 31 files left unchanged
+mypy --strict packages/autoc/src/claude_autosar                        # 17 source files, 0 issues
+pytest packages/autoc/tests -q --cov=packages/autoc/src/claude_autosar --cov-fail-under=80
 # ============================== 202 passed in 1.33s =============================
 # coverage 92.17%
 ```
@@ -142,7 +142,7 @@ pytest packages/autoc/tests -q --cov=packages/autoc/src/autoc --cov-fail-under=8
 ## 文件结构（28 个文件，458 源行 + ~1500 测试行）
 
 ```
-D:\claude_proj2\autoc-cc\
+D:\claude_proj2\claude-autosar\
 ├── pyproject.toml                  # workspace + ruff/isort/mypy/pytest/coverage
 ├── .pre-commit-config.yaml
 ├── .gitignore

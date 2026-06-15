@@ -25,11 +25,11 @@ jobs:
       - name: Install autoc with dev extras
         run: pip install -e packages/autoc[dev]
       - name: ruff
-        run: ruff check packages/autoc/src packages/autoc/tests
+        run: ruff check packages/autoc/src/claude_autosar packages/autoc/tests
       - name: black --check
-        run: black --check packages/autoc/src packages/autoc/tests
+        run: black --check packages/autoc/src/claude_autosar packages/autoc/tests
       - name: isort --check
-        run: isort --check packages/autoc/src packages/autoc/tests
+        run: isort --check packages/autoc/src/claude_autosar packages/autoc/tests
 
   typecheck:
     name: Type check (mypy --strict)
@@ -46,7 +46,7 @@ jobs:
       - name: Install autoc with dev extras
         run: pip install -e packages/autoc[dev]
       - name: mypy --strict
-        run: mypy --strict packages/autoc/src/autoc
+        run: mypy --strict packages/autoc/src/claude_autosar
 
   security:
     name: Security (bandit + pip-audit)
@@ -63,7 +63,7 @@ jobs:
       - name: Install autoc with dev extras
         run: pip install -e packages/autoc[dev]
       - name: bandit
-        run: bandit -r packages/autoc/src/autoc -ll
+        run: bandit -r packages/autoc/src/claude_autosar -ll
       - name: pip-audit
         run: pip-audit
 
@@ -89,7 +89,7 @@ jobs:
         run: |
           pytest packages/autoc/tests \
             -m "not requires_tools" \
-            --cov=packages/autoc/src/autoc \
+            --cov=packages/autoc/src/claude_autosar \
             --cov-report=xml \
             --cov-report=term \
             --cov-fail-under=80

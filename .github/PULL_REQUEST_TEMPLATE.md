@@ -11,12 +11,12 @@
 请勾选已跑过的检查：
 
 - [ ] 单测：`pytest packages/autoc/tests -v`
-- [ ] Coverage ≥ 80%：`pytest --cov=packages/autoc/src/autoc --cov-fail-under=80`
-- [ ] Lint：`ruff check packages/autoc/src packages/autoc/tests`
-- [ ] Format：`black --check packages/autoc/src packages/autoc/tests`
-- [ ] Import sort：`isort --check packages/autoc/src packages/autoc/tests`
-- [ ] Type check：`mypy --strict packages/autoc/src/autoc`
-- [ ] Security：`bandit -r packages/autoc/src/autoc -ll`
+- [ ] Coverage ≥ 80%：`pytest --cov=packages/autoc/src/claude_autosar --cov-fail-under=80`
+- [ ] Lint：`ruff check packages/autoc/src/claude_autosar packages/autoc/tests`
+- [ ] Format：`black --check packages/autoc/src/claude_autosar packages/autoc/tests`
+- [ ] Import sort：`isort --check packages/autoc/src/claude_autosar packages/autoc/tests`
+- [ ] Type check：`mypy --strict packages/autoc/src/claude_autosar`
+- [ ] Security：`bandit -r packages/autoc/src/claude_autosar -ll`
 - [ ] 端到端（如适用）：描述
 
 ## 影响范围

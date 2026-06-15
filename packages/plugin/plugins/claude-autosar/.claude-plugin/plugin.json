@@ -6,7 +6,7 @@
     "name": "claude-autosar Team"
   },
   "homepage": "https://autoc-tool.com",
-  "repository": "https://github.com/autoc-cc/autoc-cc",
+  "repository": "https://github.com/jasontaotao/claude-autosar",
   "license": "Apache-2.0",
   "keywords": [
     "autosar",

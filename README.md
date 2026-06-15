@@ -39,7 +39,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug   # 启动 
 ## 仓库结构
 
 ```
-autoc-cc/                                    # monorepo 根（GitHub 仓库名 = claude-autosar）
+claude-autosar/                                # monorepo 根（GitHub 仓库名 = claude-autosar）
 ├── pyproject.toml                          # workspace 元数据
 ├── README.md / CHANGELOG.md / PROGRESS.md  # 本文件 + 变更 + 进度
 ├── install.html                            # v0.3.0 详细安装 + 排错参考

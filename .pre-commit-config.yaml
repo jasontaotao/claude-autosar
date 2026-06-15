@@ -43,5 +43,5 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: [-r, packages/autoc/src/autoc, -ll]
+        args: [-r, packages/autoc/src/claude_autosar, -ll]
         skip_missing_interpreters: true

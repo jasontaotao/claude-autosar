@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "autoc-cc-workspace"
+name = "claude-autosar-workspace"
 version = "0.1.0"
 description = "AutoC Claude Code 插件 - monorepo workspace"
 requires-python = ">=3.11"

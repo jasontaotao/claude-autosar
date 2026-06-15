@@ -38,10 +38,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/autoc-cc/autoc-cc"
-Repository = "https://github.com/autoc-cc/autoc-cc"
-Issues = "https://github.com/autoc-cc/autoc-cc/issues"
-Changelog = "https://github.com/autoc-cc/autoc-cc/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/jasontaotao/claude-autosar"
+Repository = "https://github.com/jasontaotao/claude-autosar"
+Issues = "https://github.com/jasontaotao/claude-autosar/issues"
+Changelog = "https://github.com/jasontaotao/claude-autosar/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

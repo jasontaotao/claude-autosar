@@ -89,7 +89,7 @@
     <h1>claude-autosar <span style="color:var(--accent-2)">v0.3.0</span> 安装与使用教程</h1>
     <p class="lead">
       AUTOSAR BSW 配置 <b>双格式 IO</b>（<code>.arxml</code> + <code>.xdm</code>）的 Python CLI + Claude Code 插件。
-      本教程基于本地仓库 <code>D:\claude_proj2\autoc-cc\</code>（HEAD <code>c597874</code> + tag <code>v0.3.0</code>）。
+      本教程基于本地仓库 <code>D:\claude_proj2\claude-autosar\</code>（HEAD <code>c597874</code> + tag <code>v0.3.0</code>）。
     </p>
     <div class="meta">
       <span class="tag ok">1331 tests pass</span>
@@ -138,7 +138,7 @@
   </ul>
 
   <h3>仓库结构</h3>
-  <div class="tree">autoc-cc/
+  <div class="tree">claude-autosar/
 ├── pyproject.toml                # workspace 根
 ├── packages/
 │   ├── autoc/                    # Python CLI 核心（已发布 claude-autosar 0.3.0）
@@ -220,7 +220,7 @@ python -c "import claude_autosar; print(claude_autosar.__file__)"
 
   <h3>3.2 从本地源码安装（开发场景 - 改源码即生效）</h3>
   <p>从仓库根 editable install 绑定源码（适合改 Python 核心 / 跑 5-stage 验证）：</p>
-  <pre><code>cd D:\claude_proj2\autoc-cc
+  <pre><code>cd D:\claude_proj2\claude-autosar
 
 # editable install 含 dev 依赖（pytest / ruff / mypy / black / isort / bandit / pre-commit）
 pip install -e packages\autoc[dev]
@@ -236,7 +236,7 @@ claude-autosar --help
   <p>仓库根 <code>dist/</code> 现有产物仍是早期构建的旧版（文件名 <code>autoc-0.1.0-*</code>，66KB+51KB），<b>未上传 PyPI</b>。
   PyPI 上的新版 <code>claude_autosar-0.3.0-*</code>（200KB+151KB）已发布。
   若要在本地重新构建一份同名 wheel：</p>
-  <pre><code>cd D:\claude_proj2\autoc-cc
+  <pre><code>cd D:\claude_proj2\claude-autosar
 rm dist\*
 cd packages\autoc
 python -m build
@@ -252,10 +252,10 @@ claude-autosar --version   # → claude-autosar 0.3.0</code></pre>
 pip install --upgrade claude-autosar
 
 # 从本地源码重装（含 dev 依赖）
-pip install --upgrade --force-reinstall -e D:\claude_proj2\autoc-cc\packages\autoc[dev]
+pip install --upgrade --force-reinstall -e D:\claude_proj2\claude-autosar\packages\autoc[dev]
 
 # 从本地 wheel 重装（重 build 后）
-pip install --upgrade --force-reinstall D:\claude_proj2\autoc-cc\dist\claude_autosar-0.3.0-py3-none-any.whl</code></pre>
+pip install --upgrade --force-reinstall D:\claude_proj2\claude-autosar\dist\claude_autosar-0.3.0-py3-none-any.whl</code></pre>
 
   <h3>3.5 v0.3.0 已发布但 4 处小瑕疵（用户决定"先不动"）</h3>
   <table>
@@ -268,7 +268,7 @@ pip install --upgrade --force-reinstall D:\claude_proj2\autoc-cc\dist\claude_aut
     </tr>
     <tr>
       <td>2</td>
-      <td><b><code>project_urls</code> 错指</b> <code>autoc-cc/autoc-cc</code>，实际 remote 是 <code>jasontaotao/claude-autosar</code></td>
+      <td><b><code>project_urls</code> 已修</b>：v0.3.0 时错指 <code>autoc-cc/autoc-cc</code>，HEAD 已改为 <code>jasontaotao/claude-autosar</code>，PyPI 0.3.1 重发布后生效</td>
       <td>PyPI 页面 README 链接点过去 404</td>
       <td>改 <code>pyproject.toml</code> 重新发布（PyPI 链接不可 in-place 改）</td>
     </tr>
@@ -297,7 +297,7 @@ pip install --upgrade --force-reinstall D:\claude_proj2\autoc-cc\dist\claude_aut
 
   <h3>方式 A：local plugin dir（开发推荐）</h3>
   <p>从仓库根启动 Claude Code 并显式指定插件目录：</p>
-  <pre><code>cd D:\claude_proj2\autoc-cc
+  <pre><code>cd D:\claude_proj2\claude-autosar
 claude --plugin-dir .\packages\plugin\plugins\claude-autosar --debug</code></pre>
   <p>启动后 session 顶部应出现 <code>SessionStart</code> hook 输出：</p>
   <pre><code>[claude-autosar plugin] SessionStart hook detected project:
@@ -306,7 +306,7 @@ claude --plugin-dir .\packages\plugin\plugins\claude-autosar --debug</code></pre
 
   <h3>方式 B：marketplace + install（生产）</h3>
   <pre><code># 1. 在 Claude Code 对话中加 marketplace
-&gt; /plugin marketplace add D:\claude_proj2\autoc-cc\packages\plugin
+&gt; /plugin marketplace add D:\claude_proj2\claude-autosar\packages\plugin
 
 # 2. 安装 claude-autosar 插件
 &gt; /plugin install claude-autosar
@@ -323,7 +323,7 @@ claude --plugin-dir .\packages\plugin\plugins\claude-autosar --debug</code></pre
 <section id="verify">
   <h2>5. 安装验证</h2>
   <h3>5.1 5-Stage 验证（与 CI 对齐）</h3>
-  <pre><code>cd D:\claude_proj2\autoc-cc
+  <pre><code>cd D:\claude_proj2\claude-autosar
 
 # Stage 1: format check
 ruff check packages\autoc\src packages\autoc\tests
@@ -439,7 +439,7 @@ claude-autosar bsw-verify --project D:\claude_proj2\src\S32K148_EAS_EB_3399A --c
       "command": "python",
       "args": ["-m", "claude_autosar.cli.mcp_server"],
       "env": {
-        "PYTHONPATH": "D:/claude_proj2/autoc-cc/packages/autoc/src"
+        "PYTHONPATH": "D:/claude_proj2/claude-autosar/packages/autoc/src"
       }
     }
   }
@@ -649,7 +649,7 @@ pip install claude-autosar==0.3.0
 claude-autosar --version    # → claude-autosar 0.3.0
 
 # B 路径：从本地源码装
-pip install -e D:\claude_proj2\autoc-cc\packages\autoc[dev]
+pip install -e D:\claude_proj2\claude-autosar\packages\autoc[dev]
 where claude-autosar        # Windows</code></pre>
 
   <h3>13.2 加载插件失败 — <code>marketplace.json not found</code></h3>
@@ -660,7 +660,7 @@ where claude-autosar        # Windows</code></pre>
 pip install -e packages\autoc[dev]
 
 # 2) 检查 .mcp.json 中 env.PYTHONPATH 指向
-#    D:/claude_proj2/autoc-cc/packages/autoc/src
+#    D:/claude_proj2/claude-autosar/packages/autoc/src
 
 # 3) 单独跑确认 stdio server 起来
 python -m claude_autosar.cli.mcp_server</code></pre>
@@ -704,9 +704,9 @@ rmdir /S /Q .claude-autosar</code></pre>
     <ul style="margin:6px 0">
       <li>PyPI 项目：<a href="https://pypi.org/project/claude-autosar/">pypi.org/project/claude-autosar</a>（v0.3.0 已发布）</li>
       <li>GitHub：<a href="https://github.com/jasontaotao/claude-autosar">github.com/jasontaotao/claude-autosar</a>（HEAD <code>c597874</code>，tag <code>v0.3.0</code> 同步指向）</li>
-      <li>本地 README：<code>D:\claude_proj2\autoc-cc\README.md</code></li>
-      <li>CHANGELOG：<code>D:\claude_proj2\autoc-cc\CHANGELOG.md</code>（v0.3.0 详细 release notes）</li>
-      <li>PROGRESS：<code>D:\claude_proj2\autoc-cc\PROGRESS.md</code>（Sprint 0-9.5 全量记录）</li>
+      <li>本地 README：<code>D:\claude_proj2\claude-autosar\README.md</code></li>
+      <li>CHANGELOG：<code>D:\claude_proj2\claude-autosar\CHANGELOG.md</code>（v0.3.0 详细 release notes）</li>
+      <li>PROGRESS：<code>D:\claude_proj2\claude-autosar\PROGRESS.md</code>（Sprint 0-9.5 全量记录）</li>
       <li>插件 install：<code>packages\plugin\plugins\claude-autosar\docs\install.md</code></li>
       <li>插件 dev-guide：<code>packages\plugin\plugins\claude-autosar\docs\dev-guide.md</code></li>
       <li>插件 troubleshooting：<code>packages\plugin\plugins\claude-autosar\docs\troubleshooting.md</code></li>
@@ -718,7 +718,7 @@ rmdir /S /Q .claude-autosar</code></pre>
 
 <footer>
   <div class="page">
-    <p>claude-autosar v0.3.0 · 本地教程 · 2026-06-14 更新（PyPI 已发布） · 仓库 <code>D:\claude_proj2\autoc-cc\</code> · HEAD <code>c597874</code> · <a href="https://pypi.org/project/claude-autosar/">PyPI</a></p>
+    <p>claude-autosar v0.3.0 · 本地教程 · 2026-06-14 更新（PyPI 已发布） · 仓库 <code>D:\claude_proj2\claude-autosar\</code> · HEAD <code>c597874</code> · <a href="https://pypi.org/project/claude-autosar/">PyPI</a></p>
   </div>
 </footer>
 

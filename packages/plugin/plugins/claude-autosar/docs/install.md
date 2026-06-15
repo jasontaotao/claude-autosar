@@ -13,8 +13,8 @@
 ## 2. 安装 claude-autosar Python 包
 
 ```bash
-# 在 autoc-cc monorepo 根目录
-cd D:\claude_proj2\autoc-cc
+# 在 claude-autosar monorepo 根目录
+cd D:\claude_proj2\claude-autosar
 
 # editable install（含 dev deps）
 pip install -e packages/autoc[dev]
@@ -42,7 +42,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug
 ```bash
 # 1. 把 marketplace 加到 Claude Code
 # 在 Claude Code 对话中：
-> /plugin marketplace add /path/to/autoc-cc/packages/plugin
+> /plugin marketplace add /path/to/claude-autosar/packages/plugin
 
 # 2. 安装 claude-autosar 插件
 > /plugin install claude-autosar
@@ -114,10 +114,10 @@ $ /claude-autosar:eb-save --module Mcu --param Mcu/Clock0/ClockFreq=80000000
 
 ```bash
 # Windows
-pip install -e D:\claude_proj2\autoc-cc\packages\autoc[dev]
+pip install -e D:\claude_proj2\claude-autosar\packages\autoc[dev]
 
 # Linux / macOS
-pip install -e /path/to/autoc-cc/packages/autoc[dev]
+pip install -e /path/to/claude-autosar/packages/autoc[dev]
 
 # 验证
 which claude-autosar

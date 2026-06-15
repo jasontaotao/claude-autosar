@@ -233,7 +233,7 @@
     <span><b>协议</b> MIT</span>
     <span><b>测试</b> 1331 pass / coverage 85.86%</span>
     <span><a href="https://pypi.org/project/claude-autosar/">PyPI →</a></span>
-    <span><a href="https://github.com/autoc-cc/autoc-cc">GitHub →</a></span>
+    <span><a href="https://github.com/jasontaotao/claude-autosar">GitHub →</a></span>
   </div>
 </header>
 
@@ -263,7 +263,7 @@
 pip install claude-autosar
 
 <span class="c"># 2. 启动 Claude Code，挂 claude-autosar 插件（开发模式）</span>
-<span class="k">cd</span> D:/claude_proj2/autoc-cc
+<span class="k">cd</span> D:/claude_proj2/claude-autosar
 claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug
 
 <span class="c"># 3. 验证插件 / MCP</span>
@@ -305,8 +305,8 @@ claude-autosar --version
   <div class="path-card">
     <span class="tag">路径 B · 开发</span>
     <h3>从 monorepo editable 装</h3>
-    <p>需要：仓库 clone 在 <code>D:/claude_proj2/autoc-cc</code>。装含 dev 依赖（pytest / ruff / mypy / black / isort / bandit / pre-commit）。</p>
-    <pre><span class="k">cd</span> D:/claude_proj2/autoc-cc
+    <p>需要：仓库 clone 在 <code>D:/claude_proj2/claude-autosar</code>。装含 dev 依赖（pytest / ruff / mypy / black / isort / bandit / pre-commit）。</p>
+    <pre><span class="k">cd</span> D:/claude_proj2/claude-autosar
 pip install -e packages/autoc[dev]
 claude-autosar --version
 <span class="c"># → claude-autosar 0.3.0</span></pre>
@@ -314,7 +314,7 @@ claude-autosar --version
 </div>
 
 <h3>路径 C · 本地 wheel / sdist 离线装（生产 / 内网）</h3>
-<pre><span class="k">cd</span> D:/claude_proj2/autoc-cc
+<pre><span class="k">cd</span> D:/claude_proj2/claude-autosar
 rm dist/*
 <span class="k">cd</span> packages/autoc
 python -m build
@@ -352,13 +352,13 @@ $ claude-autosar --help
 <p>同样两种方式。开发期用 local plugin dir 直接挂路径（最快、所见即所得）；长期用走 marketplace + install。</p>
 
 <h3>方式 A · local plugin dir（推荐开发）</h3>
-<pre><span class="k">cd</span> D:/claude_proj2/autoc-cc
+<pre><span class="k">cd</span> D:/claude_proj2/claude-autosar
 claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug</pre>
 <p>启动后直接能用 <code>/claude-autosar:*</code> 命令。改 <code>packages/plugin/plugins/claude-autosar/</code> 下任何文件，<kbd>Ctrl</kbd>+<kbd>R</kbd> 重载即可。</p>
 
 <h3>方式 B · marketplace + install（生产用法）</h3>
 <p>在 Claude Code 对话里执行：</p>
-<pre>&gt; /plugin marketplace add D:/claude_proj2/autoc-cc/packages/plugin
+<pre>&gt; /plugin marketplace add D:/claude_proj2/claude-autosar/packages/plugin
 &gt; /plugin install claude-autosar
 &gt; /plugin validate claude-autosar
 &gt; /plugin list</pre>
@@ -693,7 +693,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug</pre>
 <span class="c"># 应输出 True（无意义改写保持 byte-identity）</span></pre>
 
 <h3>Q9. PyPI <code>description</code> 字段还是 Sprint 2 旧版</h3>
-<p>已知瑕疵（v0.3.0 发布时未改）。PyPI 项目页第一眼是老版文档，<code>project_urls</code> 仍指向 <code>autoc-cc/autoc-cc</code>（实际远端可能是 mirror）。修法：改 <code>pyproject.toml</code> 重新发布 0.3.1 — PyPI 链接不可 in-place 改。本决策"先不动"，下次 release 一起清理。</p>
+<p>已知瑕疵状态变化（v0.3.0 → HEAD）：PyPI 项目页 <code>project_urls</code> 错指 <code>autoc-cc/autoc-cc</code> 已在本仓库 HEAD 修复（指向 <code>jasontaotao/claude-autosar</code>）。PyPI 展示需重发布 0.3.1 才同步（PyPI 链接不可 in-place 改）。</p>
 </section>
 
 <section id="uninst">
@@ -711,8 +711,8 @@ rm -rf ~/.claude-autosar/agent/.current     <span class="c"># "current" session 
 </section>
 
 <footer>
-  <p>本文档随 <code>autoc-cc</code> 仓库（HEAD <code>c597874</code>，tag <code>v0.3.0</code>）一起发布。最新版看
-    <a href="https://github.com/autoc-cc/autoc-cc/blob/main/docs/getting-started.html">GitHub</a>。
+  <p>本文档随 <code>claude-autosar</code> 仓库（HEAD <code>c597874</code>，tag <code>v0.3.0</code>）一起发布。最新版看
+    <a href="https://github.com/jasontaotao/claude-autosar/blob/main/docs/getting-started.html">GitHub</a>。
     仓库内路径：<code>docs/getting-started.html</code>。
     配套 <a href="../install.html">install.html</a>（更详细的安装 + 排错）和 <a href="../PROGRESS.md">PROGRESS.md</a>（开发进度）可一并参考。</p>
   <p>© 2026 AutoC Contributors · MIT License · PyPI <a href="https://pypi.org/project/claude-autosar/">claude-autosar 0.3.0</a></p>

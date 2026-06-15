@@ -165,7 +165,7 @@ echo '{"cwd": "/path/to/proj"}' | \
 ### 跑单元测试
 
 ```bash
-cd D:\claude_proj2\autoc-cc
+cd D:\claude_proj2\claude-autosar
 python -m pytest packages/plugin/tests/ -v
 ```
 
@@ -180,7 +180,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug
 
 ## GitHub Issues
 
-未在上面覆盖的问题：在 autoc-cc 仓库开 issue，附：
+未在上面覆盖的问题：在 claude-autosar 仓库开 issue，附：
 
 - 操作系统 + Python 版本
 - `claude-autosar --version`

@@ -64,7 +64,7 @@ MCP 集成：在 Claude Code 子 Agent 里直接调用 `bsw_write` / `arxml_vali
 | Python | 3.11 / 3.12 / 3.13 |
 | License | MIT |
 
-完整 sprint-by-sprint 进度交接见 [PROGRESS.md](https://github.com/autoc-cc/autoc-cc/blob/main/PROGRESS.md)。
+完整 sprint-by-sprint 进度交接见 [PROGRESS.md](https://github.com/jasontaotao/claude-autosar/blob/main/PROGRESS.md)。
 
 ## 目录结构
 
@@ -89,11 +89,11 @@ src/autoc/
 
 `autoc` 是 Python 核心；要让 Claude Code 在 `~/.autoc/agent/` 工程里直接
 调它，需要装
-[autoc-cc 插件](https://github.com/autoc-cc/autoc-cc/tree/main/packages/plugin)：
+[claude-autosar 插件](https://github.com/jasontaotao/claude-autosar/tree/main/packages/plugin)：
 7 个 `/autoc:*` 斜杠命令、7 个 skill、3 个 hook（ARXML guard / BSW
 validate / SessionStart 项目检测）、1 个 agent（bsw-config）、`.mcp.json`
 直接挂到本包。
 
 ## License
 
-MIT — 详见 [LICENSE](https://github.com/autoc-cc/autoc-cc/blob/main/packages/autoc/LICENSE)
+MIT — 详见 [LICENSE](https://github.com/jasontaotao/claude-autosar/blob/main/packages/autoc/LICENSE)

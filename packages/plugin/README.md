@@ -10,7 +10,7 @@ pip install -e ../autoc[dev]
 
 # 2. 把 marketplace 加到 Claude Code
 # 在 Claude Code 对话中：
-> /plugin marketplace add /path/to/autoc-cc/packages/plugin
+> /plugin marketplace add /path/to/claude-autosar/packages/plugin
 
 # 3. 安装 autoc 插件
 > /plugin install autoc
@@ -79,7 +79,7 @@ packages/plugin/
 
 ```bash
 # 启动 Claude Code 并加载插件
-cd autoc-cc
+cd claude-autosar
 claude --plugin-dir ./packages/plugin/plugins/autoc --debug
 
 # 在对话中：
