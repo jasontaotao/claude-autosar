@@ -15,8 +15,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from claude_autosar.core.bsw.io.datamodel2_io import DataModel2Error
 from claude_autosar.core.bsw.inspector.xdm_report import export_xdm_report
+from claude_autosar.core.bsw.io.datamodel2_io import DataModel2Error
 
 __all__ = ["register", "run"]
 

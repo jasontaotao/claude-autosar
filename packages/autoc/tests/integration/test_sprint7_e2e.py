@@ -241,7 +241,9 @@ def test_mcp_bsw_write_then_recorder_then_log_export_renders(
     )
 
     # 步骤 1：调 MCP bsw_write
-    with mock.patch("claude_autosar.core.bsw.validator.modify_and_verify", return_value=fake_result):
+    with mock.patch(
+        "claude_autosar.core.bsw.validator.modify_and_verify", return_value=fake_result
+    ):
         r = bsw_write(
             "Mcu",
             [
@@ -418,10 +420,11 @@ def test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape(
         f"stdout: {cli_proc.stdout}\nstderr: {cli_proc.stderr}"
     )
     if cli_proc.returncode != 0:
-        # 业务层失败时，stderr 必须含明确的错误信号
+        # 业务层失败时，stdout JSON 必须含明确的错误信号
+        # v0.3.0: 错误进 stdout 的 {"success": false, "error": "..."} 而非 stderr
         assert (
-            "ValidatorError" in cli_proc.stderr or "Path" in cli_proc.stderr
-        ), f"业务层失败但缺错误信号\nstderr: {cli_proc.stderr}"
+            "ValidatorError" in cli_proc.stdout or "Path" in cli_proc.stdout
+        ), f"业务层失败但缺错误信号\nstdout: {cli_proc.stdout}\nstderr: {cli_proc.stderr}"
 
 
 # ---------------------------------------------------------------------------
@@ -443,7 +446,7 @@ def test_cli_version_help_nonexistent(tmp_path: Path) -> None:  # noqa: ARG001
         check=False,
     )
     assert v.returncode == 0
-    assert "0.1.0" in v.stdout
+    assert "0.3.0" in v.stdout
 
     # 2. --help
     h = subprocess.run(  # noqa: S603

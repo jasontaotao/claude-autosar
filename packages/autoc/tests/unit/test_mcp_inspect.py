@@ -56,8 +56,7 @@ class TestToolRegistration:
             assert name in _TOOL_FUNCS
             fn = _TOOL_FUNCS[name]
             assert fn.__name__ == name, (
-                f"tool key {name!r} must match function name; "
-                f"got {fn.__name__!r}"
+                f"tool key {name!r} must match function name; " f"got {fn.__name__!r}"
             )
 
     def test_build_mcp_server_registers_inspect_tools(self) -> None:
@@ -167,8 +166,7 @@ class TestBswInspectTool:
             result = fn(str(path))
             assert result["success"] is True
             assert result.get("format") == expected_fmt, (
-                f"{fn.__name__}: expected format={expected_fmt!r}, "
-                f"got {result.get('format')!r}"
+                f"{fn.__name__}: expected format={expected_fmt!r}, " f"got {result.get('format')!r}"
             )
 
 

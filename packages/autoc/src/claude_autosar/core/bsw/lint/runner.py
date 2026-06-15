@@ -13,8 +13,8 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
+import logging
 from typing import Any
 
 from claude_autosar.core.bsw.lint import LintRule, LintSeverity, LintViolation
@@ -122,9 +122,7 @@ class LintRunner:
                 )
         return tuple(all_violations)
 
-    def summarize(
-        self, violations: tuple[LintViolation, ...]
-    ) -> LintSummary:
+    def summarize(self, violations: tuple[LintViolation, ...]) -> LintSummary:
         """把 violation tuple 折成 :class:`LintSummary`。
 
         :param violations: :meth:`run` 输出

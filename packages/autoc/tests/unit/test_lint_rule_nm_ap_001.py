@@ -20,13 +20,7 @@ class TestNmAp001Rule:
         assert list(NmAp001Rule().check(_mk_data())) == []
 
     def test_v1_stub_no_violation(self) -> None:
-        data = _mk_data(
-            key_params=(
-                {"container": "CanNm/X",
-                 "name": "CanNmNodeId",
-                 "value": "1"},
-            )
-        )
+        data = _mk_data(key_params=({"container": "CanNm/X", "name": "CanNmNodeId", "value": "1"},))
         assert list(NmAp001Rule().check(data)) == []
 
     def test_rule_metadata(self) -> None:

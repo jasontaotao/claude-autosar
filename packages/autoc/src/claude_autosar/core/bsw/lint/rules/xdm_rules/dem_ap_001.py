@@ -14,8 +14,8 @@ v2 增强方向：
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
 from collections.abc import Iterable
+from typing import Any, ClassVar
 
 from claude_autosar.core.bsw.lint import (
     LintSeverity,
@@ -37,9 +37,7 @@ class DemAp001Rule:
         "DemSecondaryMemory",
     )
 
-    def check(
-        self, extracted: Any
-    ) -> Iterable[LintViolation]:
+    def check(self, extracted: Any) -> Iterable[LintViolation]:
         # XDM-only rule — skip silently if data is not XdmLintData
         if not isinstance(extracted, XdmLintData):
             return ()

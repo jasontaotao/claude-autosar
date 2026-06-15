@@ -18,15 +18,9 @@ from pathlib import Path
 
 import pytest
 
-from claude_autosar.cli.commands.arxml_inspect import (
-    build_parser as build_arxml_parser,
-)
-from claude_autosar.cli.commands.bsw_inspect import (
-    build_parser as build_bsw_parser,
-)
-from claude_autosar.cli.commands.xdm_inspect import (
-    build_parser as build_xdm_parser,
-)
+from claude_autosar.cli.commands.arxml_inspect import build_parser as build_arxml_parser
+from claude_autosar.cli.commands.bsw_inspect import build_parser as build_bsw_parser
+from claude_autosar.cli.commands.xdm_inspect import build_parser as build_xdm_parser
 from claude_autosar.cli.main import build_parser, main
 
 pytestmark = pytest.mark.autosar

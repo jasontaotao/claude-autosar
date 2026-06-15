@@ -27,8 +27,8 @@ ipdu-row / signal-row），跟 session export 走的 ``_CSS`` 模板差异较大
 
 from __future__ import annotations
 
-import os
 from html import escape as _html_escape
+import os
 from pathlib import Path
 from typing import Any
 
@@ -36,8 +36,8 @@ from claude_autosar.core.bsw.arxml_io import (
     ARXMLError,
     detect_namespaces,
     get_child_text,
-    read as _arxml_read,
 )
+from claude_autosar.core.bsw.arxml_io import read as _arxml_read
 
 # ---------------------------------------------------------------------------
 # 常量
@@ -45,14 +45,10 @@ from claude_autosar.core.bsw.arxml_io import (
 
 #: IPdu 容器 SHORT-NAME 列表（AUTOSAR Com 标准 + EAS 私有变种）。
 #: 涵盖 Com / EAS / EB 私有命名空间下所有 IPdu 容器命名变体。
-_IPDU_SHORT_NAMES: frozenset[str] = frozenset(
-    {"ComIPdu", "ComTxIPdu", "ComRxIPdu"}
-)
+_IPDU_SHORT_NAMES: frozenset[str] = frozenset({"ComIPdu", "ComTxIPdu", "ComRxIPdu"})
 
 #: Signal 容器 SHORT-NAME 列表（涵盖 Com 标准 + EAS 私有变种）。
-_SIGNAL_SHORT_NAMES: frozenset[str] = frozenset(
-    {"ComSignal", "ComGroupSignal"}
-)
+_SIGNAL_SHORT_NAMES: frozenset[str] = frozenset({"ComSignal", "ComGroupSignal"})
 
 #: IPdu 关键参数（按需提取的 leaf 文本）。
 _IPDU_PARAM_TAGS: tuple[str, ...] = (
@@ -132,8 +128,7 @@ def render_arxml_report(path: Path) -> str:
     default_ns = nsmap.get("ar", "")
     if not default_ns:
         raise ARXMLError(
-            f"ARXML file {p} has no default namespace; "
-            f"nsmap keys: {sorted(nsmap)}"
+            f"ARXML file {p} has no default namespace; " f"nsmap keys: {sorted(nsmap)}"
         )
 
     # 提取元数据 + 容器 / IPdu / Signal
@@ -145,13 +140,10 @@ def render_arxml_report(path: Path) -> str:
     key_params = _extract_key_params(root, default_ns)
 
     # 渲染
-    return _render_html(p, default_ns, module_names, file_size, ipdus,
-                         signals_by_ipdu, key_params)
+    return _render_html(p, default_ns, module_names, file_size, ipdus, signals_by_ipdu, key_params)
 
 
-def export_arxml_report(
-    path: Path, output: Path | None = None
-) -> Path:
+def export_arxml_report(path: Path, output: Path | None = None) -> Path:
     """渲染 HTML 报告并写到文件，返回绝对路径。
 
     :param path: 输入 ``.arxml`` 路径
@@ -161,11 +153,7 @@ def export_arxml_report(
     :raises OSError: 写文件失败
     """
     html = render_arxml_report(path)
-    out = (
-        Path(path).with_name(Path(path).name + ".report.html")
-        if output is None
-        else Path(output)
-    )
+    out = Path(path).with_name(Path(path).name + ".report.html") if output is None else Path(output)
     out = out.resolve()
     # 原子写：先写 tmp，再 replace；失败时原文件不动
     tmp = out.with_suffix(out.suffix + ".tmp")
@@ -199,9 +187,7 @@ def _render_html(
 ) -> str:
     parts: list[str] = []
     parts.append(_render_html_head(path.name))
-    parts.append(
-        f"<h1>ARXML Report — {_html_escape(path.name)}</h1>"
-    )
+    parts.append(f"<h1>ARXML Report — {_html_escape(path.name)}</h1>")
     parts.append(_render_metadata(path, default_ns, module_names, file_size))
     parts.append(_render_summary(ipdus, signals_by_ipdu))
     parts.append(_render_ipdus_table(ipdus, signals_by_ipdu))
@@ -251,20 +237,14 @@ def _render_metadata(
         )
     )
     modules_str = (
-        ", ".join(_html_escape(m) for m in module_names)
-        if module_names
-        else "<em>none</em>"
+        ", ".join(_html_escape(m) for m in module_names) if module_names else "<em>none</em>"
     )
-    rows.append(
-        _kv_row("Modules", f"<code>{modules_str}</code>")
-    )
+    rows.append(_kv_row("Modules", f"<code>{modules_str}</code>"))
     rows.append(_kv_row("File size", f"{file_size} bytes"))
     return (
         '<div class="metadata">\n'
         "<h2>Metadata</h2>\n"
-        '<table class="metadata-table">\n'
-        + "".join(rows)
-        + "</table>\n"
+        '<table class="metadata-table">\n' + "".join(rows) + "</table>\n"
         "</div>\n"
     )
 
@@ -321,9 +301,7 @@ def _render_ipdus_table(
         "<th>Name</th><th>Type</th><th>HandleId</th><th>Length</th>"
         "<th>CanId</th><th>Direction</th><th>Signal Count</th>"
         "</tr></thead>\n"
-        "<tbody>\n"
-        + "".join(rows)
-        + "</tbody>\n"
+        "<tbody>\n" + "".join(rows) + "</tbody>\n"
         "</table>\n"
     )
 
@@ -332,11 +310,7 @@ def _render_signals_table(
     signals_by_ipdu: dict[str, list[dict[str, Any]]],
 ) -> str:
     """Signal 详细参数表（按 IPdu 父级分组）。"""
-    all_signals = [
-        (ipdu_name, sig)
-        for ipdu_name, sigs in signals_by_ipdu.items()
-        for sig in sigs
-    ]
+    all_signals = [(ipdu_name, sig) for ipdu_name, sigs in signals_by_ipdu.items() for sig in sigs]
     if not all_signals:
         return "<h2>Signal Table</h2>\n<p><em>No Signal containers detected.</em></p>\n"
     rows: list[str] = []
@@ -366,9 +340,7 @@ def _render_signals_table(
         "<th>BitPosition</th><th>BitSize</th>"
         "<th>ByteOrder</th><th>InitValue</th>"
         "</tr></thead>\n"
-        "<tbody>\n"
-        + "".join(rows)
-        + "</tbody>\n"
+        "<tbody>\n" + "".join(rows) + "</tbody>\n"
         "</table>\n"
     )
 
@@ -392,9 +364,7 @@ def _render_key_params(key_params: list[dict[str, str]]) -> str:
         "<h2>Key Parameters</h2>\n"
         "<table class='kv-param'>\n"
         "<thead><tr><th>Container</th><th>Parameter</th><th>Value</th></tr></thead>\n"
-        "<tbody>\n"
-        + "".join(rows)
-        + "</tbody>\n"
+        "<tbody>\n" + "".join(rows) + "</tbody>\n"
         "</table>\n"
     )
 
@@ -502,9 +472,7 @@ def _populate_ipdu_params(ipdu_elem: Any, record: dict[str, Any]) -> None:
         record["ComIPduDirection"] = record["ComRxIPduDirection"]
 
 
-def _extract_signals_by_ipdu(
-    root: Any, default_ns: str
-) -> dict[str, list[dict[str, Any]]]:
+def _extract_signals_by_ipdu(root: Any, default_ns: str) -> dict[str, list[dict[str, Any]]]:
     """提取所有 Signal 容器，按其最近 IPdu 祖先归组。
 
     返回 ``{ipdu_name: [signal_record, ...]}``。未被 IPdu 包裹的 Signal 归入
@@ -532,18 +500,14 @@ def _extract_signals_by_ipdu(
 def _populate_signal_params(sig_elem: Any, record: dict[str, Any]) -> None:
     """从 Signal 容器内提取关键 PARAM-VALUES。"""
     for tag in _SIGNAL_PARAM_TAGS:
-        for pval in sig_elem.findall(
-            "{*}PARAMETER-VALUES/{*}ECUC-NUMERICAL-PARAM-VALUE"
-        ):
+        for pval in sig_elem.findall("{*}PARAMETER-VALUES/{*}ECUC-NUMERICAL-PARAM-VALUE"):
             dref = get_child_text(pval, "DEFINITION-REF")
             if dref and dref.endswith("/" + tag):
                 val = get_child_text(pval, "VALUE")
                 if val is not None and tag not in record:
                     record[tag] = val
                     break
-        for pval in sig_elem.findall(
-            "{*}PARAMETER-VALUES/{*}ECUC-TEXTUAL-PARAM-VALUE"
-        ):
+        for pval in sig_elem.findall("{*}PARAMETER-VALUES/{*}ECUC-TEXTUAL-PARAM-VALUE"):
             dref = get_child_text(pval, "DEFINITION-REF")
             if dref and dref.endswith("/" + tag):
                 val = get_child_text(pval, "VALUE")
@@ -573,9 +537,7 @@ def _has_module_ancestor(elem: Any) -> bool:
     return False
 
 
-def _extract_key_params(
-    root: Any, default_ns: str
-) -> list[dict[str, str]]:
+def _extract_key_params(root: Any, default_ns: str) -> list[dict[str, str]]:
     """提取顶层容器（ComGeneral 等）下的关键参数（不深入 IPdu 内部）。"""
     nsmap = {"ar": default_ns}
     params: list[dict[str, str]] = []
@@ -594,9 +556,7 @@ def _extract_key_params(
             if not cname or cname in _IPDU_SHORT_NAMES:
                 continue
             # 取容器下 PARAM-VALUES（限制 1-2 层，避免 IPdu 嵌套）
-            for pval in c.findall(
-                "{*}PARAMETER-VALUES/{*}ECUC-NUMERICAL-PARAM-VALUE"
-            ):
+            for pval in c.findall("{*}PARAMETER-VALUES/{*}ECUC-NUMERICAL-PARAM-VALUE"):
                 dref = get_child_text(pval, "DEFINITION-REF")
                 if dref is None:
                     continue
@@ -610,9 +570,7 @@ def _extract_key_params(
                             "value": val,
                         }
                     )
-            for pval in c.findall(
-                "{*}PARAMETER-VALUES/{*}ECUC-TEXTUAL-PARAM-VALUE"
-            ):
+            for pval in c.findall("{*}PARAMETER-VALUES/{*}ECUC-TEXTUAL-PARAM-VALUE"):
                 dref = get_child_text(pval, "DEFINITION-REF")
                 if dref is None:
                     continue
@@ -696,9 +654,12 @@ def render_arxml_report_with_verify(
     return base + section
 
 
-__all__ = ["render_arxml_report", "export_arxml_report",
-           "render_arxml_report_with_verify",
-           "render_arxml_report_with_lint"]
+__all__ = [
+    "render_arxml_report",
+    "export_arxml_report",
+    "render_arxml_report_with_verify",
+    "render_arxml_report_with_lint",
+]
 
 
 # ---------------------------------------------------------------------------

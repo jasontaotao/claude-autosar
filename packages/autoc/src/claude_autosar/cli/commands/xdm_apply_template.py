@@ -124,19 +124,20 @@ def run(args: argparse.Namespace) -> int:
         DispatcherError,
         FormatMismatchError,
         UnknownFormatError,
-        read as dispatcher_read,
     )
+    from claude_autosar.core.bsw.dispatcher import read as dispatcher_read
     from claude_autosar.core.bsw.io.datamodel2_io import DataModel2Error
+
     # 延迟 import：apply.py 由 T9.2.1 并发写
     from claude_autosar.core.bsw.templates.apply import (
         ApplyMode,
         apply_template_diff,
     )
+    from claude_autosar.core.bsw.templates.xdm_diff import diff_xdm_templates
     from claude_autosar.core.bsw.templates.xdm_value import (
         XDMValueError,
         load_xdm_module,
     )
-    from claude_autosar.core.bsw.templates.xdm_diff import diff_xdm_templates
 
     src = Path(args.path).resolve()
     tpl = Path(args.template).resolve()
@@ -152,8 +153,7 @@ def run(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    except (DataModel2Error, DispatcherError, UnknownFormatError,
-            FormatMismatchError) as e:
+    except (DataModel2Error, DispatcherError, UnknownFormatError, FormatMismatchError) as e:
         print(
             json.dumps({"success": False, "error": f"{type(e).__name__}: {e}"}),
             file=sys.stderr,
@@ -168,8 +168,7 @@ def run(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    except (DataModel2Error, DispatcherError, UnknownFormatError,
-            FormatMismatchError) as e:
+    except (DataModel2Error, DispatcherError, UnknownFormatError, FormatMismatchError) as e:
         print(
             json.dumps({"success": False, "error": f"{type(e).__name__}: {e}"}),
             file=sys.stderr,
@@ -178,9 +177,7 @@ def run(args: argparse.Namespace) -> int:
 
     # 2) 加载两个 XDMModule（module_name 需对齐；current + template 必须是
     #    同一模块；如果 path 不一致走 XDMValueError）
-    module_name = _detect_module_name(current_doc) or _detect_module_name(
-        template_doc
-    )
+    module_name = _detect_module_name(current_doc) or _detect_module_name(template_doc)
     if not module_name:
         print(
             json.dumps(
@@ -288,9 +285,7 @@ def _detect_module_name(loaded_doc: Any) -> str | None:
         tree = loaded_doc.tree
         root = tree.getroot() if hasattr(tree, "getroot") else tree
         ns = {"d": "http://www.tresos.de/_projects/DataModel2/06/data.xsd"}
-        elems = root.xpath(
-            './/d:chc[@type="AR-ELEMENT"]', namespaces=ns
-        )
+        elems = root.xpath('.//d:chc[@type="AR-ELEMENT"]', namespaces=ns)
     except Exception:  # noqa: BLE001 - 任何 xpath / attribute 异常都退回 None
         return None
     if not elems:

@@ -16,8 +16,8 @@ v2 增强方向：
 
 from __future__ import annotations
 
-from typing import ClassVar
 from collections.abc import Iterable
+from typing import ClassVar
 
 from claude_autosar.core.bsw.lint import (
     ArxmlLintData,
@@ -38,9 +38,7 @@ class ComAp002Rule:
         "ComIPduE2EProtection",
     )
 
-    def check(
-        self, extracted: ArxmlLintData
-    ) -> Iterable[LintViolation]:
+    def check(self, extracted: ArxmlLintData) -> Iterable[LintViolation]:
         # v1 MVP stub：当前 key_params 没拆 E2E 配置 + 无 safety-relevant
         # 标记 → 不 yield
         for _p in extracted.key_params:

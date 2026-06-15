@@ -14,8 +14,8 @@ v2 增强方向：
 
 from __future__ import annotations
 
-from typing import ClassVar
 from collections.abc import Iterable
+from typing import ClassVar
 
 from claude_autosar.core.bsw.lint import (
     ArxmlLintData,
@@ -38,9 +38,7 @@ class CanIfAp007Rule:
         "CanIfDispatchUserCtrlService",
     )
 
-    def check(
-        self, extracted: ArxmlLintData
-    ) -> Iterable[LintViolation]:
+    def check(self, extracted: ArxmlLintData) -> Iterable[LintViolation]:
         # v1 MVP stub：inspector key_params 不含 CanIfHardwareObject 计数
         # 数据不足以做"软件全开+硬件全关"判断 → 不 yield（避免误报）
         # 触发条件：key_params 里出现上述任意 software_enable 参数且值为

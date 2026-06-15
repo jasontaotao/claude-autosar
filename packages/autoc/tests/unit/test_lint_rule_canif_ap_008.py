@@ -26,11 +26,7 @@ class TestCanIfAp008Rule:
     def test_with_length_param_no_violation_v1(self) -> None:
         """v1 MVP stub — 没 cross-reference 数据 → 0 报。"""
         data = _mk_data(
-            key_params=(
-                {"container": "CanIf/X",
-                 "name": "CanIfTxPduLength",
-                 "value": "8"},
-            )
+            key_params=({"container": "CanIf/X", "name": "CanIfTxPduLength", "value": "8"},)
         )
         assert list(CanIfAp008Rule().check(data)) == []
 

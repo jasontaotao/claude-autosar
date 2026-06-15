@@ -24,10 +24,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Protocol
-from collections.abc import Iterable
 
 from claude_autosar.core.bsw.lint.extract import (
     ArxmlLintData,
@@ -177,6 +177,7 @@ def lint_file(
 
     if runner is None:
         from claude_autosar.core.bsw.lint.rules import rules_for_namespace
+
         runner = LintRunner(rules_for_namespace(ns))
 
     return runner.run(extracted)

@@ -28,8 +28,8 @@ inspector 报告有 inspector 专属样式（metadata-table / summary-box / type
 
 from __future__ import annotations
 
-import os
 from html import escape as _html_escape
+import os
 from pathlib import Path
 from typing import Any
 
@@ -82,8 +82,8 @@ def render_xdm_report(path: Path) -> str:
     """
     from claude_autosar.core.bsw.io.datamodel2_io import (
         DataModel2Error,
-        read as _xdm_read,
     )
+    from claude_autosar.core.bsw.io.datamodel2_io import read as _xdm_read
 
     p = Path(path)
     if not p.is_file():
@@ -132,11 +132,7 @@ def export_xdm_report(path: Path, output: Path | None = None) -> Path:
     :raises OSError: 写文件失败
     """
     html = render_xdm_report(path)
-    out = (
-        Path(path).with_name(Path(path).name + ".report.html")
-        if output is None
-        else Path(output)
-    )
+    out = Path(path).with_name(Path(path).name + ".report.html") if output is None else Path(output)
     out = out.resolve()
     # 原子写：先写 tmp，再 replace；失败时原文件不动
     tmp = out.with_suffix(out.suffix + ".tmp")
@@ -183,23 +179,17 @@ def _render_html_tail() -> str:
     )
 
 
-def _render_metadata(
-    path: Path, default_ns: str, module_name: str, file_size: int
-) -> str:
+def _render_metadata(path: Path, default_ns: str, module_name: str, file_size: int) -> str:
     rows: list[str] = []
     rows.append(_kv_row("Path", str(path.resolve())))
     rows.append(_kv_row("Format", "DataModel2 (.xdm)"))
     rows.append(_kv_row("Default namespace", _html_escape(default_ns or "<none>")))
-    rows.append(
-        _kv_row("Module", f"<code>{_html_escape(module_name)}</code>")
-    )
+    rows.append(_kv_row("Module", f"<code>{_html_escape(module_name)}</code>"))
     rows.append(_kv_row("File size", f"{file_size} bytes"))
     return (
         '<div class="metadata">\n'
         "<h2>Metadata</h2>\n"
-        '<table class="metadata-table">\n'
-        + "".join(rows)
-        + "</table>\n"
+        '<table class="metadata-table">\n' + "".join(rows) + "</table>\n"
         "</div>\n"
     )
 
@@ -226,9 +216,7 @@ def _render_containers(containers: list[dict[str, str]]) -> str:
         "<table>\n"
         "<thead><tr><th>Name</th><th>Type</th><th>Path</th>"
         "<th>Description</th></tr></thead>\n"
-        "<tbody>\n"
-        + "".join(rows)
-        + "</tbody>\n"
+        "<tbody>\n" + "".join(rows) + "</tbody>\n"
         "</table>\n"
     )
 
@@ -258,9 +246,7 @@ def _render_leaves(leaves: list[dict[str, str]]) -> str:
         "<table>\n"
         "<thead><tr><th>Path</th><th>Name</th><th>Type</th>"
         "<th>Value</th></tr></thead>\n"
-        "<tbody>\n"
-        + "".join(rows)
-        + "</tbody>\n"
+        "<tbody>\n" + "".join(rows) + "</tbody>\n"
         "</table>\n"
     )
 
@@ -291,9 +277,7 @@ def _extract_module_name(root: Any, default_ns: str) -> str | None:
     namespaces: dict[str, str] = {"d": D_NS}
     if default_ns:
         namespaces["dm"] = default_ns
-    elems = root.xpath(
-        './/d:chc[@type="AR-ELEMENT"]/@name', namespaces=namespaces
-    )
+    elems = root.xpath('.//d:chc[@type="AR-ELEMENT"]/@name', namespaces=namespaces)
     if elems:
         first = elems[0]
         if isinstance(first, str):
@@ -318,9 +302,7 @@ def _flatten_module_tree(
         namespaces["dm"] = default_ns
 
     # 1) 找 module root
-    module_elems = root.xpath(
-        f'.//d:chc[@name="{module_name}"]', namespaces=namespaces
-    )
+    module_elems = root.xpath(f'.//d:chc[@name="{module_name}"]', namespaces=namespaces)
     if not module_elems:
         return [], []
     module_elem = module_elems[0]
@@ -328,9 +310,7 @@ def _flatten_module_tree(
     # 2) 第一层 container（d:ctr / d:lst with name attr），在 module 之下
     containers: list[dict[str, str]] = []
     seen_container_paths: set[str] = set()
-    first_layer = module_elem.xpath(
-        './/d:ctr[@name] | .//d:lst[@name]', namespaces={"d": D_NS}
-    )
+    first_layer = module_elem.xpath(".//d:ctr[@name] | .//d:lst[@name]", namespaces={"d": D_NS})
     for ctr in first_layer:
         # 用 iterancestors 检查 ctr 是 module_elem 的后代（防 xpath 上跳）
         if not _is_descendant_of(ctr, module_elem):
@@ -344,13 +324,11 @@ def _flatten_module_tree(
         if path in seen_container_paths:
             continue
         seen_container_paths.add(path)
-        containers.append(
-            {"name": cname, "type": ctype, "doc": doc_text, "path": path}
-        )
+        containers.append({"name": cname, "type": ctype, "doc": doc_text, "path": path})
 
     # 3) 所有叶子 <d:var>，含路径
     leaves: list[dict[str, str]] = []
-    var_elems = module_elem.xpath('.//d:var[@name]', namespaces={"d": D_NS})
+    var_elems = module_elem.xpath(".//d:var[@name]", namespaces={"d": D_NS})
     for var in var_elems:
         if not _is_descendant_of(var, module_elem):
             continue
@@ -359,25 +337,21 @@ def _flatten_module_tree(
         value = var.get("value", "")
         # 路径：module/<container...>/<varname>
         path = _build_path(var, module_name)
-        leaves.append(
-            {"name": vname, "type": vtype, "value": value, "path": path}
-        )
+        leaves.append({"name": vname, "type": vtype, "value": value, "path": path})
 
     return containers, leaves
 
 
 def _extract_doc_text(elem: Any) -> str:
     """取 ``<d:doc>`` 子节点文本（如果存在）。"""
-    doc_elems = elem.xpath('./d:doc', namespaces={"d": D_NS})
+    doc_elems = elem.xpath("./d:doc", namespaces={"d": D_NS})
     if not doc_elems:
         return ""
     text = "".join(doc_elems[0].itertext()).strip()
     return text
 
 
-def _build_path(
-    leaf: Any, module_name: str
-) -> str:
+def _build_path(leaf: Any, module_name: str) -> str:
     """从 leaf 向上 walk ancestors，收集 ``name`` 属性，拼成路径。
 
     例: ``Can/CanConfigSet/CanController/CanHwChannel``
@@ -463,9 +437,12 @@ def render_xdm_report_with_verify(
     return base + section
 
 
-__all__ = ["render_xdm_report", "export_xdm_report",
-           "render_xdm_report_with_verify",
-           "render_xdm_report_with_lint"]
+__all__ = [
+    "render_xdm_report",
+    "export_xdm_report",
+    "render_xdm_report_with_verify",
+    "render_xdm_report_with_lint",
+]
 
 
 # ---------------------------------------------------------------------------

@@ -19,12 +19,11 @@ from typing import Any
 
 import pytest
 from rich.console import Console
+from rich.prompt import Prompt
 
 from claude_autosar.cli.commands import init as init_mod
 from claude_autosar.core.config import project_config as pc_mod
 from claude_autosar.core.settings.v2_paths import SETTINGS_JSON_NAME
-from rich.prompt import Prompt
-
 
 # ===========================================================================
 # Helpers
@@ -57,9 +56,7 @@ def _make_namespace(**kwargs: Any) -> argparse.Namespace:
 def _make_prefs_project(root: Path) -> Path:
     """Fake EB tresos 工程（``.prefs/`` + 1 个 xdm）。"""
     (root / ".prefs").mkdir(parents=True, exist_ok=True)
-    (root / ".prefs" / "Mcu.xdm").write_text(
-        '<?xml version="1.0"?>\n<root/>\n', encoding="utf-8"
-    )
+    (root / ".prefs" / "Mcu.xdm").write_text('<?xml version="1.0"?>\n<root/>\n', encoding="utf-8")
     return root
 
 
@@ -68,9 +65,7 @@ def _build_tresos_home(root: Path) -> Path:
     home = root / "tresos"
     bin_dir = home / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
-    (bin_dir / "tresos_cmd.bat").write_text(
-        "@echo off\n", encoding="utf-8"
-    )
+    (bin_dir / "tresos_cmd.bat").write_text("@echo off\n", encoding="utf-8")
     return home
 
 
@@ -84,9 +79,7 @@ def _build_vendor_home(root: Path) -> Path:
     return home
 
 
-def _clean_env(
-    monkeypatch: pytest.MonkeyPatch, *keys: str
-) -> None:
+def _clean_env(monkeypatch: pytest.MonkeyPatch, *keys: str) -> None:
     """Clear all V2 env vars so tests don't see host env."""
     for k in keys:
         monkeypatch.delenv(k, raising=False)
@@ -135,6 +128,7 @@ class TestInitV2WizardProbeSuccess:
             "infineon": (Path("/no/such/infineon"),),
         }
         import claude_autosar.core.settings.v2_paths as v2p
+
         monkeypatch.setattr(v2p, "VENDOR_DEFAULT_HOMES", patched)
         # vendor 通过 env 给
         monkeypatch.setenv("MCAL_VENDOR", "nxp")
@@ -187,6 +181,7 @@ class TestInitV2WizardProbeSuccess:
         patched = {"nxp": (vendor_home,)}
         patched.update({v: (Path("/no"),) for v in ("st", "ti", "renesas", "infineon")})
         import claude_autosar.core.settings.v2_paths as v2p
+
         monkeypatch.setattr(v2p, "VENDOR_DEFAULT_HOMES", patched)
         monkeypatch.setenv("MCAL_VENDOR", "nxp")
         monkeypatch.setattr(pc_mod, "default_tresos_home", lambda: tresos)
@@ -334,10 +329,10 @@ class TestInitV2WizardVendorTable:
             tresos,
         )
         # 5 vendor 各自指向我们的 vendor_home（其他指 /no）
-        patched = {v: (Path("/no/such"),) for v in
-                  ("nxp", "st", "ti", "renesas", "infineon")}
+        patched = {v: (Path("/no/such"),) for v in ("nxp", "st", "ti", "renesas", "infineon")}
         patched[vendor] = (vendor_home,)
         import claude_autosar.core.settings.v2_paths as v2p
+
         monkeypatch.setattr(v2p, "VENDOR_DEFAULT_HOMES", patched)
         monkeypatch.setenv("MCAL_VENDOR", vendor)
         monkeypatch.setattr(pc_mod, "default_tresos_home", lambda: tresos)
@@ -392,9 +387,12 @@ class TestInitV2WizardCliArgs:
         ns = parser.parse_args(
             [
                 "init",
-                "--mcal-vendor", "nxp",
-                "--mcal-vendor-home", "C:/NXP/AUTOSAR",
-                "--chip", "Mcu_s32k148.epd",
+                "--mcal-vendor",
+                "nxp",
+                "--mcal-vendor-home",
+                "C:/NXP/AUTOSAR",
+                "--chip",
+                "Mcu_s32k148.epd",
                 "--no-settings-json",
             ]
         )
@@ -440,10 +438,10 @@ class TestInitV2WizardCliArgs:
             "claude_autosar.core.settings.v2_paths.DEFAULT_TRESOS_HOME_WIN",
             tresos,
         )
-        patched = {v: (Path("/no/such"),) for v in
-                  ("nxp", "st", "ti", "renesas", "infineon")}
+        patched = {v: (Path("/no/such"),) for v in ("nxp", "st", "ti", "renesas", "infineon")}
         patched["nxp"] = (vendor_home,)
         import claude_autosar.core.settings.v2_paths as v2p
+
         monkeypatch.setattr(v2p, "VENDOR_DEFAULT_HOMES", patched)
         monkeypatch.setattr(pc_mod, "default_tresos_home", lambda: tresos)
 

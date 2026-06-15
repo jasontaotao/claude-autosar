@@ -24,7 +24,6 @@ from claude_autosar.utils.html_utils import (
     render_inline_md,
 )
 
-
 # =============================================================================
 # URL scheme 白名单 — 11 个 case
 # =============================================================================
@@ -129,9 +128,9 @@ def test_render_inline_md_escapes_ampersand() -> None:
     """& 必须转义为 &amp;（包括双重转义：&amp; → &amp;amp;）。"""
     out = render_inline_md("&")
     assert "&amp;" in out
-    assert "&" not in out.replace("&amp;", "").replace("&lt;", "").replace(
-        "&gt;", ""
-    ).replace("&quot;", "")
+    assert "&" not in out.replace("&amp;", "").replace("&lt;", "").replace("&gt;", "").replace(
+        "&quot;", ""
+    )
 
 
 def test_render_inline_md_escapes_lt_gt() -> None:
@@ -211,7 +210,7 @@ def test_render_callout_empty_detail_no_trailing_space() -> None:
     out = render_callout("add", "Mcu/ClockFreq")
     assert 'class="callout add"' in out
     # 不应有尾部空格（在 div 关闭前）
-    assert "add\">Mcu/ClockFreq</div>" in out
+    assert 'add">Mcu/ClockFreq</div>' in out
 
 
 # =============================================================================
@@ -349,7 +348,7 @@ def test_render_inline_md_url_quote_attr_safe_for_xss() -> None:
     assert '<a href="http://a.com/?q=' in out
     # 关键：href 属性值内的双引号必须为 &quot;
     # 否则双引号会破坏 <a href="..."> 边界注入新属性
-    assert '<img' not in out  # img 标签不应被注入
+    assert "<img" not in out  # img 标签不应被注入
     # 整个 href 字符串应被 escape 包裹
     href_match = re.search(r'href="([^"]*)"', out)
     assert href_match is not None
@@ -364,14 +363,13 @@ def test_render_inline_md_url_quote_attr_safe_for_xss() -> None:
 
 def test_utils_package_exports_html_utils() -> None:
     """utils/__init__.py 必须 re-export 公共 API。"""
-    from claude_autosar.utils import (
-        render_callout as rc,
-        render_html_doc as rhd,
-        render_inline_md as rim,
-    )
-
     # 同一个函数引用（不是同名别名）
-    from claude_autosar.utils import html_utils
+    from claude_autosar.utils import (
+        html_utils,
+    )
+    from claude_autosar.utils import render_callout as rc
+    from claude_autosar.utils import render_html_doc as rhd
+    from claude_autosar.utils import render_inline_md as rim
 
     assert rc is html_utils.render_callout
     assert rhd is html_utils.render_html_doc

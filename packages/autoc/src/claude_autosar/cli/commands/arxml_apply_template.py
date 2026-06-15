@@ -161,14 +161,15 @@ def _diff_to_rows(
 
 def run(args: argparse.Namespace) -> int:
     """执行 ``arxml-apply-template``。返回 exit code。"""
+    from claude_autosar.core.bsw.arxml_io import ARXMLError
     from claude_autosar.core.bsw.dispatcher import (
         DispatcherError,
         FormatMismatchError,
         UnknownFormatError,
-        read as dispatcher_read,
     )
-    from claude_autosar.core.bsw.arxml_io import ARXMLError
+    from claude_autosar.core.bsw.dispatcher import read as dispatcher_read
     from claude_autosar.core.bsw.ecuc import load_module as ecuc_load_module
+
     # 延迟 import：apply.py 由 T9.2.1 并发写
     from claude_autosar.core.bsw.templates.apply import (
         ApplyMode,

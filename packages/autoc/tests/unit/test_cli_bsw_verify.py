@@ -92,9 +92,7 @@ class TestArgparse:
         from claude_autosar.cli.commands.bsw_verify import build_parser
 
         parser = build_parser()
-        args = parser.parse_args(
-            ["bsw-verify", "--module", "Mcu", "--chip-derivative", "foo.epd"]
-        )
+        args = parser.parse_args(["bsw-verify", "--module", "Mcu", "--chip-derivative", "foo.epd"])
         assert hasattr(args, "chip_derivative")
         assert args.chip_derivative == "foo.epd"
         # 错误写法 chipDerivative 应不存在
@@ -122,9 +120,7 @@ def _args(**overrides: object) -> argparse.Namespace:
 
 
 class TestRunHappy:
-    def test_happy_pass_through_to_mcp_tool(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_happy_pass_through_to_mcp_tool(self, capsys: pytest.CaptureFixture[str]) -> None:
         """run() 把所有 args 原样转发给 mcp_server.bsw_verify。"""
         from claude_autosar.cli.commands import bsw_verify as cli_mod
 
@@ -159,9 +155,7 @@ class TestRunHappy:
         assert payload["success"] is True
         assert payload["module"] == "Mcu"
 
-    def test_happy_as_json_true(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_happy_as_json_true(self, capsys: pytest.CaptureFixture[str]) -> None:
         """--as-json 透传：True。"""
         from claude_autosar.cli.commands import bsw_verify as cli_mod
 
@@ -174,9 +168,7 @@ class TestRunHappy:
         _, kwargs = m.call_args
         assert kwargs["as_json"] is True
 
-    def test_prints_json_to_stdout(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_prints_json_to_stdout(self, capsys: pytest.CaptureFixture[str]) -> None:
         """CLI 把 result dict 序列化打印到 stdout（无副作用到 stderr）。"""
         from claude_autosar.cli.commands import bsw_verify as cli_mod
 
@@ -202,9 +194,7 @@ class TestRunError:
         """tool 抛异常 → stderr JSON + exit 1（与 eb/davinci CLI 一致）。"""
         from claude_autosar.cli.commands import bsw_verify as cli_mod
 
-        with mock.patch.object(
-            cli_mod, "_mcp_bsw_verify", side_effect=RuntimeError("boom")
-        ):
+        with mock.patch.object(cli_mod, "_mcp_bsw_verify", side_effect=RuntimeError("boom")):
             exit_code = cli_mod.run(_args())
         assert exit_code == 1
         captured = capsys.readouterr()
@@ -224,8 +214,8 @@ class TestRunError:
 
 def test_cli_imports_bsw_verify_from_mcp_server() -> None:
     """CLI 不重复实现 bsw_verify 业务逻辑；从 mcp_server import。"""
-    from claude_autosar.cli.commands import bsw_verify as cli_mod
     from claude_autosar.cli import mcp_server
+    from claude_autosar.cli.commands import bsw_verify as cli_mod
 
     # 同一对象（import 别名 → 同一个函数对象）
     assert cli_mod._mcp_bsw_verify is mcp_server.bsw_verify

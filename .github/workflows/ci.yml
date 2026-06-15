@@ -63,7 +63,7 @@ jobs:
       - name: Install autoc with dev extras
         run: pip install -e packages/autoc[dev]
       - name: bandit
-        run: bandit -r packages/autoc/src/claude_autosar -ll
+        run: bandit -r packages/autoc/src/claude_autosar -c pyproject.toml -ll
       - name: pip-audit
         run: pip-audit
 

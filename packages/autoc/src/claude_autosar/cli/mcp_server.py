@@ -11,8 +11,8 @@
 
 from __future__ import annotations
 
-import contextlib
 from collections.abc import Callable
+import contextlib
 from pathlib import Path
 from typing import Any, cast
 
@@ -130,9 +130,9 @@ def bsw_read(module: str, path: str, *, project: str = ".") -> dict[str, Any]:
     :return: ``{"success": True, "module", "path", "raw", "type", "value", "format"}`` 或 error dict
     """
     from claude_autosar.core.bsw.dispatcher import (
-        detect_format,
-        UnknownFormatError,
         DispatcherError,
+        UnknownFormatError,
+        detect_format,
     )
     from claude_autosar.core.bsw.ecuc import get_value, load_module
 
@@ -220,8 +220,8 @@ def _bsw_read_xdm(path: Path, module: str, full_path: str) -> dict[str, Any]:
     """
     from claude_autosar.core.bsw.io.datamodel2_io import (
         DataModel2Error,
-        read as _xdm_read,
     )
+    from claude_autosar.core.bsw.io.datamodel2_io import read as _xdm_read
 
     try:
         tree = _xdm_read(path)
@@ -819,9 +819,7 @@ def _inspect_resolve_input(path: str, *, project: str = ".") -> Path:
     return src
 
 
-def _run_lint_for_inspect(
-    src: Path, fmt: str
-) -> dict[str, Any] | None:
+def _run_lint_for_inspect(src: Path, fmt: str) -> dict[str, Any] | None:
     """走 LintRunner 跑 lint，返回 ``{violations, lint_summary}`` 或 ``None``。
 
     duck-typed：9.4-α 在并发写 ``core.bsw.lint``；框架未就位时返 ``None``
@@ -873,9 +871,7 @@ def _run_lint_for_inspect(
         "lint_summary": (
             {
                 "total": int(getattr(summary, "total", 0)),
-                "by_severity": dict(
-                    getattr(summary, "by_severity", {}) or {}
-                ),
+                "by_severity": dict(getattr(summary, "by_severity", {}) or {}),
             }
             if summary is not None
             else {"total": len(violations), "by_severity": {}}
@@ -1000,9 +996,9 @@ def bsw_inspect(
         或 error dict
     """
     from claude_autosar.core.bsw.dispatcher import (
-        detect_format,
         DispatcherError,
         UnknownFormatError,
+        detect_format,
     )
     from claude_autosar.core.bsw.inspector.arxml_report import export_arxml_report
     from claude_autosar.core.bsw.inspector.xdm_report import export_xdm_report
@@ -1080,9 +1076,10 @@ def arxml_apply_template(
         DispatcherError,
         FormatMismatchError,
         UnknownFormatError,
-        read as dispatcher_read,
     )
+    from claude_autosar.core.bsw.dispatcher import read as dispatcher_read
     from claude_autosar.core.bsw.ecuc import load_module as ecuc_load_module
+
     # 延迟 import：依赖 T9.2.1（apply.py）+ T9.2.0b（arxml_diff.py）
     from claude_autosar.core.bsw.templates.apply import (
         ApplyMode,
@@ -1106,8 +1103,7 @@ def arxml_apply_template(
         dispatcher_read(tpl, expected_format="arxml")
     except (FileNotFoundError, OSError) as e:
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
-    except (ARXMLError, DispatcherError, UnknownFormatError,
-            FormatMismatchError) as e:
+    except (ARXMLError, DispatcherError, UnknownFormatError, FormatMismatchError) as e:
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
 
     module_name = _detect_arxml_module_name(src)
@@ -1116,10 +1112,7 @@ def arxml_apply_template(
     if module_name is None:
         return {
             "success": False,
-            "error": (
-                "ValueError: no ECUC-MODULE-CONFIGURATION-VALUES "
-                "in current/template"
-            ),
+            "error": ("ValueError: no ECUC-MODULE-CONFIGURATION-VALUES " "in current/template"),
         }
 
     try:
@@ -1180,9 +1173,10 @@ def xdm_apply_template(
         DispatcherError,
         FormatMismatchError,
         UnknownFormatError,
-        read as dispatcher_read,
     )
+    from claude_autosar.core.bsw.dispatcher import read as dispatcher_read
     from claude_autosar.core.bsw.io.datamodel2_io import DataModel2Error
+
     # 延迟 import：依赖 T9.2.1（apply.py）
     from claude_autosar.core.bsw.templates.apply import (
         ApplyMode,
@@ -1210,8 +1204,7 @@ def xdm_apply_template(
         template_doc = dispatcher_read(tpl, expected_format="xdm")
     except (FileNotFoundError, OSError) as e:
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
-    except (DataModel2Error, DispatcherError, UnknownFormatError,
-            FormatMismatchError) as e:
+    except (DataModel2Error, DispatcherError, UnknownFormatError, FormatMismatchError) as e:
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
 
     module_name = _detect_xdm_module_name(current_doc)
@@ -1220,9 +1213,7 @@ def xdm_apply_template(
     if module_name is None:
         return {
             "success": False,
-            "error": (
-                "XDMValueError: no <d:chc type=AR-ELEMENT> in current/template"
-            ),
+            "error": ("XDMValueError: no <d:chc type=AR-ELEMENT> in current/template"),
         }
 
     try:

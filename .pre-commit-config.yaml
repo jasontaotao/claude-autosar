@@ -43,5 +43,5 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: [-r, packages/autoc/src/claude_autosar, -ll]
+        args: [-r, packages/autoc/src/claude_autosar, -c, pyproject.toml, -ll]
         skip_missing_interpreters: true

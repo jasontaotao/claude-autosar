@@ -405,7 +405,9 @@ def test_bsw_autocalc_runs_first_module_only(fake_project: Path) -> None:
     from claude_autosar.cli.mcp_server import bsw_autocalc
 
     fake = mock.Mock(success=True, returncode=0, stdout="calc ok", stderr="")
-    with mock.patch("claude_autosar.adapters.tresos.TresosAdapter.autocalc", return_value=fake) as m:
+    with mock.patch(
+        "claude_autosar.adapters.tresos.TresosAdapter.autocalc", return_value=fake
+    ) as m:
         r = bsw_autocalc(["Mcu", "Port", "Dio"], project=str(fake_project))
     assert r["success"] is True
     assert r["modules_requested"] == ["Mcu", "Port", "Dio"]

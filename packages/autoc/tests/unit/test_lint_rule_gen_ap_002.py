@@ -20,13 +20,7 @@ class TestGenAp002Rule:
         assert list(GenAp002Rule().check(_mk_data())) == []
 
     def test_v1_stub_no_violation(self) -> None:
-        data = _mk_data(
-            key_params=(
-                {"container": "BswM/X",
-                 "name": "BswMRule",
-                 "value": "Rule1"},
-            )
-        )
+        data = _mk_data(key_params=({"container": "BswM/X", "name": "BswMRule", "value": "Rule1"},))
         assert list(GenAp002Rule().check(data)) == []
 
     def test_rule_metadata(self) -> None:

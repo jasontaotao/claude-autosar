@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from claude_autosar.core.bsw.ecuc import ECUCValue, ECUCDocument
+from claude_autosar.core.bsw.ecuc import ECUCDocument, ECUCValue
 from claude_autosar.core.bsw.templates.arxml_diff import (
     TemplateDiff,
     TemplateDiffResult,

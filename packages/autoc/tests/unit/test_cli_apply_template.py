@@ -16,9 +16,9 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import sys
 import types
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -26,9 +26,7 @@ import pytest
 from claude_autosar.cli.commands.arxml_apply_template import (
     build_parser as build_arxml_apply_parser,
 )
-from claude_autosar.cli.commands.xdm_apply_template import (
-    build_parser as build_xdm_apply_parser,
-)
+from claude_autosar.cli.commands.xdm_apply_template import build_parser as build_xdm_apply_parser
 from claude_autosar.cli.main import _DISPATCH, build_parser, main
 
 pytestmark = pytest.mark.autosar
@@ -63,7 +61,12 @@ def _install_apply_template_stub(monkeypatch: pytest.MonkeyPatch) -> None:
             self.mode = mode
             self.written = written
 
-    def _apply_template_diff(path: Any, diff: Any, *, mode: Any = _ApplyModeStub.DRY_RUN) -> _ApplyResult:  # noqa: ARG001
+    def _apply_template_diff(
+        path: Any,  # noqa: ARG001
+        diff: Any,  # noqa: ARG001
+        *,
+        mode: Any = _ApplyModeStub.DRY_RUN,
+    ) -> _ApplyResult:
         return _ApplyResult(mode=str(mode), written=(str(mode) == _ApplyModeStub.APPLY))
 
     stub.ApplyMode = _ApplyModeStub
@@ -117,18 +120,14 @@ def stub_template_modules(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class TestArgparseHelp:
-    def test_arxml_apply_template_help(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_arxml_apply_template_help(self, capsys: pytest.CaptureFixture[str]) -> None:
         """arxml-apply-template --help 不崩。"""
         parser = build_arxml_apply_parser()
         with pytest.raises(SystemExit) as exc_info:
             parser.parse_args(["--help"])
         assert exc_info.value.code == 0
 
-    def test_xdm_apply_template_help(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_xdm_apply_template_help(self, capsys: pytest.CaptureFixture[str]) -> None:
         """xdm-apply-template --help 不崩。"""
         parser = build_xdm_apply_parser()
         with pytest.raises(SystemExit) as exc_info:
@@ -334,7 +333,8 @@ class TestMainDispatch:
     def test_dispatch_includes_two_apply_template_subcommands(self) -> None:
         parser = build_parser()
         sub_action = next(
-            a for a in parser._actions
+            a
+            for a in parser._actions
             if hasattr(a, "choices") and a.choices  # type: ignore[attr-defined]
         )
         registered = set(sub_action.choices)

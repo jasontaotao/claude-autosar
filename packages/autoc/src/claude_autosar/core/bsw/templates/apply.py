@@ -25,7 +25,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from claude_autosar.core.bsw.dispatcher import LoadedDocument, read as dispatcher_read
+from claude_autosar.core.bsw.dispatcher import LoadedDocument
+from claude_autosar.core.bsw.dispatcher import read as dispatcher_read
 from claude_autosar.core.bsw.dispatcher import write as dispatcher_write
 
 # ---------------------------------------------------------------------------
@@ -162,9 +163,7 @@ def _apply_modify_to_tree(
     if loaded.format == "xdm":
         _apply_modify_xdm(loaded, diffs)
         return
-    raise ValueError(
-        f"apply_template_diff: unknown format {loaded.format!r}"
-    )
+    raise ValueError(f"apply_template_diff: unknown format {loaded.format!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -304,10 +303,7 @@ def _find_param_value_arxml(
                     and _def_ref_short(pv) == param_short_name
                 ):
                     return pv
-        elif (
-            local in _PARAM_VALUE_TAGS
-            and _def_ref_short(child) == param_short_name
-        ):
+        elif local in _PARAM_VALUE_TAGS and _def_ref_short(child) == param_short_name:
             return child
     return None
 

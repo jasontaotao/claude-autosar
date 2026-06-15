@@ -21,11 +21,7 @@ class TestEcuMAp001Rule:
 
     def test_v1_stub_no_violation(self) -> None:
         data = _mk_data(
-            key_params=(
-                {"container": "EcuM/X",
-                 "name": "EcuMComMChannels",
-                 "value": "CanNetwork"},
-            )
+            key_params=({"container": "EcuM/X", "name": "EcuMComMChannels", "value": "CanNetwork"},)
         )
         assert list(EcuMAp001Rule().check(data)) == []
 

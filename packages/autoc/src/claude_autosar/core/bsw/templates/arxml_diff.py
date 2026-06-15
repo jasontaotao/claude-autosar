@@ -27,7 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from claude_autosar.core.bsw.ecuc import ECUCValue, ECUCDocument
+from claude_autosar.core.bsw.ecuc import ECUCDocument, ECUCValue
 
 # ---------------------------------------------------------------------------
 # Public types

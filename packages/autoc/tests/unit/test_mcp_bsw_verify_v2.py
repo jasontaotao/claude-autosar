@@ -22,8 +22,8 @@
 from __future__ import annotations
 
 import ast
-import textwrap
 from pathlib import Path
+import textwrap
 from unittest import mock
 
 import pytest
@@ -36,9 +36,7 @@ pytestmark = pytest.mark.autosar
 # ---------------------------------------------------------------------------
 
 
-_MCP_SERVER_PATH = Path(__file__).resolve().parents[2] / (
-    "src/claude_autosar/cli/mcp_server.py"
-)
+_MCP_SERVER_PATH = Path(__file__).resolve().parents[2] / ("src/claude_autosar/cli/mcp_server.py")
 
 
 _SANDBOX_GLOBALS: dict[str, object] = {}
@@ -71,8 +69,7 @@ def _load_bsw_verify_from_source() -> object:
 
     # 构造 sandbox：先 import Path，再定义 _ALLOWED_PROJECT_ROOTS，再定义
     # helpers，最后 bsw_verify。
-    prefix_src = textwrap.dedent(
-        """
+    prefix_src = textwrap.dedent("""
         from __future__ import annotations
         from pathlib import Path
         from typing import Any, cast
@@ -81,8 +78,7 @@ def _load_bsw_verify_from_source() -> object:
         # 兼容 mcp_server 模块级 _ALLOWED_PROJECT_ROOTS（H4 路径防御）。
         # 占位值；fixture 会改写 _SANDBOX_GLOBALS["_ALLOWED_PROJECT_ROOTS"]。
         _ALLOWED_PROJECT_ROOTS: frozenset[Path] = frozenset({Path(os.getcwd()).resolve()})
-        """
-    ).strip()
+        """).strip()
     sandbox_src = prefix_src + "\n"
     for node in helper_nodes:
         sandbox_src += ast.unparse(node) + "\n\n"
@@ -114,18 +110,14 @@ def fake_project(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def _allowed_roots(
-    fake_project: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def _allowed_roots(fake_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """把 _ALLOWED_PROJECT_ROOTS（sandbox + 真实 module）限定到 fake_project。"""
     _SANDBOX_GLOBALS["_ALLOWED_PROJECT_ROOTS"] = frozenset({fake_project.resolve()})
     # 同步真实 module（即便现在不能 import；保留接口统一）
     try:
         from claude_autosar.cli import mcp_server as real_mod
 
-        monkeypatch.setattr(
-            real_mod, "_ALLOWED_PROJECT_ROOTS", frozenset({fake_project.resolve()})
-        )
+        monkeypatch.setattr(real_mod, "_ALLOWED_PROJECT_ROOTS", frozenset({fake_project.resolve()}))
     except Exception:
         # mcp_server 模块因 9.2-γ 不完整而无法 import；跳过真实 module 同步。
         pass
@@ -175,9 +167,7 @@ def test_happy_returns_lightweight_dict(
     with mock.patch(
         "claude_autosar.adapters.tresos.TresosAdapter.verify", return_value=fake_verify
     ):
-        r = bsw_verify_fn(  # type: ignore[operator]
-            "Mcu", project=str(fake_project)
-        )
+        r = bsw_verify_fn("Mcu", project=str(fake_project))  # type: ignore[operator]
     assert r["success"] is True
     assert r["module"] == "Mcu"
     assert r["returncode"] == 0
@@ -206,9 +196,7 @@ def test_as_json_returns_full_report(
     with mock.patch(
         "claude_autosar.adapters.tresos.TresosAdapter.verify", return_value=fake_verify
     ):
-        r = bsw_verify_fn(  # type: ignore[operator]
-            "Mcu", project=str(fake_project), as_json=True
-        )
+        r = bsw_verify_fn("Mcu", project=str(fake_project), as_json=True)  # type: ignore[operator]
     assert r["success"] is False
     assert r["returncode"] == 1
     report = r["report"]
@@ -246,17 +234,13 @@ def test_stderr_appended_as_error_when_returncode_nonzero(
     with mock.patch(
         "claude_autosar.adapters.tresos.TresosAdapter.verify", return_value=fake_verify
     ):
-        r = bsw_verify_fn(  # type: ignore[operator]
-            "Mcu", project=str(fake_project), as_json=True
-        )
+        r = bsw_verify_fn("Mcu", project=str(fake_project), as_json=True)  # type: ignore[operator]
     report = r["report"]
     issues = report["issues"]
     # 至少有 1 条 ERROR（来自 stderr）+ 至少 1 条来自 stdout
     assert report["has_errors"] is True
     # stderr 整段应该作为一条 ERROR issue 出现
-    stderr_issues = [
-        i for i in issues if "tresos_cmd exit 2" in i["message"]
-    ]
+    stderr_issues = [i for i in issues if "tresos_cmd exit 2" in i["message"]]
     assert len(stderr_issues) == 1
     assert stderr_issues[0]["severity"] == "ERROR"
 
@@ -324,11 +308,12 @@ def test_v2_paths_meta_included_in_response(
         chip_derivative="Mcu.epd",
     )
     fake_verify = mock.Mock(success=True, returncode=0, stdout="", stderr="")
-    with mock.patch(
-        "claude_autosar.adapters.tresos.TresosAdapter.verify", return_value=fake_verify
-    ), mock.patch(
-        "claude_autosar.core.settings.v2_paths.load_v2_paths", return_value=fake_v2
-    ) as m_lv2:
+    with (
+        mock.patch("claude_autosar.adapters.tresos.TresosAdapter.verify", return_value=fake_verify),
+        mock.patch(
+            "claude_autosar.core.settings.v2_paths.load_v2_paths", return_value=fake_v2
+        ) as m_lv2,
+    ):
         r = bsw_verify_fn(  # type: ignore[operator]
             "Mcu",
             project=str(fake_project),
@@ -360,15 +345,14 @@ def test_v2_paths_failure_does_not_block_verify(
     from claude_autosar.core.settings.v2_paths import V2PathsError
 
     fake_verify = mock.Mock(success=True, returncode=0, stdout="ok", stderr="")
-    with mock.patch(
-        "claude_autosar.adapters.tresos.TresosAdapter.verify", return_value=fake_verify
-    ), mock.patch(
-        "claude_autosar.core.settings.v2_paths.load_v2_paths",
-        side_effect=V2PathsError("no v2 paths"),
+    with (
+        mock.patch("claude_autosar.adapters.tresos.TresosAdapter.verify", return_value=fake_verify),
+        mock.patch(
+            "claude_autosar.core.settings.v2_paths.load_v2_paths",
+            side_effect=V2PathsError("no v2 paths"),
+        ),
     ):
-        r = bsw_verify_fn(  # type: ignore[operator]
-            "Mcu", project=str(fake_project)
-        )
+        r = bsw_verify_fn("Mcu", project=str(fake_project))  # type: ignore[operator]
     # verify 主链路不受影响
     assert r["success"] is True
     assert r["module"] == "Mcu"

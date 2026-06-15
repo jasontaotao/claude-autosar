@@ -187,9 +187,7 @@ def write(
         with contextlib.suppress(OSError):
             if tmp.exists():
                 tmp.unlink()
-        raise DataModel2Error(
-            f"Failed to write XDM atomically to {out_path}: {e}"
-        ) from e
+        raise DataModel2Error(f"Failed to write XDM atomically to {out_path}: {e}") from e
 
 
 # ---------------------------------------------------------------------------
@@ -306,9 +304,7 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
     except Exception:  # noqa: BLE001
         new_canonical = b""  # 走后续 patch 失败 → fallback
     try:
-        orig_canonical = etree.tostring(
-            etree.fromstring(original_bytes), method="c14n"
-        )
+        orig_canonical = etree.tostring(etree.fromstring(original_bytes), method="c14n")
     except Exception:  # noqa: BLE001
         orig_canonical = b""
     if new_canonical and orig_canonical and new_canonical == orig_canonical:
@@ -317,14 +313,14 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
 
     # 匹配 self-closing: <a:a name="..." value="..."/>
     self_closing_pattern = re.compile(
-        r'<a:a\s+([^>]*?)/>',
+        r"<a:a\s+([^>]*?)/>",
         re.DOTALL,
     )
     # 匹配 parent-form opening: <a:a ...> （attrs 不以 `/` 结尾，即非
     # self-closing），捕获 attrs。`[^>]+?` 要求至少 1 个非 `>` 字符；
     # `[^/]` 排除 attrs 以 `/` 结尾的 self-closing 段。
     parent_open_pattern = re.compile(
-        r'<a:a\s+([^>]+?[^/])>',
+        r"<a:a\s+([^>]+?[^/])>",
         re.DOTALL,
     )
 
@@ -339,10 +335,7 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
     self_closing_matches = list(self_closing_pattern.finditer(original_text))
     parent_open_matches = list(parent_open_pattern.finditer(original_text))
 
-    if (
-        len(tree_self_closing) == len(self_closing_matches)
-        and len(tree_self_closing) > 0
-    ):
+    if len(tree_self_closing) == len(self_closing_matches) and len(tree_self_closing) > 0:
         patched = _patch_self_closing(
             original_text,
             tree_self_closing,
@@ -351,10 +344,7 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
         if patched is not None:
             return patched
         # self-closing attrs 无变化 — 试 parent-form（a:v 文本可能改了）
-    if (
-        len(tree_parent) == len(parent_open_matches)
-        and len(tree_parent) > 0
-    ):
+    if len(tree_parent) == len(parent_open_matches) and len(tree_parent) > 0:
         return _patch_parent_form(
             original_text,
             original_bytes,
@@ -386,9 +376,7 @@ def _patch_self_closing(
 
     # 检查每个 attr 元素文本是否变化
     any_changed = False
-    for om, (new_name, new_value) in zip(
-        original_matches, new_attr_pairs, strict=False
-    ):
+    for om, (new_name, new_value) in zip(original_matches, new_attr_pairs, strict=False):
         orig_attrs = _parse_attrs(om.group(1))
         orig_value = orig_attrs.get("value", "")
         orig_name = orig_attrs.get("name", "")
@@ -405,9 +393,7 @@ def _patch_self_closing(
     # 按位置倒序替换每个变化的段
     out = original_text
     changes: list[tuple[int, int, str]] = []
-    for om, (new_name, new_value) in zip(
-        original_matches, new_attr_pairs, strict=False
-    ):
+    for om, (new_name, new_value) in zip(original_matches, new_attr_pairs, strict=False):
         orig_attrs = _parse_attrs(om.group(1))
         orig_value = orig_attrs.get("value", "")
         orig_name = orig_attrs.get("name", "")
@@ -555,13 +541,9 @@ def detect_namespaces(path: str | Path) -> dict[str, str]:
     try:
         tree = _parse_xdm(p)
     except OSError as e:
-        raise DataModel2Error(
-            f"detect_namespaces: cannot read {p}: {e}"
-        ) from e
+        raise DataModel2Error(f"detect_namespaces: cannot read {p}: {e}") from e
     except etree.XMLSyntaxError as e:
-        raise DataModel2Error(
-            f"Malformed XDM in {p}: {e}"
-        ) from e
+        raise DataModel2Error(f"Malformed XDM in {p}: {e}") from e
 
     root = tree.getroot()
     return build_default_nsmap(root)

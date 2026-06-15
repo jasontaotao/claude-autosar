@@ -97,12 +97,11 @@ def _install_fake_lint(
 
     fake_rules = ModuleType("claude_autosar.core.bsw.lint.rules")
     fake_rules.ALL_RULES = (object(),)  # type: ignore[attr-defined]
-    monkeypatch.setitem(
-        sys.modules, "claude_autosar.core.bsw.lint.rules", fake_rules
-    )
+    monkeypatch.setitem(sys.modules, "claude_autosar.core.bsw.lint.rules", fake_rules)
 
     fake_extract = ModuleType("claude_autosar.core.bsw.lint.extract")
     if raise_on_extract:
+
         def _explode(_p: Any) -> Any:
             raise OSError("fake extract failure")
 
@@ -111,9 +110,7 @@ def _install_fake_lint(
     else:
         fake_extract.extract_arxml_for_lint = lambda _p: "arxml-stub"  # type: ignore[attr-defined]
         fake_extract.extract_xdm_for_lint = lambda _p: "xdm-stub"  # type: ignore[attr-defined]
-    monkeypatch.setitem(
-        sys.modules, "claude_autosar.core.bsw.lint.extract", fake_extract
-    )
+    monkeypatch.setitem(sys.modules, "claude_autosar.core.bsw.lint.extract", fake_extract)
 
 
 # ---------------------------------------------------------------------------
@@ -132,9 +129,7 @@ class TestIncludeLintFalse:
         assert result["success"] is True
         # 不含任何 lint 字段
         for k in ("violations", "lint_summary", "lint_unavailable"):
-            assert k not in result, (
-                f"include_lint=False should not return {k!r}, got {result}"
-            )
+            assert k not in result, f"include_lint=False should not return {k!r}, got {result}"
 
     def test_xdm_inspect_default_excludes_lint(self, tmp_path: Path) -> None:
         from claude_autosar.cli.mcp_server import xdm_inspect
@@ -145,9 +140,7 @@ class TestIncludeLintFalse:
         result = xdm_inspect(str(src))
         assert result["success"] is True
         for k in ("violations", "lint_summary", "lint_unavailable"):
-            assert k not in result, (
-                f"include_lint=False should not return {k!r}, got {result}"
-            )
+            assert k not in result, f"include_lint=False should not return {k!r}, got {result}"
 
     def test_bsw_inspect_default_excludes_lint(self, tmp_path: Path) -> None:
         from claude_autosar.cli.mcp_server import bsw_inspect
@@ -275,9 +268,7 @@ class TestIncludeLintAvailable:
                     "total": len(canned),
                     "by_severity": {
                         "error": sum(1 for v in canned if v.severity == "error"),
-                        "warning": sum(
-                            1 for v in canned if v.severity == "warning"
-                        ),
+                        "warning": sum(1 for v in canned if v.severity == "warning"),
                     },
                 },
             },
@@ -362,9 +353,7 @@ class TestIncludeLintAvailable:
                 "lint_summary": {"total": 1, "by_severity": {"info": 1}},
             }
 
-        monkeypatch.setattr(
-            "claude_autosar.cli.mcp_server._run_lint_for_inspect", _fake_lint
-        )
+        monkeypatch.setattr("claude_autosar.cli.mcp_server._run_lint_for_inspect", _fake_lint)
 
         src = tmp_path / "Com_Com.minimal.arxml"
         src.write_bytes(ARXML_FIXTURE.read_bytes())

@@ -96,16 +96,12 @@ def _install_fake_lint(
 
     fake_rules = ModuleType("claude_autosar.core.bsw.lint.rules")
     fake_rules.ALL_RULES = (object(),)  # type: ignore[attr-defined]
-    monkeypatch.setitem(
-        sys.modules, "claude_autosar.core.bsw.lint.rules", fake_rules
-    )
+    monkeypatch.setitem(sys.modules, "claude_autosar.core.bsw.lint.rules", fake_rules)
 
     fake_extract = ModuleType("claude_autosar.core.bsw.lint.extract")
     fake_extract.extract_arxml_for_lint = lambda _p: "arxml-stub"  # type: ignore[attr-defined]
     fake_extract.extract_xdm_for_lint = lambda _p: "xdm-stub"  # type: ignore[attr-defined]
-    monkeypatch.setitem(
-        sys.modules, "claude_autosar.core.bsw.lint.extract", fake_extract
-    )
+    monkeypatch.setitem(sys.modules, "claude_autosar.core.bsw.lint.extract", fake_extract)
 
     # Force fresh Runner factory with our canned list
     def _runner_factory(rules: tuple[Any, ...] = ()) -> _FakeRunner:
@@ -161,9 +157,7 @@ class TestLintUnavailable:
         # 把 _try_import_lint 替换成返 (None, None, None)，模拟 lint 框架不可用
         import claude_autosar.cli.commands.lint as lint_mod
 
-        monkeypatch.setattr(
-            lint_mod, "_try_import_lint", lambda: (None, None, None)
-        )
+        monkeypatch.setattr(lint_mod, "_try_import_lint", lambda: (None, None, None))
 
         args = argparse.Namespace(
             path=src,
@@ -248,12 +242,8 @@ class TestLintAvailable:
         src.write_bytes(ARXML_FIXTURE.read_bytes())
 
         canned = [
-            _FakeViolation(
-                rule_id="R-E", severity="error", message="e", path="", line=1
-            ),
-            _FakeViolation(
-                rule_id="R-W", severity="warning", message="w", path="", line=2
-            ),
+            _FakeViolation(rule_id="R-E", severity="error", message="e", path="", line=1),
+            _FakeViolation(rule_id="R-W", severity="warning", message="w", path="", line=2),
         ]
         _install_fake_lint(monkeypatch, canned)
 

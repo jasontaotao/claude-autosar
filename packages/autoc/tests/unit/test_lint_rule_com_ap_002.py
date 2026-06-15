@@ -24,11 +24,7 @@ class TestComAp002Rule:
     def test_v1_stub_no_violation(self) -> None:
         """v1 即使有 E2E 参数 → 不报（v2 增强方向）"""
         data = _mk_data(
-            key_params=(
-                {"container": "Com/X",
-                 "name": "ComE2EProtectionEnabled",
-                 "value": "TRUE"},
-            )
+            key_params=({"container": "Com/X", "name": "ComE2EProtectionEnabled", "value": "TRUE"},)
         )
         assert list(ComAp002Rule().check(data)) == []
 

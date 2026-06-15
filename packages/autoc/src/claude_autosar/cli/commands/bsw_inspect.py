@@ -17,9 +17,9 @@ import sys
 from typing import Any
 
 from claude_autosar.core.bsw.dispatcher import (
-    detect_format,
     DispatcherError,
     UnknownFormatError,
+    detect_format,
 )
 from claude_autosar.core.bsw.inspector.arxml_report import export_arxml_report
 from claude_autosar.core.bsw.inspector.xdm_report import export_xdm_report

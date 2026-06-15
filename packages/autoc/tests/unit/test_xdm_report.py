@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from claude_autosar.core.bsw.io.datamodel2_io import DataModel2Error
 from claude_autosar.core.bsw.inspector.xdm_report import (
     export_xdm_report,
     render_xdm_report,
 )
+from claude_autosar.core.bsw.io.datamodel2_io import DataModel2Error
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -245,9 +245,7 @@ class TestRenderUserFixture:
 class TestFlattenTree:
     """xdm_report 内部扁平化逻辑（容器 / 叶子 / namespace）。"""
 
-    def test_render_xdm_walks_nested_containers(
-        self, sample_xdm: Path
-    ) -> None:
+    def test_render_xdm_walks_nested_containers(self, sample_xdm: Path) -> None:
         """嵌套 ``<d:ctr>`` / ``<d:lst>`` 树走通（CanConfigSet > CanController > CanHwChannel）。
 
         验证：``build_path`` 能正确沿 ancestors 拼出完整路径；多级
@@ -266,9 +264,7 @@ class TestFlattenTree:
         # CanGeneral 的叶子路径也要能拼出
         assert "Can/CanGeneral/CanDevErrorDetect" in html
 
-    def test_render_xdm_collects_leaf_vars(
-        self, sample_xdm: Path
-    ) -> None:
+    def test_render_xdm_collects_leaf_vars(self, sample_xdm: Path) -> None:
         """叶子 ``<d:var>`` 含 name + type + value 全部进 HTML。"""
         html = render_xdm_report(sample_xdm)
         # CanHwChannel: ENUMERATION, FlexCAN_A
@@ -279,9 +275,7 @@ class TestFlattenTree:
         # CanControllerBaseAddress: INTEGER, 0
         assert "INTEGER" in html
 
-    def test_render_xdm_namespace_handling(
-        self, sample_xdm: Path
-    ) -> None:
+    def test_render_xdm_namespace_handling(self, sample_xdm: Path) -> None:
         """DataModel2 双命名空间正确处理（不漏元素）。
 
         - d: = DataModel2 data xsd（固定）
@@ -304,9 +298,7 @@ class TestFlattenTree:
 class TestExportXdmReport:
     """``export_xdm_report`` 写文件路径行为。"""
 
-    def test_export_default_path(
-        self, sample_xdm: Path, tmp_path: Path
-    ) -> None:
+    def test_export_default_path(self, sample_xdm: Path, tmp_path: Path) -> None:
         """默认输出 ``<input>.report.html``。"""
         # 用 tmp_path/sample.xdm 跑，输出应在 sample.xdm.report.html
         out = export_xdm_report(sample_xdm)
@@ -317,9 +309,7 @@ class TestExportXdmReport:
         assert "<!DOCTYPE html>" in content
         assert "Can" in content
 
-    def test_export_custom_path(
-        self, sample_xdm: Path, tmp_path: Path
-    ) -> None:
+    def test_export_custom_path(self, sample_xdm: Path, tmp_path: Path) -> None:
         """自定义 output 路径生效。"""
         out_path = tmp_path / "custom.html"
         out = export_xdm_report(sample_xdm, output=out_path)
@@ -328,9 +318,7 @@ class TestExportXdmReport:
         content = out_path.read_text(encoding="utf-8")
         assert "Can" in content
 
-    def test_export_overwrites_existing(
-        self, sample_xdm: Path, tmp_path: Path
-    ) -> None:
+    def test_export_overwrites_existing(self, sample_xdm: Path, tmp_path: Path) -> None:
         """重复 export 覆盖已有文件（用 atomic replace）。"""
         out_path = tmp_path / "report.html"
         # 第一次
@@ -377,9 +365,7 @@ class TestEndToEndUserEngineering:
 class TestXssDefense:
     """XSS 防御：渲染 HTML 时所有动态字段必须 escape（plan §T9.1.3 + code-review H-2）。"""
 
-    def test_xdm_report_title_escapes_hostile_module_name(
-        self, tmp_path: Path
-    ) -> None:
+    def test_xdm_report_title_escapes_hostile_module_name(self, tmp_path: Path) -> None:
         """``<d:chc name=<script>...>`` 在 ``<h1>`` title 里必须 escape（H-2 修复）。
 
         攻击向量：恶意 .xdm 把 module name 写成 ``<img/src=x/onerror=alert(1)>``，
@@ -398,9 +384,9 @@ class TestXssDefense:
         )
         html = render_xdm_report(hostile_xdm)
         # 未 escape 会含 ``<img/src=x`` → 应该 escape 成 ``&lt;img/src=x``
-        assert "<img/src=x" not in html, (
-            f"XSS: hostile module name not escaped in title: {html[:500]}"
-        )
-        assert "&lt;img/src=x/onerror=alert(1)&gt;" in html, (
-            f"XSS: hostile module name should be HTML-escaped, got: {html[:500]}"
-        )
+        assert (
+            "<img/src=x" not in html
+        ), f"XSS: hostile module name not escaped in title: {html[:500]}"
+        assert (
+            "&lt;img/src=x/onerror=alert(1)&gt;" in html
+        ), f"XSS: hostile module name should be HTML-escaped, got: {html[:500]}"

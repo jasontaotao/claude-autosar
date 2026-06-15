@@ -20,7 +20,12 @@ import threading
 import uuid
 
 from claude_autosar.core.bsw.config import BSWParam
-from claude_autosar.core.session.store import SessionEntry, SessionStore, SessionStoreError, new_session_id
+from claude_autosar.core.session.store import (
+    SessionEntry,
+    SessionStore,
+    SessionStoreError,
+    new_session_id,
+)
 
 _CURRENT_FILE = ".current"
 _LOG = logging.getLogger(__name__)

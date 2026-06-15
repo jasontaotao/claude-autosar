@@ -34,8 +34,12 @@ class TestDemAp004Rule:
     def test_v1_stub_no_violation(self) -> None:
         data = _mk_xdm(
             leaves=(
-                {"name": "SnapshotDataLength", "type": "INTEGER",
-                 "value": "256", "path": "Dem/DemEventParameter/E1/SnapshotDataLength"},
+                {
+                    "name": "SnapshotDataLength",
+                    "type": "INTEGER",
+                    "value": "256",
+                    "path": "Dem/DemEventParameter/E1/SnapshotDataLength",
+                },
             )
         )
         assert list(DemAp004Rule().check(data)) == []

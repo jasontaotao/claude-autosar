@@ -27,8 +27,8 @@ EB tresos 实际 stdout 形态用户没提供样本（plan §0.2.1 提到），�
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
+import re
 from typing import Final, Literal
 
 __all__ = [
@@ -185,13 +185,9 @@ def parse_tresos_verify_stdout(
         ``stdout`` / ``stderr`` 不是字符串。
     """
     if not isinstance(stdout, str):
-        raise TresosParserError(
-            f"stdout must be str, got {type(stdout).__name__}"
-        )
+        raise TresosParserError(f"stdout must be str, got {type(stdout).__name__}")
     if not isinstance(stderr, str):
-        raise TresosParserError(
-            f"stderr must be str, got {type(stderr).__name__}"
-        )
+        raise TresosParserError(f"stderr must be str, got {type(stderr).__name__}")
 
     # duration_ms 兜底：负数 / 非 int 视为未提供
     if not isinstance(duration_ms, int) or duration_ms < 0:

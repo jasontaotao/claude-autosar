@@ -5,7 +5,6 @@ v1 MVP stub — 数据不足时 0 误报。
 
 from __future__ import annotations
 
-
 from claude_autosar.core.bsw.lint import ArxmlLintData, LintSeverity
 from claude_autosar.core.bsw.lint.rules.arxml_rules.canif_ap_007 import (
     CanIfAp007Rule,
@@ -43,9 +42,11 @@ class TestCanIfAp007Rule:
         """v1 即使有 software enable 参数，hw count 不可知 → 0 报。"""
         data = _mk_data(
             key_params=(
-                {"container": "CanIf/CanIfDispatchCfg",
-                 "name": "CanIfTxConfirmationDispatch",
-                 "value": "TRUE"},
+                {
+                    "container": "CanIf/CanIfDispatchCfg",
+                    "name": "CanIfTxConfirmationDispatch",
+                    "value": "TRUE",
+                },
             )
         )
         # v1 MVP stub — FP=0 优先

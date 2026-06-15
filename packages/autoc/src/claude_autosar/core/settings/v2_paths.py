@@ -29,9 +29,9 @@ PRD v2 §0.2.2 锁定的 3 个用户配置路径：
 
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass
 import json
 import os
-from dataclasses import asdict, dataclass
 from pathlib import Path
 import platform
 import sys
@@ -138,8 +138,7 @@ class V2Paths:
         """构造后立即校验 — 4 字段全必填，vendor 必须 in MCAL_VENDORS。"""
         if self.mcal_vendor not in MCAL_VENDORS:
             raise V2PathsError(
-                f"mcal_vendor 必须是 {MCAL_VENDORS!r} 之一，得到 "
-                f"{self.mcal_vendor!r}",
+                f"mcal_vendor 必须是 {MCAL_VENDORS!r} 之一，得到 " f"{self.mcal_vendor!r}",
             )
         if not self.tresos_home or str(self.tresos_home) == "":
             raise V2PathsError("tresos_home 不能为空")
@@ -340,9 +339,7 @@ def load_v2_paths(
     Raises:
         V2PathsError: 任何字段 4 级都拿不到（不靠猜，不静默 default）。
     """
-    base_dir = (
-        Path(project_root) if project_root is not None else Path(os.getcwd())
-    )
+    base_dir = Path(project_root) if project_root is not None else Path(os.getcwd())
     json_data = _read_settings_json(base_dir)
 
     # --- 3 路径独立合并（互不依赖；vendor 缺时 vendor_home 探测先看

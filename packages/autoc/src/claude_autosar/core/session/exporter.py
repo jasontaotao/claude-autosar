@@ -112,9 +112,7 @@ def _render_tool_args(entry: SessionEntry) -> str:
     elif op == "add":
         detail = f'<span class="ts">= {html.escape(value_repr)}</span>'
     elif op == "delete":
-        detail = (
-            f'<span class="ts">(was: {html.escape(repr(old_value))})</span>'
-        )
+        detail = f'<span class="ts">(was: {html.escape(repr(old_value))})</span>'
     return render_callout(op=op, label=f"{op.upper()} {url}", detail=detail)
 
 

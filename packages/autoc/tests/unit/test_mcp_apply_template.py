@@ -18,9 +18,9 @@ T9.2.1 / T9.2.0b 落地后，本文件测试无须改动。
 
 from __future__ import annotations
 
+from pathlib import Path
 import sys
 import types
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -62,9 +62,7 @@ def _install_apply_template_stub(monkeypatch: pytest.MonkeyPatch) -> None:
     提供 ``ApplyMode``（DRY_RUN/APPLY）+ ``apply_template_diff(path, diff, *, mode)``，
     返回最简单的 ``ApplyResult`` shape（frozen-like simple object）。
     """
-    stub = types.ModuleType(
-        "claude_autosar.core.bsw.templates.apply"
-    )
+    stub = types.ModuleType("claude_autosar.core.bsw.templates.apply")
 
     class _ApplyResult:
         def __init__(self, mode: str, written: bool, byte_changes: int = 0) -> None:
@@ -72,10 +70,19 @@ def _install_apply_template_stub(monkeypatch: pytest.MonkeyPatch) -> None:
             self.written = written
             self.byte_changes = byte_changes
 
-    def _apply_template_diff(path: Any, diff: Any, *, mode: Any = _ApplyModeStub.DRY_RUN) -> _ApplyResult:  # noqa: ARG001
+    def _apply_template_diff(
+        path: Any,  # noqa: ARG001
+        diff: Any,  # noqa: ARG001
+        *,
+        mode: Any = _ApplyModeStub.DRY_RUN,
+    ) -> _ApplyResult:
         # 返回一个 sentinel object；测试只检查 shape
         m = str(mode)
-        return _ApplyResult(mode=m, written=(m == _ApplyModeStub.APPLY), byte_changes=len(getattr(diff, "diffs", ())))
+        return _ApplyResult(
+            mode=m,
+            written=(m == _ApplyModeStub.APPLY),
+            byte_changes=len(getattr(diff, "diffs", ())),
+        )
 
     stub.ApplyMode = _ApplyModeStub
     stub.apply_template_diff = _apply_template_diff
@@ -84,9 +91,7 @@ def _install_apply_template_stub(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _install_arxml_diff_stub(monkeypatch: pytest.MonkeyPatch) -> None:
     """往 :mod:`claude_autosar.core.bsw.templates.arxml_diff` 注入 stub 模块。"""
-    stub = types.ModuleType(
-        "claude_autosar.core.bsw.templates.arxml_diff"
-    )
+    stub = types.ModuleType("claude_autosar.core.bsw.templates.arxml_diff")
 
     class _TemplateDiffStub:
         def __init__(self, path: str, op: str) -> None:
@@ -111,15 +116,14 @@ def _install_arxml_diff_stub(monkeypatch: pytest.MonkeyPatch) -> None:
         def deletes(self) -> tuple[_TemplateDiffStub, ...]:
             return tuple(d for d in self.diffs if d.op == "delete")
 
-    def _diff_arxml_templates(current: Any, template: Any) -> _TemplateDiffResultStub:  # noqa: ARG001
-        return _TemplateDiffResultStub(
-            diffs=(_TemplateDiffStub("Module/A", "modify"),)
-        )
+    def _diff_arxml_templates(
+        current: Any,  # noqa: ARG001
+        template: Any,  # noqa: ARG001
+    ) -> _TemplateDiffResultStub:
+        return _TemplateDiffResultStub(diffs=(_TemplateDiffStub("Module/A", "modify"),))
 
     stub.diff_arxml_templates = _diff_arxml_templates
-    monkeypatch.setitem(
-        sys.modules, "claude_autosar.core.bsw.templates.arxml_diff", stub
-    )
+    monkeypatch.setitem(sys.modules, "claude_autosar.core.bsw.templates.arxml_diff", stub)
 
 
 @pytest.fixture
@@ -152,8 +156,7 @@ class TestToolRegistration:
             assert name in _TOOL_FUNCS
             fn = _TOOL_FUNCS[name]
             assert fn.__name__ == name, (
-                f"tool key {name!r} must match function name; "
-                f"got {fn.__name__!r}"
+                f"tool key {name!r} must match function name; " f"got {fn.__name__!r}"
             )
 
     def test_build_mcp_server_registers_apply_template_tools(self) -> None:
@@ -253,9 +256,7 @@ class TestArxmlApplyTemplateTool:
         assert result["success"] is False
         assert "error" in result
 
-    def test_arxml_apply_template_path_outside_cwd(
-        self, stub_template_modules: None
-    ) -> None:
+    def test_arxml_apply_template_path_outside_cwd(self, stub_template_modules: None) -> None:
         """R6 路径防御：cwd 外的 project → 返回 ``PermissionError``。"""
         from claude_autosar.cli.mcp_server import arxml_apply_template
 
@@ -274,9 +275,7 @@ class TestArxmlApplyTemplateTool:
 
 
 class TestXdmApplyTemplateTool:
-    def test_xdm_apply_template_dry_run(
-        self, tmp_path: Path, stub_template_modules: None
-    ) -> None:
+    def test_xdm_apply_template_dry_run(self, tmp_path: Path, stub_template_modules: None) -> None:
         """xdm_apply_template dry-run：返回 success=True + format=xdm。"""
         from claude_autosar.cli.mcp_server import xdm_apply_template
 
@@ -321,9 +320,7 @@ class TestXdmApplyTemplateTool:
         assert result["success"] is False
         assert "error" in result
 
-    def test_xdm_apply_template_path_outside_cwd(
-        self, stub_template_modules: None
-    ) -> None:
+    def test_xdm_apply_template_path_outside_cwd(self, stub_template_modules: None) -> None:
         """R6 路径防御：cwd 外的 project → 返回 ``PermissionError``。"""
         from claude_autosar.cli.mcp_server import xdm_apply_template
 

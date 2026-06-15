@@ -143,17 +143,11 @@ def render_verify_section_html(
         f"<strong>warnings</strong>: {n_warning} &nbsp;&nbsp; "
         f"<strong>infos</strong>: {n_info}"
     )
-    parts.append(
-        f'<div class="summary-box {rc_class}">'
-        f"{summary_text}"
-        f"</div>\n"
-    )
+    parts.append(f'<div class="summary-box {rc_class}">' f"{summary_text}" f"</div>\n")
 
     # 2) issues table（沿用 metadata-table class）
     if not issues:
-        parts.append(
-            "<p><em>Verify section: 0 issues</em></p>\n"
-        )
+        parts.append("<p><em>Verify section: 0 issues</em></p>\n")
     else:
         # severity 排序（ERROR → WARNING → INFO，stable）
         sorted_issues = sorted(
@@ -167,8 +161,10 @@ def render_verify_section_html(
             module = _coerce_optional_str(getattr(issue, "module", ""))
             message = _coerce_optional_str(getattr(issue, "message", ""))
             file_raw = getattr(issue, "file", None)
-            file_value = file_raw if isinstance(file_raw, str) else (
-                None if file_raw is None else str(file_raw)
+            file_value = (
+                file_raw
+                if isinstance(file_raw, str)
+                else (None if file_raw is None else str(file_raw))
             )
             line = _coerce_optional_int(getattr(issue, "line", None))
             location = _location_text(file_value, line)
@@ -189,16 +185,9 @@ def render_verify_section_html(
             "<th>Severity</th><th>Code</th><th>Module</th>"
             "<th>Message</th><th>Location</th>"
             "</tr></thead>\n"
-            "<tbody>\n"
-            + "".join(rows)
-            + "</tbody>\n"
+            "<tbody>\n" + "".join(rows) + "</tbody>\n"
             "</table>\n"
         )
 
     section_body = "".join(parts)
-    return (
-        '<section class="verify-section">\n'
-        "<h2>Verify</h2>\n"
-        f"{section_body}"
-        "</section>\n"
-    )
+    return '<section class="verify-section">\n' "<h2>Verify</h2>\n" f"{section_body}" "</section>\n"

@@ -15,8 +15,8 @@ v2 增强方向：
 
 from __future__ import annotations
 
-from typing import ClassVar
 from collections.abc import Iterable
+from typing import ClassVar
 
 from claude_autosar.core.bsw.lint import (
     ArxmlLintData,
@@ -35,9 +35,7 @@ class ComAp001Rule:
     #: classic CAN 单帧最大 payload = 8 byte
     _MAX_CLASSIC_CAN_PAYLOAD: ClassVar[int] = 8
 
-    def check(
-        self, extracted: ArxmlLintData
-    ) -> Iterable[LintViolation]:
+    def check(self, extracted: ArxmlLintData) -> Iterable[LintViolation]:
         for ipdu_name, signals in extracted.signals_by_ipdu.items():
             for sig in signals:
                 # ComSignalLength 可能在 PARAM-VALUES 里以字符串存

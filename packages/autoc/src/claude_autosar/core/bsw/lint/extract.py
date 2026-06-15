@@ -27,7 +27,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from claude_autosar.core.bsw.arxml_io import ARXMLError, detect_namespaces, read as _arxml_read
+from claude_autosar.core.bsw.arxml_io import ARXMLError, detect_namespaces
+from claude_autosar.core.bsw.arxml_io import read as _arxml_read
 
 __all__ = [
     "ArxmlLintData",
@@ -103,8 +104,7 @@ def extract_arxml_for_lint(path: Path) -> ArxmlLintData:
     default_ns = nsmap.get("ar", "")
     if not default_ns:
         raise ARXMLError(
-            f"ARXML file {p} has no default namespace; "
-            f"nsmap keys: {sorted(nsmap)}"
+            f"ARXML file {p} has no default namespace; " f"nsmap keys: {sorted(nsmap)}"
         )
 
     # 延迟 import 避免 lint → inspector → arxml_io 的循环（虽然实际
@@ -150,8 +150,8 @@ def extract_xdm_for_lint(path: Path) -> XdmLintData:
     """
     from claude_autosar.core.bsw.io.datamodel2_io import (
         DataModel2Error,
-        read as _xdm_read,
     )
+    from claude_autosar.core.bsw.io.datamodel2_io import read as _xdm_read
 
     p = Path(path)
     if not p.is_file():

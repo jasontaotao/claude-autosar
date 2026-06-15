@@ -14,8 +14,8 @@ v2 增强方向：
 
 from __future__ import annotations
 
-from typing import ClassVar
 from collections.abc import Iterable
+from typing import ClassVar
 
 from claude_autosar.core.bsw.lint import (
     ArxmlLintData,
@@ -36,9 +36,7 @@ class EcuMAp001Rule:
         "EcuMComMNetworkHandle",
     )
 
-    def check(
-        self, extracted: ArxmlLintData
-    ) -> Iterable[LintViolation]:
+    def check(self, extracted: ArxmlLintData) -> Iterable[LintViolation]:
         # v1 MVP stub：key_params 没拆 EcuMComMChannels 引用图
         # → 不 yield（FP=0 优先）
         for _p in extracted.key_params:

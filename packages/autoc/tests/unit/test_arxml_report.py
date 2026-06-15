@@ -25,9 +25,7 @@ FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "arxml"
 MINIMAL_FIXTURE = FIXTURES_DIR / "Com_Com.minimal.arxml"
 
 # 用户工程真实 fixture（plan §1.4 硬指标）
-USER_PROJECT_FIXTURE = Path(
-    r"D:/claude_proj2/src/S32K148_EAS_EB_3399A/EAS_Cfg/Arxml/Com_Com.arxml"
-)
+USER_PROJECT_FIXTURE = Path(r"D:/claude_proj2/src/S32K148_EAS_EB_3399A/EAS_Cfg/Arxml/Com_Com.arxml")
 
 
 # ---------------------------------------------------------------------------
@@ -60,8 +58,8 @@ def malformed_fixture(tmp_path_factory: pytest.TempPathFactory) -> Path:
     p.write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<AUTOSAR xmlns="http://autosar.org/schema/r4.0">\n'
-        '<SHORT-NAME>broken\n'
-        '</AUTOSAR_BAD>\n',
+        "<SHORT-NAME>broken\n"
+        "</AUTOSAR_BAD>\n",
         encoding="utf-8",
     )
     return p
@@ -73,9 +71,7 @@ def malformed_fixture(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 class TestRenderBasic:
-    def test_render_empty_minimal_arxml(
-        self, empty_minimal_fixture: Path
-    ) -> None:
+    def test_render_empty_minimal_arxml(self, empty_minimal_fixture: Path) -> None:
         """空 ARXML（只有根 tag）不崩，输出合法 HTML。"""
         html = render_arxml_report(empty_minimal_fixture)
         assert "<!DOCTYPE html>" in html
@@ -85,9 +81,7 @@ class TestRenderBasic:
         assert "No IPdu containers detected" in html
         assert "Modules" in html
 
-    def test_render_minimal_com_ipdu(
-        self, minimal_html: str
-    ) -> None:
+    def test_render_minimal_com_ipdu(self, minimal_html: str) -> None:
         """最小 Com_Com fixture 渲染含 1 个 Com module + ComConfigSet。"""
         assert "<!DOCTYPE html>" in minimal_html
         # metadata 显示模块名
@@ -98,9 +92,7 @@ class TestRenderBasic:
         assert "ComConfigurationUsage" in minimal_html
         assert "ComSupportedIPduGroups" in minimal_html
 
-    def test_render_with_signal_handles(
-        self, minimal_html: str
-    ) -> None:
+    def test_render_with_signal_handles(self, minimal_html: str) -> None:
         """Signal 关键参数（bit_position / length / byte_order / initial_value）渲染。"""
         # Signal Table 渲染了 Signal 行
         assert "<h2>Signal Table</h2>" in minimal_html
@@ -121,9 +113,7 @@ class TestRenderBasic:
 
 
 class TestExport:
-    def test_export_default_path(
-        self, tmp_path: Path
-    ) -> None:
+    def test_export_default_path(self, tmp_path: Path) -> None:
         """export 默认输出 ``<input>.report.html``。"""
         # 复制 fixture 到 tmp（避免污染源）
         src = tmp_path / "Com_Com.minimal.arxml"
@@ -136,9 +126,7 @@ class TestExport:
         assert "<!DOCTYPE html>" in content
         assert "ARXML Report" in content
 
-    def test_export_custom_path(
-        self, tmp_path: Path
-    ) -> None:
+    def test_export_custom_path(self, tmp_path: Path) -> None:
         """export 自定义 output 路径。"""
         src = tmp_path / "input.arxml"
         src.write_bytes(MINIMAL_FIXTURE.read_bytes())
@@ -162,15 +150,15 @@ class TestErrors:
             render_arxml_report(missing)
         assert "not readable" in str(exc_info.value).lower()
 
-    def test_render_arxml_malformed_xml(
-        self, malformed_fixture: Path
-    ) -> None:
+    def test_render_arxml_malformed_xml(self, malformed_fixture: Path) -> None:
         """畸形 XML 抛 ARXMLError。"""
         with pytest.raises(ARXMLError) as exc_info:
             render_arxml_report(malformed_fixture)
-        assert "malformed" in str(exc_info.value).lower() or "syntax" in str(
-            exc_info.value
-        ).lower() or "parse" in str(exc_info.value).lower()
+        assert (
+            "malformed" in str(exc_info.value).lower()
+            or "syntax" in str(exc_info.value).lower()
+            or "parse" in str(exc_info.value).lower()
+        )
 
     def test_export_arxml_invalid_path(self, tmp_path: Path) -> None:
         """export 不存在的源文件抛 ARXMLError。"""

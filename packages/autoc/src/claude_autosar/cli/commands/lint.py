@@ -102,11 +102,11 @@ def _render_lint_html(violations: list[Any]) -> str:
 
     body = (
         '<section class="lint-section">\n'
-        '<h2>Lint Violations</h2>\n'
+        "<h2>Lint Violations</h2>\n"
         '<div class="summary-box">\n'
-        f'<strong>{len(violations)}</strong> violation(s)\n'
-        '</div>\n'
-        '<table>\n'
+        f"<strong>{len(violations)}</strong> violation(s)\n"
+        "</div>\n"
+        "<table>\n"
         "<thead><tr><th>Rule</th><th>Severity</th><th>Location</th>"
         "<th>Message</th></tr></thead>\n"
         "<tbody>\n" + "\n".join(rows) + "\n</tbody>\n"
@@ -190,9 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _filter_violations(
-    violations: list[Any], rules: list[str], severity: str | None
-) -> list[Any]:
+def _filter_violations(violations: list[Any], rules: list[str], severity: str | None) -> list[Any]:
     """按 --rule / --severity 过滤；都不指定 → 不过滤。"""
 
     def keep(v: Any) -> bool:

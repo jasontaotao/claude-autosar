@@ -22,7 +22,6 @@ from claude_autosar.core.bsw.lint.rules import (
     rules_for_namespace,
 )
 
-
 # ---------------------------------------------------------------------------
 # 单元测试
 # ---------------------------------------------------------------------------
@@ -31,12 +30,12 @@ from claude_autosar.core.bsw.lint.rules import (
 def test_all_10_rules_have_applies_to_tag() -> None:
     """10 条规则全部声明 applies_to（防回归 — 忘加 tag 会让 XDM 路径抛异常）。"""
     for rule in ALL_RULES:
-        assert hasattr(rule, "applies_to"), (
-            f"{rule.__class__.__name__} 缺 applies_to ClassVar"
-        )
-        assert rule.applies_to in ("arxml", "xdm", "both"), (
-            f"{rule.__class__.__name__}.applies_to={rule.applies_to!r} 不在白名单"
-        )
+        assert hasattr(rule, "applies_to"), f"{rule.__class__.__name__} 缺 applies_to ClassVar"
+        assert rule.applies_to in (
+            "arxml",
+            "xdm",
+            "both",
+        ), f"{rule.__class__.__name__}.applies_to={rule.applies_to!r} 不在白名单"
 
 
 def test_rules_for_namespace_arxml_returns_8() -> None:
@@ -80,10 +79,8 @@ def test_rules_for_namespace_preserves_stable_order() -> None:
     arxml = rules_for_namespace("arxml")
     xdm = rules_for_namespace("xdm")
 
-    arxml_ids_in_all = [r.rule_id for r in ALL_RULES
-                        if r.rule_id in {x.rule_id for x in arxml}]
-    xdm_ids_in_all = [r.rule_id for r in ALL_RULES
-                      if r.rule_id in {x.rule_id for x in xdm}]
+    arxml_ids_in_all = [r.rule_id for r in ALL_RULES if r.rule_id in {x.rule_id for x in arxml}]
+    xdm_ids_in_all = [r.rule_id for r in ALL_RULES if r.rule_id in {x.rule_id for x in xdm}]
 
     assert [r.rule_id for r in arxml] == arxml_ids_in_all
     assert [r.rule_id for r in xdm] == xdm_ids_in_all
@@ -96,6 +93,7 @@ def test_namespace_filter_prevents_xdm_attrerror() -> None:
     这里手动喂 XdmLintData-like 对象给 CanIfAp007Rule.check()（应当
     如果走 namespace 过滤就压根不会被调用）。
     """
+
     # 用一个会"看起来像 XDM"的对象 — 故意没 key_params 字段
     class FakeXdm:
         module_name = "Can"
@@ -119,6 +117,7 @@ def test_backward_compat_rule_without_tag_runs_in_both() -> None:
     直接复用 ``rules_for_namespace`` 的过滤逻辑（局部函数），验证
     UntaggedRule 会被包含。
     """
+
     class UntaggedRule:
         rule_id: ClassVar[str] = "TEST-UNTAGGED"
         severity_default: ClassVar[str] = LintSeverity.INFO
@@ -128,14 +127,8 @@ def test_backward_compat_rule_without_tag_runs_in_both() -> None:
 
     # 模拟 ALL_RULES 加一条未声明 tag 的规则
     custom = (UntaggedRule(),) + ALL_RULES
-    ar = tuple(
-        r for r in custom
-        if getattr(r, "applies_to", "both") in ("arxml", "both")
-    )
-    xd = tuple(
-        r for r in custom
-        if getattr(r, "applies_to", "both") in ("xdm", "both")
-    )
+    ar = tuple(r for r in custom if getattr(r, "applies_to", "both") in ("arxml", "both"))
+    xd = tuple(r for r in custom if getattr(r, "applies_to", "both") in ("xdm", "both"))
     assert any(r.rule_id == "TEST-UNTAGGED" for r in ar)
     assert any(r.rule_id == "TEST-UNTAGGED" for r in xd)
 
@@ -157,9 +150,9 @@ def test_lint_file_xdm_skips_arxml_rules(tmp_path: pytest.TempPathFactory) -> No
         '  <d:module name="X">\n'
         '    <d:chc name="X" type="AR-OBJECT">\n'
         '      <d:ctr name="XConfig" type="IDENTIFIABLE"/>\n'
-        '    </d:chc>\n'
-        '  </d:module>\n'
-        '</d:model>\n',
+        "    </d:chc>\n"
+        "  </d:module>\n"
+        "</d:model>\n",
         encoding="utf-8",
     )
 

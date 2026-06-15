@@ -74,7 +74,4 @@ def rules_for_namespace(ns: str) -> tuple[LintRule, ...]:
     """
     if ns not in ("arxml", "xdm"):
         raise ValueError(f"ns must be 'arxml' or 'xdm', got {ns!r}")
-    return tuple(
-        rule for rule in ALL_RULES
-        if getattr(rule, "applies_to", "both") in (ns, "both")
-    )
+    return tuple(rule for rule in ALL_RULES if getattr(rule, "applies_to", "both") in (ns, "both"))

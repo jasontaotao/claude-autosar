@@ -11,14 +11,13 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
 from collections.abc import Iterable
+from typing import ClassVar
 
 import pytest
 
 from claude_autosar.core.bsw.lint import LintSeverity, LintViolation
 from claude_autosar.core.bsw.lint.runner import LintRunner, LintSummary
-
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -125,9 +124,7 @@ class TestLintRunnerBasics:
         assert v[0].severity == "error"
 
     def test_multiple_rules_aggregate_in_order(self) -> None:
-        runner = LintRunner(
-            (_AlwaysMatchRule(), _WarningRule(), _InfoRule())
-        )
+        runner = LintRunner((_AlwaysMatchRule(), _WarningRule(), _InfoRule()))
         v = runner.run("x")
         assert [x.rule_id for x in v] == ["TEST-001", "TEST-002", "TEST-003"]
 
@@ -149,9 +146,7 @@ class TestLintRunnerBasics:
 class TestRuleExceptionIsolation:
     def test_rule_exception_does_not_break_run(self) -> None:
         """单条规则 raise → 跳过，其他规则继续。"""
-        runner = LintRunner(
-            (_ExplodingRule(), _AlwaysMatchRule(), _ExplodingRule())
-        )
+        runner = LintRunner((_ExplodingRule(), _AlwaysMatchRule(), _ExplodingRule()))
         v = runner.run("x")
         # 中间那条仍然 yield
         assert len(v) == 1
@@ -188,18 +183,14 @@ class TestSummarize:
 
     def test_summarize_unknown_severity_is_error(self) -> None:
         runner = LintRunner(())
-        v = (
-            LintViolation("R1", "weird", "m", "loc", "mod"),
-        )
+        v = (LintViolation("R1", "weird", "m", "loc", "mod"),)
         s = runner.summarize(v)
         # unknown → 当 error
         assert s.errors == 1
         assert s.by_rule_id == {"R1": 1}
 
     def test_summarize_frozen(self) -> None:
-        s = LintSummary(
-            total=0, errors=0, warnings=0, infos=0, by_rule_id={}
-        )
+        s = LintSummary(total=0, errors=0, warnings=0, infos=0, by_rule_id={})
         with pytest.raises((AttributeError, Exception)):
             s.total = 1  # type: ignore[misc]
 

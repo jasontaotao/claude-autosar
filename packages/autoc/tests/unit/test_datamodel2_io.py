@@ -13,8 +13,8 @@ import pytest
 
 from claude_autosar.core.bsw.io.datamodel2_io import (
     DEFAULT_NAMESPACES,
-    DataModel2Error,
     WELL_KNOWN_NAMESPACE_URIS,
+    DataModel2Error,
     _apply_surgical_patch_to_bytes,
     detect_namespaces,
     find_elements,
@@ -199,18 +199,12 @@ class TestDetectNamespaces:
     def test_detect_namespaces_user_fixtures_have_dm_default(self) -> None:
         """用户工程 .xdm 默认 ns 应被映射到 'dm'。"""
         ns = detect_namespaces(FIXTURES_DIR / "Can.xdm")
-        assert (
-            ns["dm"]
-            == "http://www.tresos.de/_projects/DataModel2/16/root.xsd"
-        )
+        assert ns["dm"] == "http://www.tresos.de/_projects/DataModel2/16/root.xsd"
 
     def test_detect_namespaces_user_fixtures_have_d_prefix(self) -> None:
         """用户工程 .xdm 应有 ``d:`` 命名空间。"""
         ns = detect_namespaces(FIXTURES_DIR / "Mcu.xdm")
-        assert (
-            ns["d"]
-            == "http://www.tresos.de/_projects/DataModel2/06/data.xsd"
-        )
+        assert ns["d"] == "http://www.tresos.de/_projects/DataModel2/06/data.xsd"
 
     def test_detect_namespaces_adds_xsi_if_missing(self, tmp_path: Path) -> None:
         f = tmp_path / "no_xsi.xdm"
@@ -241,10 +235,7 @@ class TestWellKnownNamespaceUris:
 
     def test_d_alias_includes_v1(self) -> None:
         """v1 alias: ``http://www.3soft.de/xml/tresos/datamodel/1.0``."""
-        assert (
-            "http://www.3soft.de/xml/tresos/datamodel/1.0"
-            in WELL_KNOWN_NAMESPACE_URIS["d"]
-        )
+        assert "http://www.3soft.de/xml/tresos/datamodel/1.0" in WELL_KNOWN_NAMESPACE_URIS["d"]
 
     def test_d_alias_includes_v2_data(self) -> None:
         assert (
@@ -422,7 +413,9 @@ class TestRoundTrip:
             write(tree, dst, atomic=False)
 
             tree2 = read(dst)
-            results2 = find_elements(tree2, "//a:a[@name='IMPLEMENTATION_CONFIG_VARIANT']", namespaces=ns)
+            results2 = find_elements(
+                tree2, "//a:a[@name='IMPLEMENTATION_CONFIG_VARIANT']", namespaces=ns
+            )
             assert get_attribute(results2[0], "value") == "VariantPreCompile"
             # 至少改过
             assert old is not None
@@ -551,9 +544,7 @@ class TestByteIdentitySurgicalPatch:
         # 故意构造一个与文件不匹配的 tree（不同根标签 + 不同元素数）
         from lxml import etree
 
-        bogus_tree = etree.fromstring(
-            b'<root xmlns="http://example.com"><a/></root>'
-        )
+        bogus_tree = etree.fromstring(b'<root xmlns="http://example.com"><a/></root>')
         bogus = etree.ElementTree(bogus_tree)
         from claude_autosar.core.bsw.io.datamodel2_io import (
             _SurgicalPatchUnavailable,
@@ -596,10 +587,7 @@ class TestVendorExtensionsTolerance:
     def test_v1_d_alias_uri_recognized(self) -> None:
         """``d:`` v1 alias (``http://www.3soft.de/xml/tresos/datamodel/1.0``)
         在 ``WELL_KNOWN_NAMESPACE_URIS`` 中被识别。"""
-        assert (
-            "http://www.3soft.de/xml/tresos/datamodel/1.0"
-            in WELL_KNOWN_NAMESPACE_URIS["d"]
-        )
+        assert "http://www.3soft.de/xml/tresos/datamodel/1.0" in WELL_KNOWN_NAMESPACE_URIS["d"]
 
 
 # ---------------------------------------------------------------------------

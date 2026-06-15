@@ -28,7 +28,6 @@ from claude_autosar.core.bsw.verify import (
     parse_tresos_verify_stdout,
 )
 
-
 # =============================================================================
 # 1. parse_empty_stdout → issues 为空
 # =============================================================================
@@ -171,9 +170,7 @@ def test_parse_module_default_propagated_to_all_issues() -> None:
         "WARNING: deprecated symbol\n"
         "INFO: validation completed\n"
     )
-    report = parse_tresos_verify_stdout(
-        stdout, returncode=1, module="Com"
-    )
+    report = parse_tresos_verify_stdout(stdout, returncode=1, module="Com")
     assert len(report.issues) == 3
     for issue in report.issues:
         assert issue.module == "Com"
@@ -182,9 +179,7 @@ def test_parse_module_default_propagated_to_all_issues() -> None:
 def test_parse_module_default_overrides_stdout_module_marker() -> None:
     """``forced_module`` 非空时优先，覆盖 stdout ``module <NAME>``。"""
     stdout = "ERROR: missing required parameter module Foo"
-    report = parse_tresos_verify_stdout(
-        stdout, returncode=1, module="Com"
-    )
+    report = parse_tresos_verify_stdout(stdout, returncode=1, module="Com")
     assert report.issues[0].module == "Com"
 
 
@@ -287,9 +282,7 @@ def test_parse_frozen_issue_is_immutable() -> None:
 
 def test_parse_issues_field_is_tuple_not_list() -> None:
     """``issues`` 字段是 tuple（frozen 不可变 + 顺序稳定）。"""
-    report = parse_tresos_verify_stdout(
-        "ERROR: a\nWARNING: b\nINFO: c\n", returncode=1
-    )
+    report = parse_tresos_verify_stdout("ERROR: a\nWARNING: b\nINFO: c\n", returncode=1)
     assert isinstance(report.issues, tuple)
     # tuple 不支持 append
     with pytest.raises(AttributeError):
@@ -344,17 +337,13 @@ def test_report_preserves_raw_stdout_and_stderr() -> None:
     """``raw_stdout`` / ``raw_stderr`` 保留原始字符串便于诊断。"""
     raw_stdout = "ERROR: x\nINFO: y\n"
     raw_stderr = "warning noise\n"
-    report = parse_tresos_verify_stdout(
-        raw_stdout, stderr=raw_stderr, returncode=0
-    )
+    report = parse_tresos_verify_stdout(raw_stdout, stderr=raw_stderr, returncode=0)
     assert report.raw_stdout == raw_stdout
     assert report.raw_stderr == raw_stderr
 
 
 def test_report_with_only_warnings_has_no_errors() -> None:
     """只有 WARNING → ``has_errors`` False / ``has_warnings`` True。"""
-    report = parse_tresos_verify_stdout(
-        "WARNING: minor issue\n", returncode=0
-    )
+    report = parse_tresos_verify_stdout("WARNING: minor issue\n", returncode=0)
     assert report.has_errors is False
     assert report.has_warnings is True

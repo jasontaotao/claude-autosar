@@ -35,8 +35,7 @@ def _mod(name: str, leaves: list[tuple[str, str, str]]) -> XDMModule:
         path=Path(f"/tmp/{name}.xdm"),
         module_name=name,
         values=tuple(
-            XDMValue(path=p, raw=r, type=t)  # type: ignore[arg-type]
-            for (p, r, t) in leaves
+            XDMValue(path=p, raw=r, type=t) for (p, r, t) in leaves  # type: ignore[arg-type]
         ),
     )
 
@@ -88,9 +87,7 @@ class TestTemplateDiffFrozen:
 class TestAdd:
     def test_path_only_in_template_produces_add(self) -> None:
         current = _mod("Can", [("Can/A", "old", "INTEGER")])
-        template = _mod(
-            "Can", [("Can/A", "old", "INTEGER"), ("Can/B", "new", "BOOLEAN")]
-        )
+        template = _mod("Can", [("Can/A", "old", "INTEGER"), ("Can/B", "new", "BOOLEAN")])
         result = diff_xdm_templates(current, template)
         assert len(result.diffs) == 1
         d = result.diffs[0]
@@ -220,16 +217,16 @@ class TestMixed:
             "Can",
             [
                 ("Can/A", "old_a", "INTEGER"),  # modify
-                ("Can/B", "x", "BOOLEAN"),       # unchanged
-                ("Can/C", "del", "STRING"),      # delete
+                ("Can/B", "x", "BOOLEAN"),  # unchanged
+                ("Can/C", "del", "STRING"),  # delete
             ],
         )
         template = _mod(
             "Can",
             [
-                ("Can/A", "new_a", "INTEGER"),   # modify
-                ("Can/B", "x", "BOOLEAN"),       # unchanged
-                ("Can/D", "added", "STRING"),    # add
+                ("Can/A", "new_a", "INTEGER"),  # modify
+                ("Can/B", "x", "BOOLEAN"),  # unchanged
+                ("Can/D", "added", "STRING"),  # add
             ],
         )
         result = diff_xdm_templates(current, template)
@@ -244,9 +241,7 @@ class TestMixed:
         assert paths_by_op["modify"] == {"Can/A"}
         assert paths_by_op["delete"] == {"Can/C"}
         # 三个 property 互不相交
-        assert set(result.adds) | set(result.modifies) | set(result.deletes) == set(
-            result.diffs
-        )
+        assert set(result.adds) | set(result.modifies) | set(result.deletes) == set(result.diffs)
 
 
 # ---------------------------------------------------------------------------
@@ -328,9 +323,7 @@ class TestInputsNotMutated:
             _v("Can/C", "y", "STRING"),
         )
         current = XDMModule(path=Path("/tmp/a.xdm"), module_name="Can", values=cur_values)
-        template = XDMModule(
-            path=Path("/tmp/b.xdm"), module_name="Can", values=tpl_values
-        )
+        template = XDMModule(path=Path("/tmp/b.xdm"), module_name="Can", values=tpl_values)
         snapshot_cur = tuple(current.values)
         snapshot_tpl = tuple(template.values)
         diff_xdm_templates(current, template)

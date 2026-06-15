@@ -32,7 +32,6 @@ from claude_autosar.core.settings.v2_paths import (
     write_settings_json,
 )
 
-
 # ===========================================================================
 # Helpers
 # ===========================================================================
@@ -67,9 +66,7 @@ def _build_chip_dir(vendor_home: Path, chip_name: str) -> str:
     return chip_name
 
 
-def _clean_env(
-    monkeypatch: pytest.MonkeyPatch, *keys: str
-) -> None:
+def _clean_env(monkeypatch: pytest.MonkeyPatch, *keys: str) -> None:
     """Clear all V2 env vars so tests don't see host env."""
     for k in keys:
         monkeypatch.delenv(k, raising=False)
@@ -210,16 +207,12 @@ class TestProbeTresosHome:
         result = probe_tresos_home()
         assert result == home.resolve()
 
-    def test_other_platform_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_other_platform_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """darwin / 其他 → None。"""
         monkeypatch.setattr("sys.platform", "darwin")
         assert probe_tresos_home() is None
 
-    def test_windows_default_missing_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_windows_default_missing_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Win + 默认路径都不存在 → None。"""
         monkeypatch.setattr("sys.platform", "win32")
         monkeypatch.setattr(
@@ -237,21 +230,17 @@ class TestProbeMcalVendorHome:
     """``probe_mcal_vendor_home()`` 5 vendor。"""
 
     @pytest.mark.parametrize("vendor", list(MCAL_VENDORS))
-    def test_vendor_default_exists(
-        self, tmp_path: Path, vendor: str
-    ) -> None:
+    def test_vendor_default_exists(self, tmp_path: Path, vendor: str) -> None:
         """5 vendor 任一：默认路径在 tmp 下存在 → 返回。"""
         # 直接 monkey-patch 探测表指向 tmp
         for cand in VENDOR_DEFAULT_HOMES[vendor]:
             (tmp_path / cand.name).mkdir(parents=True, exist_ok=True)
         # Build patched table
         patched = {
-            v: tuple(
-                tmp_path / c.name for c in VENDOR_DEFAULT_HOMES[v]
-            )
-            for v in MCAL_VENDORS
+            v: tuple(tmp_path / c.name for c in VENDOR_DEFAULT_HOMES[v]) for v in MCAL_VENDORS
         }
         import claude_autosar.core.settings.v2_paths as mod
+
         orig = mod.VENDOR_DEFAULT_HOMES
         mod.VENDOR_DEFAULT_HOMES = patched
         try:
@@ -265,15 +254,11 @@ class TestProbeMcalVendorHome:
         """未知 vendor → None。"""
         assert probe_mcal_vendor_home("bogus") is None
 
-    def test_vendor_default_missing_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_vendor_default_missing_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """vendor 默认路径都不存在 → None。"""
-        patched = {
-            v: tuple(Path(f"/no/such/{v}_{i}") for i in range(2))
-            for v in MCAL_VENDORS
-        }
+        patched = {v: tuple(Path(f"/no/such/{v}_{i}") for i in range(2)) for v in MCAL_VENDORS}
         import claude_autosar.core.settings.v2_paths as mod
+
         monkeypatch.setattr(mod, "VENDOR_DEFAULT_HOMES", patched)
         assert probe_mcal_vendor_home("nxp") is None
 
@@ -288,9 +273,7 @@ class TestProbeChipDerivative:
         result = probe_chip_derivative(vendor_home)
         assert result == chip
 
-    def test_chip_multiple_returns_first_sorted(
-        self, tmp_path: Path
-    ) -> None:
+    def test_chip_multiple_returns_first_sorted(self, tmp_path: Path) -> None:
         """多个 .epd → 返回按字母排序后的第一个。"""
         vendor_home = _build_vendor_home(tmp_path, "nxp")
         autosar = vendor_home / "autosar"
@@ -503,6 +486,7 @@ class TestLoadV2PathsPriorityChain:
             "infineon": (Path("/no/such/infineon"),),
         }
         import claude_autosar.core.settings.v2_paths as mod
+
         monkeypatch.setattr(mod, "VENDOR_DEFAULT_HOMES", patched)
 
         v = load_v2_paths(project_root=tmp_path / "proj_no_cfg")
@@ -547,6 +531,7 @@ class TestLoadV2PathsMissing:
         # 探测 vendor 表全空
         patched = dict.fromkeys(MCAL_VENDORS, ())
         import claude_autosar.core.settings.v2_paths as mod
+
         monkeypatch.setattr(mod, "VENDOR_DEFAULT_HOMES", patched)
 
         with pytest.raises(V2PathsError, match="mcal_vendor"):
@@ -579,6 +564,7 @@ class TestLoadV2PathsMissing:
         monkeypatch.setenv("MCAL_VENDOR", "nxp")
         patched = {v: (Path("/no/such"),) for v in MCAL_VENDORS}
         import claude_autosar.core.settings.v2_paths as mod
+
         monkeypatch.setattr(mod, "VENDOR_DEFAULT_HOMES", patched)
 
         with pytest.raises(V2PathsError, match="mcal_vendor_home"):
@@ -652,9 +638,7 @@ class TestLoadV2PathsMissing:
 class TestSettingsJsonTolerance:
     """settings.json 缺字段 / 非法 / 顶层非 dict 容错。"""
 
-    def test_missing_file_no_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_missing_file_no_error(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """``<proj>/.autoc/settings.json`` 不存在 → 当空处理（流程走 env / probe）。"""
         _clean_env(
             monkeypatch,
@@ -676,9 +660,7 @@ class TestSettingsJsonTolerance:
         v = load_v2_paths(project_root=tmp_path / "proj")
         assert v.mcal_vendor == "nxp"
 
-    def test_invalid_json_no_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_invalid_json_no_error(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """settings.json 非法 JSON → 当空（不抛）。"""
         _clean_env(
             monkeypatch,
@@ -689,9 +671,7 @@ class TestSettingsJsonTolerance:
         )
         cfg_dir = tmp_path / "proj" / ".autoc"
         cfg_dir.mkdir(parents=True, exist_ok=True)
-        (cfg_dir / SETTINGS_JSON_NAME).write_text(
-            "{not valid json", encoding="utf-8"
-        )
+        (cfg_dir / SETTINGS_JSON_NAME).write_text("{not valid json", encoding="utf-8")
         # env 给全
         tresos = _build_tresos_home(tmp_path / "t")
         vendor_home = tmp_path / "v"
@@ -717,9 +697,7 @@ class TestSettingsJsonTolerance:
         )
         cfg_dir = tmp_path / "proj" / ".autoc"
         cfg_dir.mkdir(parents=True, exist_ok=True)
-        (cfg_dir / SETTINGS_JSON_NAME).write_text(
-            json.dumps([1, 2, 3]), encoding="utf-8"
-        )
+        (cfg_dir / SETTINGS_JSON_NAME).write_text(json.dumps([1, 2, 3]), encoding="utf-8")
         tresos = _build_tresos_home(tmp_path / "t")
         vendor_home = tmp_path / "v"
         vendor_home.mkdir()
@@ -760,9 +738,7 @@ class TestSettingsJsonTolerance:
 class TestWriteSettingsJson:
     """``write_settings_json`` 写文件 + v1 ``autoc.yaml`` 共存。"""
 
-    def test_write_creates_file(
-        self, tmp_path: Path
-    ) -> None:
+    def test_write_creates_file(self, tmp_path: Path) -> None:
         """写 .autoc/settings.json 4 字段。"""
         v = V2Paths(
             tresos_home=Path("C:/EB/tresos"),
@@ -776,9 +752,7 @@ class TestWriteSettingsJson:
         assert data["mcal_vendor"] == "nxp"
         assert data["chip_derivative"] == "Mcu_s32k148_lqfp176.epd"
 
-    def test_write_creates_autoc_dir(
-        self, tmp_path: Path
-    ) -> None:
+    def test_write_creates_autoc_dir(self, tmp_path: Path) -> None:
         """``.autoc/`` 不存在时自动创建。"""
         v = V2Paths(
             tresos_home=Path("C:/EB/tresos"),
@@ -790,9 +764,7 @@ class TestWriteSettingsJson:
         assert (tmp_path / ".autoc").is_dir()
         assert path == tmp_path / ".autoc" / SETTINGS_JSON_NAME
 
-    def test_v1_yaml_and_v2_json_coexist(
-        self, tmp_path: Path
-    ) -> None:
+    def test_v1_yaml_and_v2_json_coexist(self, tmp_path: Path) -> None:
         """``.autoc/autoc.yaml`` + ``.autoc/settings.json`` 共存。"""
         from claude_autosar.core.config.project_config import ProjectConfig
 
@@ -820,6 +792,7 @@ class TestWriteSettingsJson:
         assert loaded.mcal_vendor == "nxp"
         # load_yaml 也能读 yaml
         from claude_autosar.core.config.project_config import load_yaml
+
         loaded_yaml = load_yaml(yaml_path)
         assert "project_root" in loaded_yaml
 

@@ -12,9 +12,9 @@ byte-identity 严格校验:
 
 from __future__ import annotations
 
+from pathlib import Path
 import re
 import shutil
-from pathlib import Path
 
 import pytest
 
@@ -28,10 +28,8 @@ from claude_autosar.core.bsw.templates.arxml_diff import (
     TemplateDiff,
     TemplateDiffResult,
 )
-from claude_autosar.core.bsw.templates.xdm_diff import (
-    TemplateDiff as XDMTemplateDiff,
-    TemplateDiffResult as XDMTemplateDiffResult,
-)
+from claude_autosar.core.bsw.templates.xdm_diff import TemplateDiff as XDMTemplateDiff
+from claude_autosar.core.bsw.templates.xdm_diff import TemplateDiffResult as XDMTemplateDiffResult
 
 # ---------------------------------------------------------------------------
 # Fixture paths
@@ -250,6 +248,7 @@ def test_apply_xdm_modify_value_applied(
     new_text = doc.read_bytes().decode("utf-8")
     # d:var 段值改了
     import re as _re
+
     m = _re.search(
         r'<d:var[^>]*name="CanTxIPduHandleId"[^>]*value="101"[^>]*/>',
         new_text,
@@ -275,9 +274,7 @@ def test_apply_xdm_modify_value_effective(
 
     new_text = doc.read_bytes().decode("utf-8")
     # CanTxIPduHandleId 的 value 是 101
-    pattern = (
-        r'<d:var[^>]*name="CanTxIPduHandleId"[^>]*value="101"[^>]*/>'
-    )
+    pattern = r'<d:var[^>]*name="CanTxIPduHandleId"[^>]*value="101"[^>]*/>'
     assert re.search(pattern, new_text) is not None
     # 旧值 100 不应出现
     assert 'value="100"' not in new_text

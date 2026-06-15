@@ -79,13 +79,13 @@ def test_main_no_subcommand_exits_zero(capsys: pytest.CaptureFixture[str]) -> No
 
 
 def test_main_version_flag_prints_to_stdout(capsys: pytest.CaptureFixture[str]) -> None:
-    """`autoc --version`: exit 0 + version on stdout."""
+    """`claude-autosar --version`: exit 0 + version on stdout."""
     with pytest.raises(SystemExit) as excinfo:
         main(["--version"])
     assert excinfo.value.code == 0
     captured = capsys.readouterr()
-    assert "autoc" in captured.out
-    assert "0.1.0" in captured.out
+    assert "claude-autosar" in captured.out
+    assert "0.3.0" in captured.out
 
 
 def test_main_unknown_subcommand_exits_one(capsys: pytest.CaptureFixture[str]) -> None:

@@ -107,9 +107,7 @@ class TestXDMValueFrozen:
 
 
 class TestLoadXdmModuleHappyPath:
-    def test_load_returns_xdm_module_with_correct_metadata(
-        self, can_xdm: Path
-    ) -> None:
+    def test_load_returns_xdm_module_with_correct_metadata(self, can_xdm: Path) -> None:
         mod = load_xdm_module(can_xdm, "Can")
         assert isinstance(mod, XDMModule)
         assert mod.path == can_xdm
@@ -176,9 +174,7 @@ class TestInferXdmType:
             ("UNKNOWN-TYPE", "STRING"),
         ],
     )
-    def test_infer_returns_literal_value(
-        self, raw: str, expected: XDMValueType
-    ) -> None:
+    def test_infer_returns_literal_value(self, raw: str, expected: XDMValueType) -> None:
         assert _infer_xdm_type(raw) == expected
 
 
@@ -206,17 +202,13 @@ class TestLoadLeavesHaveCorrectTypes:
         assert dev.type == "BOOLEAN"
         assert dev.raw == "false"
 
-    def test_enumeration_leaf_has_enumeration_type(
-        self, can_xdm: Path
-    ) -> None:
+    def test_enumeration_leaf_has_enumeration_type(self, can_xdm: Path) -> None:
         mod = load_xdm_module(can_xdm, "Can")
         hwch = _find(mod, "CanHwChannel")
         assert hwch.type == "ENUMERATION"
         assert hwch.raw == "FlexCAN_A"
 
-    def test_function_name_leaf_falls_back_to_string(
-        self, can_xdm: Path
-    ) -> None:
+    def test_function_name_leaf_falls_back_to_string(self, can_xdm: Path) -> None:
         mod = load_xdm_module(can_xdm, "Can")
         notif = _find(mod, "CanRxFifoWarningNotification")
         # FUNCTION-NAME 不是 ECUC/XDMValueType 5 种之一 → STRING
@@ -230,24 +222,18 @@ class TestLoadLeavesHaveCorrectTypes:
 
 
 class TestLoadErrors:
-    def test_missing_module_raises_xdm_value_error(
-        self, can_xdm: Path
-    ) -> None:
+    def test_missing_module_raises_xdm_value_error(self, can_xdm: Path) -> None:
         with pytest.raises(XDMValueError) as exc_info:
             load_xdm_module(can_xdm, "NonExistent")
         assert "NonExistent" in str(exc_info.value)
         assert "not found" in str(exc_info.value)
 
-    def test_missing_file_raises_xdm_value_error(
-        self, tmp_path: Path
-    ) -> None:
+    def test_missing_file_raises_xdm_value_error(self, tmp_path: Path) -> None:
         with pytest.raises(XDMValueError) as exc_info:
             load_xdm_module(tmp_path / "does_not_exist.xdm", "Can")
         assert "not readable" in str(exc_info.value)
 
-    def test_wrong_format_raises_xdm_value_error(
-        self, tmp_path: Path
-    ) -> None:
+    def test_wrong_format_raises_xdm_value_error(self, tmp_path: Path) -> None:
         # 写一个 arxml 风格的 .xdm 命名（让 dispatcher 探测失败）
         bad = tmp_path / "wrong.xdm"
         bad.write_text(

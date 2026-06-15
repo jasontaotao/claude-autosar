@@ -5,7 +5,6 @@ ComSignal > 8 byte 走经典 CAN → ERROR。
 
 from __future__ import annotations
 
-
 from claude_autosar.core.bsw.lint import (
     ArxmlLintData,
     LintSeverity,
@@ -65,18 +64,12 @@ class TestComAp001Rule:
 
     def test_missing_length_skipped(self) -> None:
         """没 ComSignalLength → skip（不误报）。"""
-        data = _mk_data(
-            signals_by_ipdu={"TxPdu": ({"name": "S1"},)}
-        )
+        data = _mk_data(signals_by_ipdu={"TxPdu": ({"name": "S1"},)})
         assert list(ComAp001Rule().check(data)) == []
 
     def test_non_int_length_skipped(self) -> None:
         """非数字 ComSignalLength → skip。"""
-        data = _mk_data(
-            signals_by_ipdu={
-                "TxPdu": ({"name": "S1", "ComSignalLength": "abc"},)
-            }
-        )
+        data = _mk_data(signals_by_ipdu={"TxPdu": ({"name": "S1", "ComSignalLength": "abc"},)})
         assert list(ComAp001Rule().check(data)) == []
 
     def test_multiple_signals(self) -> None:
@@ -87,9 +80,7 @@ class TestComAp001Rule:
                     {"name": "S1", "ComSignalLength": "8"},
                     {"name": "S2", "ComSignalLength": "32"},
                 ),
-                "PduB": (
-                    {"name": "S3", "ComSignalLength": "4"},
-                ),
+                "PduB": ({"name": "S3", "ComSignalLength": "4"},),
             }
         )
         v = list(ComAp001Rule().check(data))

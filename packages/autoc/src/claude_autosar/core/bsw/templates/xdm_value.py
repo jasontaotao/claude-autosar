@@ -115,9 +115,7 @@ def load_xdm_module(
 
     module_elem = _find_module_root(root, module_name)
     if module_elem is None:
-        raise XDMValueError(
-            f"<d:chc name={module_name!r} type=AR-ELEMENT> not found in {p}"
-        )
+        raise XDMValueError(f"<d:chc name={module_name!r} type=AR-ELEMENT> not found in {p}")
 
     values: list[XDMValue] = []
     _walk_module(module_elem, module_name, values)

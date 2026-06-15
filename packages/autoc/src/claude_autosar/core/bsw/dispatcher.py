@@ -194,7 +194,8 @@ def read(path: str | Path, *, expected_format: Format | None = None) -> LoadedDo
 
 def write(doc: LoadedDocument, *, preserve_format: bool = True) -> None:
     """按 ``doc.format`` 路由到对应 writer。原子写 + 保留格式（默认）。"""
-    from claude_autosar.core.bsw.arxml_io import ARXMLDocument, write as _arxml_write
+    from claude_autosar.core.bsw.arxml_io import ARXMLDocument
+    from claude_autosar.core.bsw.arxml_io import write as _arxml_write
     from claude_autosar.core.bsw.io.datamodel2_io import write as _xdm_write
 
     if doc.format == "arxml":

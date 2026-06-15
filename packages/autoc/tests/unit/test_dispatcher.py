@@ -22,11 +22,11 @@ from claude_autosar.core.bsw.dispatcher import (
     FormatMismatchError,
     LoadedDocument,
     UnknownFormatError,
+    describe,
     detect_format,
     detect_format_from_tree,
     read,
     write,
-    describe,
 )
 
 # ---------------------------------------------------------------------------
@@ -172,6 +172,7 @@ class TestDetectFormatFromTree:
 
     def test_fallback_when_getroot_returns_none(self) -> None:
         """防御：getroot() 返回 None 时退回 tree 本身（死代码分支但保留）。"""
+
         # 构造一个伪 _ElementTree 替身：getroot() 返回 None
         class _FakeTree:
             def getroot(self) -> None:

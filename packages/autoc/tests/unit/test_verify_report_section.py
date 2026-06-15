@@ -46,10 +46,11 @@ def minimal_arxml_html() -> str:
 @pytest.fixture(scope="module")
 def minimal_xdm_html() -> str:
     """最小 xdm fixture 渲染结果（module-scope）。"""
+    import tempfile
+
     from claude_autosar.core.bsw.inspector.xdm_report import (
         render_xdm_report,
     )
-    import tempfile
 
     # XDM 没 fixture；动态写一个最小 DataModel2 树
     xdm_content = (
@@ -60,14 +61,12 @@ def minimal_xdm_html() -> str:
         '<d:chc name="Can" type="AR-ELEMENT">\n'
         '<d:lst name="CanGeneral">\n'
         '<d:var name="CanDevErrorDetect" type="BOOLEAN" value="true"/>\n'
-        '</d:lst>\n'
-        '</d:chc>\n'
-        '</d:lst>\n'
-        '</root>\n'
+        "</d:lst>\n"
+        "</d:chc>\n"
+        "</d:lst>\n"
+        "</root>\n"
     )
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".xdm", delete=False, encoding="utf-8"
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".xdm", delete=False, encoding="utf-8") as f:
         f.write(xdm_content)
         xdm_path = Path(f.name)
     try:
@@ -89,7 +88,7 @@ def test_render_empty_issues_returns_placeholder() -> None:
     assert "<h2>Verify</h2>" in html
     assert "Verify section: 0 issues" in html
     assert "summary-box" in html
-    assert 'verify-rc-zero' in html
+    assert "verify-rc-zero" in html
 
 
 # ---------------------------------------------------------------------------
@@ -137,28 +136,52 @@ def test_render_severity_sort_error_warning_info() -> None:
     """按 ERROR → WARNING → INFO 顺序排，同 severity 保持原顺序（stable）。"""
     issues = (
         SimpleNamespace(
-            severity="INFO", code="I1", message="info first",
-            module="A", file=None, line=None,
+            severity="INFO",
+            code="I1",
+            message="info first",
+            module="A",
+            file=None,
+            line=None,
         ),
         SimpleNamespace(
-            severity="WARNING", code="W1", message="warn first",
-            module="B", file=None, line=None,
+            severity="WARNING",
+            code="W1",
+            message="warn first",
+            module="B",
+            file=None,
+            line=None,
         ),
         SimpleNamespace(
-            severity="ERROR", code="E1", message="err first",
-            module="C", file=None, line=None,
+            severity="ERROR",
+            code="E1",
+            message="err first",
+            module="C",
+            file=None,
+            line=None,
         ),
         SimpleNamespace(
-            severity="INFO", code="I2", message="info second",
-            module="D", file=None, line=None,
+            severity="INFO",
+            code="I2",
+            message="info second",
+            module="D",
+            file=None,
+            line=None,
         ),
         SimpleNamespace(
-            severity="WARNING", code="W2", message="warn second",
-            module="E", file=None, line=None,
+            severity="WARNING",
+            code="W2",
+            message="warn second",
+            module="E",
+            file=None,
+            line=None,
         ),
         SimpleNamespace(
-            severity="ERROR", code="E2", message="err second",
-            module="F", file=None, line=None,
+            severity="ERROR",
+            code="E2",
+            message="err second",
+            module="F",
+            file=None,
+            line=None,
         ),
     )
     html = render_verify_section_html(issues, returncode=1)
@@ -166,8 +189,12 @@ def test_render_severity_sort_error_warning_info() -> None:
     pos = {
         msg: html.find(msg)
         for msg in (
-            "info first", "warn first", "err first",
-            "info second", "warn second", "err second",
+            "info first",
+            "warn first",
+            "err first",
+            "info second",
+            "warn second",
+            "err second",
         )
     }
     # 所有 message 必须存在
@@ -224,8 +251,12 @@ def test_render_with_xss_payload_escapes_html() -> None:
 def test_render_with_nonzero_returncode_marks_summary() -> None:
     """returncode != 0 → summary box 加 ``verify-rc-nonzero`` class（红/黄视觉区分）。"""
     issue = SimpleNamespace(
-        severity="INFO", code="I", message="m",
-        module="M", file=None, line=None,
+        severity="INFO",
+        code="I",
+        message="m",
+        module="M",
+        file=None,
+        line=None,
     )
     html_ok = render_verify_section_html((issue,), returncode=0)
     html_fail = render_verify_section_html((issue,), returncode=2)
@@ -332,10 +363,10 @@ def test_render_xdm_report_with_verify_inserts_section(
         '<d:chc name="Can" type="AR-ELEMENT">\n'
         '<d:lst name="CanGeneral">\n'
         '<d:var name="CanDevErrorDetect" type="BOOLEAN" value="true"/>\n'
-        '</d:lst>\n'
-        '</d:chc>\n'
-        '</d:lst>\n'
-        '</root>\n',
+        "</d:lst>\n"
+        "</d:chc>\n"
+        "</d:lst>\n"
+        "</root>\n",
         encoding="utf-8",
     )
     issue = SimpleNamespace(

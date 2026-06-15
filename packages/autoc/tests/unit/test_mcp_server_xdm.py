@@ -15,7 +15,6 @@ import pytest
 from claude_autosar.cli import mcp_server
 from claude_autosar.cli.mcp_server import bsw_read
 
-
 # ---------------------------------------------------------------------------
 # Sample XDM payload（与 test_dispatcher 解耦；用真实 EB tresos 风格）
 # ---------------------------------------------------------------------------
@@ -66,7 +65,9 @@ def xdm_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 class TestBswReadXdmHappyPath:
     def test_read_integer_value(self, xdm_project: Path) -> None:
-        result = bsw_read("Mcu", "McuClockSettingConfig_0/McuClockFrequency", project=str(xdm_project))
+        result = bsw_read(
+            "Mcu", "McuClockSettingConfig_0/McuClockFrequency", project=str(xdm_project)
+        )
         assert result["success"] is True
         assert result["format"] == "xdm"
         assert result["module"] == "Mcu"
@@ -75,14 +76,18 @@ class TestBswReadXdmHappyPath:
         assert result["type"] == "INTEGER"
 
     def test_read_boolean_value(self, xdm_project: Path) -> None:
-        result = bsw_read("Mcu", "McuModuleConfiguration/McuDevErrorDetect", project=str(xdm_project))
+        result = bsw_read(
+            "Mcu", "McuModuleConfiguration/McuDevErrorDetect", project=str(xdm_project)
+        )
         assert result["success"] is True
         assert result["format"] == "xdm"
         assert result["value"] is True
         assert result["type"] == "BOOLEAN"
 
     def test_read_enumeration_value(self, xdm_project: Path) -> None:
-        result = bsw_read("Mcu", "McuClockSettingConfig_0/McuClockReferencePoint", project=str(xdm_project))
+        result = bsw_read(
+            "Mcu", "McuClockSettingConfig_0/McuClockReferencePoint", project=str(xdm_project)
+        )
         assert result["success"] is True
         assert result["format"] == "xdm"
         assert result["raw"] == "MCU_CLOCK_SOURCE_IRC"
@@ -91,7 +96,9 @@ class TestBswReadXdmHappyPath:
 
     def test_path_with_module_prefix_works(self, xdm_project: Path) -> None:
         """调用方传完整路径 'Mcu/...' 也能命中（不强制要求 prefix）。"""
-        result = bsw_read("Mcu", "Mcu/McuClockSettingConfig_0/McuClockFrequency", project=str(xdm_project))
+        result = bsw_read(
+            "Mcu", "Mcu/McuClockSettingConfig_0/McuClockFrequency", project=str(xdm_project)
+        )
         assert result["success"] is True
         assert result["raw"] == "80000000"
 
@@ -127,7 +134,9 @@ class TestBswReadXdmErrors:
 
 
 class TestBswReadContractPreserved:
-    def test_arxml_path_still_uses_ecuc_walker(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_arxml_path_still_uses_ecuc_walker(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """当文件是 .arxml 时，仍走 ecuc.load_module 路径（不 regression v1）。"""
         arxml = """<?xml version='1.0' encoding='UTF-8'?>
 <AUTOSAR xmlns="http://autosar.org/schema/r4.0">
@@ -164,7 +173,9 @@ class TestBswReadContractPreserved:
 
     def test_format_field_always_present_on_success(self, xdm_project: Path) -> None:
         """MCP 契约：成功响应里 format 字段必有（"arxml" 或 "xdm"）。"""
-        result = bsw_read("Mcu", "McuClockSettingConfig_0/McuClockFrequency", project=str(xdm_project))
+        result = bsw_read(
+            "Mcu", "McuClockSettingConfig_0/McuClockFrequency", project=str(xdm_project)
+        )
         assert "format" in result
         assert result["format"] in {"arxml", "xdm"}
 

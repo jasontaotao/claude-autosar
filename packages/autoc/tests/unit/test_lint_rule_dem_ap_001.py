@@ -37,10 +37,7 @@ class TestDemAp001Rule:
 
     def test_with_unrelated_leaves_no_violation(self) -> None:
         data = _mk_xdm(
-            leaves=(
-                {"name": "Foo", "type": "INTEGER",
-                 "value": "1", "path": "Dem/General/Foo"},
-            )
+            leaves=({"name": "Foo", "type": "INTEGER", "value": "1", "path": "Dem/General/Foo"},)
         )
         assert list(DemAp001Rule().check(data)) == []
 
@@ -48,8 +45,12 @@ class TestDemAp001Rule:
         """v1 MVP stub — 即使 path 含 DemPrimaryMemory 也 0 报。"""
         data = _mk_xdm(
             leaves=(
-                {"name": "StartAddress", "type": "INTEGER",
-                 "value": "0x80000000", "path": "Dem/DemPrimaryMemory/StartAddress"},
+                {
+                    "name": "StartAddress",
+                    "type": "INTEGER",
+                    "value": "0x80000000",
+                    "path": "Dem/DemPrimaryMemory/StartAddress",
+                },
             )
         )
         assert list(DemAp001Rule().check(data)) == []
