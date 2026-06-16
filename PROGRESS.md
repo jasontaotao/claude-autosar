@@ -1249,7 +1249,97 @@ Sprint 9.1 实现正确（67 行都生成了），是 plan 数字 over-stated。
 2. v2.1.4 BswM 规则 + ComM 链路（v2 主体 M4 跑通后再补深度）
 3. ~~v2.6.1 PyPI 0.3.0 发布~~ — ✅ **2026-06-14 完成**（twine 首发 + classifier
    fix + GH Actions release.yml 修通；trusted publishing 留作 v0.3.1+ 自动化）
-4. v2.4.1 lint 10 → 39 条
+4. ~~v2.4.1 lint 10 → 38 条~~ — ✅ **2026-06-16 完成**（28 条新规则：21 arxml + 7 xdm；38 条总规则 / 29 arxml + 9 xdm；经 6 agent 并行评审后修正）
 5. 8.E.1 coverage 补测（→ 90.07%；3 task 待 user 拍"串行/并行"启动）→ ✅ **2026-06-15 完成**（2 task：CLI error paths + mcp_server 直接 tool handler；90.38% / 1535 tests；C/D 跳过）
+
+---
+
+### v2.4.1 — Lint 规则扩展 10 → 38 条（2026-06-16）✅
+
+按 plan `C:\Users\13777\.claude\plans\lint-expansion-v2.4.1.plan.md` + 规则规格 `lint-rules-spec.md` 实施，经 6 agent 并行评审后修正。
+
+**目标**：将 lint 规则从 10 条扩展到 38 条，覆盖更多 AUTOSAR BSW 模块。
+
+**评审修正**（6 agent 并行评审）：
+- ❌ 删除 ECUM-AP-005（概念错误：reset cause 是启动时读取，不是 shutdown 时检查；不可静态检测）
+- 🔄 重写 NM-AP-002（改为检查 CanNmNodeDetectionEnabled + CanNmNodeIdCallback）
+- 🔄 重写 PORT-AP-002（改为检查 output pin 缺少 PortPinInitialValue）
+- 修正 4 条规则参数名（ECUM-004, NM-003, GEN-003, GEN-004）
+- 调整 3 条规则 severity（CANIF-010: WARNING→INFO, PDUR-002: ERROR→WARNING, PORT-001: ERROR→WARNING）
+
+**最终 28 条新规则**（21 arxml + 7 xdm）：
+
+| # | rule_id | Module | Format | Description | Severity |
+|---|---|---|---|---|---|
+| 1 | COM-AP-003 | Com | arxml | ComSignal without ComIPdu reference | ERROR |
+| 2 | COM-AP-004 | Com | arxml | Duplicate ComIPdu handle IDs | ERROR |
+| 3 | COM-AP-005 | Com | arxml | ComSignalGroup without signals | WARNING |
+| 4 | CANIF-AP-009 | CanIf | arxml | HrhSoftwareFilter with no HRH configured | WARNING |
+| 5 | CANIF-AP-010 | CanIf | arxml | TxBuffer empty but TxProcessing enabled | INFO |
+| 6 | ECUM-AP-004 | EcuM | arxml | WakeupSource configured but no validation | WARNING |
+| 7 | NM-AP-002 | CanNm | arxml | NodeDetection enabled but no callback | WARNING |
+| 8 | NM-AP-003 | CanNm | arxml | PnEnabled but no partial networking config | WARNING |
+| 9 | GEN-AP-003 | BswM | arxml | ActionList without actions | WARNING |
+| 10 | GEN-AP-004 | BswM | arxml | Rule without conditions | WARNING |
+| 11 | DEM-AP-002 | Dem | arxml | EventParameter without DTC mapping | WARNING |
+| 12 | DEM-AP-003 | Dem | arxml | FreezeFrameEvent exceeds max count | WARNING |
+| 13 | PDUR-AP-001 | PduR | arxml | RoutingPath without source/destination | ERROR |
+| 14 | PDUR-AP-002 | PduR | arxml | Gateway with mismatched PDU sizes | WARNING |
+| 15 | CANTP-AP-001 | CanTp | arxml | Channel with invalid N-PDU size | ERROR |
+| 16 | CANTP-AP-002 | CanTp | arxml | RxTaType mismatch with addressing mode | WARNING |
+| 17 | ETHIF-AP-001 | EthIf | arxml | Controller without Ethernet driver | ERROR |
+| 18 | ETHIF-AP-002 | EthIf | arxml | SwitchPortGroup empty but switching enabled | WARNING |
+| 19 | FRIF-AP-001 | FrIf | arxml | Cluster without FrIfController | ERROR |
+| 20 | LINIF-AP-001 | LinIf | arxml | ScheduleTable without entries | WARNING |
+| 21 | J1939TP-AP-001 | J1939Tp | arxml | Channel with invalid MTU | ERROR |
+| 22 | MCU-AP-001 | Mcu | xdm | ClockSettingConfig with zero frequency | ERROR |
+| 23 | MCU-AP-002 | Mcu | xdm | ModeSettingConfig without sleep mode | WARNING |
+| 24 | PORT-AP-001 | Port | xdm | Pin with conflicting direction and mode | WARNING |
+| 25 | PORT-AP-002 | Port | xdm | Output pin missing initial value | WARNING |
+| 26 | DIO-AP-001 | Dio | xdm | ChannelGroup with invalid channel range | ERROR |
+| 27 | SPI-AP-001 | Spi | xdm | Sequence with no SpiJob configured | WARNING |
+| 28 | SPI-AP-002 | Spi | xdm | Job with invalid data width for channel | ERROR |
+
+**实现特点**：
+- 全部 v1 MVP stub：数据不足时不 yield（FP=0 优先）
+- 每条规则独立文件，遵循 `MODULE-AP-NNN.py` 命名
+- 规则规格文档：`C:\Users\13777\.claude\plans\lint-rules-spec.md`
+
+**验证结果**：
+- ✅ 规则注册：38 条（29 arxml + 9 xdm）
+- ✅ `rules_for_namespace("arxml")` → 29 条
+- ✅ `rules_for_namespace("xdm")` → 9 条
+- ✅ ruff check — All checks passed
+- ✅ 测试：1632 passed
+
+**文件清单**（29 新文件 + 1 修改）：
+
+新源（22 arxml rules）：
+- `arxml_rules/com_ap_003.py` / `com_ap_004.py` / `com_ap_005.py`
+- `arxml_rules/canif_ap_009.py` / `canif_ap_010.py`
+- `arxml_rules/ecum_ap_004.py` / `ecum_ap_005.py`
+- `arxml_rules/nm_ap_002.py` / `nm_ap_003.py`
+- `arxml_rules/gen_ap_003.py` / `gen_ap_004.py`
+- `arxml_rules/dem_ap_002.py` / `dem_ap_003.py`
+- `arxml_rules/pdur_ap_001.py` / `pdur_ap_002.py`
+- `arxml_rules/cantp_ap_001.py` / `cantp_ap_002.py`
+- `arxml_rules/ethif_ap_001.py` / `ethif_ap_002.py`
+- `arxml_rules/frif_ap_001.py` / `linif_ap_001.py` / `j1939tp_ap_001.py`
+
+新源（7 xdm rules）：
+- `xdm_rules/mcu_ap_001.py` / `mcu_ap_002.py`
+- `xdm_rules/port_ap_001.py` / `port_ap_002.py`
+- `xdm_rules/dio_ap_001.py`
+- `xdm_rules/spi_ap_001.py` / `spi_ap_002.py`
+
+修改源（1）：
+- `rules/__init__.py`（10 → 39 条规则注册）
+
+**状态**：✅ 规则实现完成，待编写测试 + 集成验证
+
+**下一步**：
+1. 编写 29 条规则的单元测试
+2. 运行 5-stage verification
+3. 更新 CHANGELOG.md
 
 

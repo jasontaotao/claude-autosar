@@ -27,8 +27,8 @@ from claude_autosar.core.bsw.lint.rules import (
 # ---------------------------------------------------------------------------
 
 
-def test_all_10_rules_have_applies_to_tag() -> None:
-    """10 条规则全部声明 applies_to（防回归 — 忘加 tag 会让 XDM 路径抛异常）。"""
+def test_all_38_rules_have_applies_to_tag() -> None:
+    """38 条规则全部声明 applies_to（防回归 — 忘加 tag 会让 XDM 路径抛异常）。"""
     for rule in ALL_RULES:
         assert hasattr(rule, "applies_to"), f"{rule.__class__.__name__} 缺 applies_to ClassVar"
         assert rule.applies_to in (
@@ -38,29 +38,60 @@ def test_all_10_rules_have_applies_to_tag() -> None:
         ), f"{rule.__class__.__name__}.applies_to={rule.applies_to!r} 不在白名单"
 
 
-def test_rules_for_namespace_arxml_returns_8() -> None:
-    """8 条 arxml 规则 — CANIF/COM/ECUM/NM/GEN 全部。"""
+def test_rules_for_namespace_arxml_returns_29() -> None:
+    """29 条 arxml 规则 — 原 8 条 + v2.4.1 新增 21 条。"""
     rules = rules_for_namespace("arxml")
-    assert len(rules) == 8
+    assert len(rules) == 29
     rule_ids = {r.rule_id for r in rules}
     assert rule_ids == {
         "CANIF-AP-007",
         "CANIF-AP-008",
+        "CANIF-AP-009",
+        "CANIF-AP-010",
+        "CANTP-AP-001",
+        "CANTP-AP-002",
         "COM-AP-001",
         "COM-AP-002",
+        "COM-AP-003",
+        "COM-AP-004",
+        "COM-AP-005",
+        "DEM-AP-002",
+        "DEM-AP-003",
         "ECUM-AP-001",
         "ECUM-AP-003",
+        "ECUM-AP-004",
+        "ETHIF-AP-001",
+        "ETHIF-AP-002",
+        "FRIF-AP-001",
         "GEN-AP-002",
+        "GEN-AP-003",
+        "GEN-AP-004",
+        "J1939TP-AP-001",
+        "LINIF-AP-001",
         "NM-AP-001",
+        "NM-AP-002",
+        "NM-AP-003",
+        "PDUR-AP-001",
+        "PDUR-AP-002",
     }
 
 
-def test_rules_for_namespace_xdm_returns_2() -> None:
-    """2 条 xdm 规则 — DEM-AP-001/004。"""
+def test_rules_for_namespace_xdm_returns_9() -> None:
+    """9 条 xdm 规则 — 原 2 条 + v2.4.1 新增 7 条。"""
     rules = rules_for_namespace("xdm")
-    assert len(rules) == 2
+    assert len(rules) == 9
     rule_ids = {r.rule_id for r in rules}
-    assert rule_ids == {"DEM-AP-001", "DEM-AP-004"}
+    assert rule_ids == {
+        "DEM-AP-001",
+        "DEM-AP-004",
+        "DIO-AP-001",
+        "MCU-AP-001",
+        "MCU-AP-002",
+        "PORT-AP-001",
+        "PORT-AP-002",
+        "SPI-AP-001",
+        "SPI-AP-002",
+    }
 
 
 def test_rules_for_namespace_invalid_ns_raises() -> None:
