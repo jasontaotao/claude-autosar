@@ -324,58 +324,6 @@ class TestBSWWritePathCoverageTopLevelParent:
         validate_writes_against_bswmd(reg, "Mcu", (), (p,))
 
 
-class TestBSWWritePathCoverageCountExistingInParent:
-    """``_count_existing_in_parent`` 各种 duck-typing 路径（行 267-280）。"""
-
-    def test_value_without_path_attr_skipped(self) -> None:
-        """v 没有 .path 属性（如 int/None）→ skip（行 270-271）。"""
-        from claude_autosar.core.bsw.bsw_write_path import _count_existing_in_parent
-
-        # v 是 int，没有任何属性
-        assert _count_existing_in_parent((42, "str", None), "Mcu/Cfg") == 0
-
-    def test_value_with_non_string_path_skipped(self) -> None:
-        """v.path 不是 str → skip（行 271）。"""
-        from claude_autosar.core.bsw.bsw_write_path import _count_existing_in_parent
-
-        class WeirdValue:
-            path = 123  # 不是 str
-
-        assert _count_existing_in_parent((WeirdValue(),), "Mcu/Cfg") == 0
-
-    def test_top_level_parent_counts_single_segment_paths(self) -> None:
-        """parent="" + v_path 是单段 → count + 1（行 272-276）。"""
-        from claude_autosar.core.bsw.bsw_write_path import _count_existing_in_parent
-
-        class V:
-            def __init__(self, p: str) -> None:
-                self.path = p
-
-        # 顶层：单段 path
-        assert _count_existing_in_parent((V("A"), V("B")), "") == 2
-        # 多段 path 不算顶层
-        assert _count_existing_in_parent((V("A/B"),), "") == 0
-        # 混合
-        assert _count_existing_in_parent((V("X"), V("Y/Z")), "") == 1
-
-    def test_non_empty_parent_startswith_count(self) -> None:
-        """v_path 在父容器下 → count（行 277 startswith 分支）。"""
-        from claude_autosar.core.bsw.bsw_write_path import _count_existing_in_parent
-
-        class V:
-            def __init__(self, p: str) -> None:
-                self.path = p
-
-        # "Mcu/Cfg/X" 在 "Mcu/Cfg" 容器内
-        assert _count_existing_in_parent((V("Mcu/Cfg/X"),), "Mcu/Cfg") == 1
-        # v_path 正好等于 parent_path
-        assert _count_existing_in_parent((V("Mcu/Cfg"),), "Mcu/Cfg") == 1
-        # 完全不同 → 0
-        assert _count_existing_in_parent((V("Other/Path"),), "Mcu/Cfg") == 0
-        # "Mcu/CfgOther" 不应算（不 startswith 也不等于）
-        assert _count_existing_in_parent((V("Mcu/CfgOther"),), "Mcu/Cfg") == 0
-
-
 # ---------------------------------------------------------------------------
 # 行 355：未知 BSWMD 类型 → fallback 调试 log
 # ---------------------------------------------------------------------------
@@ -633,7 +581,10 @@ class TestBSWWritePathCoverageContainerMultiplicity:
     """容器上下限各种 edge case。"""
 
     def test_container_exact_upper_limit_passes(self) -> None:
-        """upper=3 + existing + writes 总数 = 3 → 通过（边界）。"""
+        """upper=3 + 2 实例 + 1 write 新实例 = 3 → 通过（边界）。
+
+        HIGH-7 修复后按 instance 数计：existing 含 2 实例 + write 1 新实例 = 3 = upper。
+        """
         reg = _build_registry_with_param(
             short_name="Freq",
             container_short_name="Cfg",
@@ -642,16 +593,20 @@ class TestBSWWritePathCoverageContainerMultiplicity:
             min_val="0",
             max_val="100",
         )
-        # 2 existing + 1 write = 3（== upper）→ 通过
+        # 2 个独立实例，每个 1 leaf
         existing = (
-            _bsw_param("Mcu/Cfg/A", "1", ParamType.INTEGER),
-            _bsw_param("Mcu/Cfg/B", "2", ParamType.INTEGER),
+            _bsw_param("Mcu/Cfg_0/A", "1", ParamType.INTEGER),
+            _bsw_param("Mcu/Cfg_1/A", "2", ParamType.INTEGER),
         )
-        p = _bsw_param("Mcu/Cfg/Freq", "50", ParamType.INTEGER)
+        # 写 1 个新实例 → 总 3 = upper → 通过
+        p = _bsw_param("Mcu/Cfg_2/Freq", "50", ParamType.INTEGER)
         validate_writes_against_bswmd(reg, "Mcu", existing, (p,))
 
     def test_container_exact_lower_limit_passes(self) -> None:
-        """lower=2 + 2 existing + 0 write = 2 → 通过（边界）。"""
+        """lower=2 + 2 existing 实例 + 0 write = 2 → 通过（边界）。
+
+        HIGH-7 修复后按 instance 数计：2 个 existing 实例恰好 = lower=2。
+        """
         reg = _build_registry_with_param(
             short_name="Freq",
             container_short_name="Cfg",
@@ -661,14 +616,14 @@ class TestBSWWritePathCoverageContainerMultiplicity:
             max_val="100",
         )
         existing = (
-            _bsw_param("Mcu/Cfg/A", "1", ParamType.INTEGER),
-            _bsw_param("Mcu/Cfg/B", "2", ParamType.INTEGER),
+            _bsw_param("Mcu/Cfg_0/A", "1", ParamType.INTEGER),
+            _bsw_param("Mcu/Cfg_1/A", "2", ParamType.INTEGER),
         )
-        # 不写新 param，total=2 → ok
+        # 不写新 param，instance 数 2 == lower=2 → ok
         validate_writes_against_bswmd(reg, "Mcu", existing, ())
 
     def test_container_actual_value_is_string_total(self) -> None:
-        """容器超 upper 时 actual_value 是 "str(total)" 字符串。"""
+        """容器超 upper 时 actual_value 是 "str(total)" 字符串（实际 instance 数）。"""
         reg = _build_registry_with_param(
             short_name="Freq",
             container_short_name="Cfg",
@@ -677,12 +632,13 @@ class TestBSWWritePathCoverageContainerMultiplicity:
             min_val="0",
             max_val="100",
         )
+        # 已有 2 个实例 Cfg_0 / Cfg_1
         existing = (
-            _bsw_param("Mcu/Cfg/A", "1", ParamType.INTEGER),
-            _bsw_param("Mcu/Cfg/B", "2", ParamType.INTEGER),
+            _bsw_param("Mcu/Cfg_0/A", "1", ParamType.INTEGER),
+            _bsw_param("Mcu/Cfg_1/A", "2", ParamType.INTEGER),
         )
-        p = _bsw_param("Mcu/Cfg/Freq", "50", ParamType.INTEGER)
-        # 2 existing + 1 write = 3 > 2 → 抛
+        # 写第 3 个新实例 → 总 3 > upper=2 → 抛
+        p = _bsw_param("Mcu/Cfg_2/Freq", "50", ParamType.INTEGER)
         with pytest.raises(BSWWritePathError) as exc_info:
             validate_writes_against_bswmd(reg, "Mcu", existing, (p,))
         assert exc_info.value.actual_value == "3"

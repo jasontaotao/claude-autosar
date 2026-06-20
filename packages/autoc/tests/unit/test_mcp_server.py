@@ -44,7 +44,54 @@ _EXPECTED_TOOLS = {
     # Sprint 9.2-γ — 2 个 apply_template tool
     "arxml_apply_template",
     "xdm_apply_template",
+    # Sprint 10 T10.6 — validate tool
+    "bsw_validate",
+    # Sprint 11 T11.1 — diff tool
+    "bsw_diff",
 }
+
+
+# ---------------------------------------------------------------------------
+# _infer_value 类型推断（bug fix: isdigit 逻辑 + float 静默吞异常）
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("-123", -123),
+        ("3.14", 3.14),
+        ("-12.5", -12.5),
+        ("1e10", 1e10),
+        ("true", True),
+        ("True", True),
+        ("false", False),
+        ("HSI", "HSI"),
+        ("0", 0),
+        ("0.0", 0.0),
+        ("not_a_number", "not_a_number"),
+    ],
+    ids=[
+        "negative_int",
+        "positive_float",
+        "negative_float",
+        "scientific_notation",
+        "bool_true_lower",
+        "bool_true_upper",
+        "bool_false",
+        "plain_string",
+        "zero_int",
+        "zero_float",
+        "non_numeric_string",
+    ],
+)
+def test_infer_value_type_inference(raw: str, expected: int | float | bool | str) -> None:
+    """_infer_value must return the correct typed value for each raw string."""
+    from claude_autosar.cli.mcp_server import _infer_value
+
+    result = _infer_value(raw)
+    assert result == expected
+    assert type(result) is type(expected)
 
 
 def test_build_mcp_server_returns_fastmcp_instance() -> None:
@@ -57,10 +104,10 @@ def test_build_mcp_server_returns_fastmcp_instance() -> None:
 
 def test_tool_names_constant_matches_spec() -> None:
     """_TOOL_NAMES 是 10 个原 tool + Sprint 9.1 新增 3 个 inspect tool +
-    Sprint 9.2-γ 新增 2 个 apply_template tool（顺序独立）。
+    Sprint 9.2-γ 新增 2 个 apply_template tool + Sprint 10 新增 1 个 validate tool（顺序独立）。
     """
     assert set(_TOOL_NAMES) == _EXPECTED_TOOLS
-    assert len(_TOOL_NAMES) == 15
+    assert len(_TOOL_NAMES) == 17
 
 
 def test_mcp_server_registers_all_ten_tools() -> None:
@@ -197,7 +244,7 @@ def test_bsw_write_rejects_unknown_type() -> None:
     assert result["success"] is False
     assert result.get("param_index") == 1
     assert result.get("field") == "type"
-    assert "bool" in result["error"]
+    assert "BOOL" in result["error"]
 
 
 # ---------------------------------------------------------------------------

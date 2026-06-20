@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>claude-autosar v0.3.0 用户手册</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+  /* Layout */
+  .wrapper { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 280px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  .sidebar h2 { font-size: 18px; margin-bottom: 8px; color: var(--accent); }
+  .sidebar .version { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+  .sidebar .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin: 16px 0 8px;
+    padding-left: 8px;
+  }
+  .sidebar a {
+    display: block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--text);
+    transition: background 0.15s;
+  }
+  .sidebar a:hover { background: var(--surface-2); text-decoration: none; }
+  .sidebar a.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+  .main { margin-left: 280px; flex: 1; padding: 40px 60px; max-width: 960px; }
+
+  /* Typography */
+  h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 48px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 18px; font-weight: 600; margin: 32px 0 12px; color: var(--accent); }
+  h4 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 0 0 12px 24px; }
+  li { margin-bottom: 4px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* Code */
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  pre code { background: none; border: none; padding: 0; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 12px 0;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .card-header h4 { margin: 0; font-size: 16px; }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tag-cli { background: #1a3a2a; color: var(--green); }
+  .tag-mcp { background: #2a1a3a; color: var(--purple); }
+  .tag-new { background: #3a2a1a; color: var(--orange); }
+  .tag-security { background: #3a1a1a; color: var(--red); }
+
+  /* Info boxes */
+  .info {
+    background: #0d2847;
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .warn {
+    background: #3a2a0a;
+    border-left: 4px solid var(--yellow);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .danger {
+    background: #3a1a1a;
+    border-left: 4px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+
+  /* Command card */
+  .cmd-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 16px 0;
+    overflow: hidden;
+  }
+  .cmd-card .cmd-header {
+    background: var(--surface-2);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cmd-card .cmd-header code { font-size: 15px; font-weight: 600; }
+  .cmd-card .cmd-body { padding: 16px 20px; }
+  .cmd-card .cmd-body p:last-child { margin-bottom: 0; }
+
+  /* Param list */
+  .param-list { list-style: none; margin: 0; padding: 0; }
+  .param-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .param-list li:last-child { border-bottom: none; }
+  .param-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    min-width: 180px;
+    flex-shrink: 0;
+  }
+  .param-desc { font-size: 14px; color: var(--text-muted); }
+  .param-required { color: var(--red); font-size: 11px; font-weight: 600; }
+  .param-optional { color: var(--text-muted); font-size: 11px; }
+
+  /* Stats */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<!-- ===== Sidebar ===== -->
+<nav class="sidebar">
+  <h2>claude-autosar</h2>
+  <div class="version">v0.3.0 · 用户手册</div>
+
+  <div class="section-title">概览</div>
+  <a href="#overview">项目简介</a>
+  <a href="#install">安装与配置</a>
+  <a href="#quickstart">快速上手</a>
+
+  <div class="section-title">CLI 命令</div>
+  <a href="#cmd-init">init</a>
+  <a href="#cmd-eb">eb</a>
+  <a href="#cmd-davinci">davinci</a>
+  <a href="#cmd-lint">lint</a>
+  <a href="#cmd-bsw-inspect">bsw-inspect</a>
+  <a href="#cmd-arxml-inspect">arxml-inspect</a>
+  <a href="#cmd-xdm-inspect">xdm-inspect</a>
+  <a href="#cmd-bsw-verify">bsw-verify</a>
+  <a href="#cmd-arxml-apply">arxml-apply-template</a>
+  <a href="#cmd-xdm-apply">xdm-apply-template</a>
+  <a href="#cmd-session">session</a>
+  <a href="#cmd-log">log</a>
+  <a href="#cmd-export">export</a>
+
+  <div class="section-title">MCP 工具</div>
+  <a href="#mcp-bsw">bsw_read / bsw_write</a>
+  <a href="#mcp-verify">bsw_verify / bsw_autocalc</a>
+  <a href="#mcp-validate">arxml_validate / dbc_parse</a>
+  <a href="#mcp-inspect">arxml/xdm/bsw_inspect</a>
+  <a href="#mcp-apply">arxml/xdm_apply_template</a>
+  <a href="#mcp-session">session / log 工具</a>
+
+  <div class="section-title">参考</div>
+  <a href="#config">配置文件</a>
+  <a href="#data-model">数据模型</a>
+  <a href="#security">安全机制</a>
+  <a href="#changelog">更新日志</a>
+</nav>
+
+<!-- ===== Main Content ===== -->
+<div class="main">
+
+<!-- ====== 概览 ====== -->
+<h1 id="overview">claude-autosar 用户手册</h1>
+<p>面向 AUTOSAR BSW 工程师的终端 AI 助手 — 用自然语言描述配置目标，AI 在工程里完成改参、依赖计算与校验。</p>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="stat-value">15</div>
+    <div class="stat-label">MCP 工具</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">13</div>
+    <div class="stat-label">CLI 子命令</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">38</div>
+    <div class="stat-label">Lint 规则</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">1719</div>
+    <div class="stat-label">测试通过</div>
+  </div>
+</div>
+
+<h3>核心能力</h3>
+<ul>
+  <li><strong>双格式平级 IO</strong> — ARXML（AUTOSAR r4.0–4.8）+ XDM（EB DataModel2 2.0/1.0），dispatcher 按根 xmlns 自动路由，不互转</li>
+  <li><strong>BSW 改参</strong> — <code>bsw_write</code> 支持 reference chain 解析、type 启发式、surgical patch（byte-identity 100%）</li>
+  <li><strong>BSW 校验</strong> — <code>bsw_verify</code> 调用 EB tresos_cmd，结构化解析 6 类正则 + severity</li>
+  <li><strong>Lint 引擎</strong> — 38 条规则（29 ARXML + 9 XDM），按 namespace 自动过滤</li>
+  <li><strong>模板 diff + apply</strong> — current vs template 对比，支持 add/modify/delete，dry-run + apply 两阶段</li>
+  <li><strong>会话留痕</strong> — JSONL append-only 改参日志 + 不可变树 + fork + 自包含 HTML 导出</li>
+  <li><strong>MCP 集成</strong> — Claude Code 子 Agent 直调 15 个工具，ISO 21434 信任边界</li>
+</ul>
+
+<!-- ====== 安装 ====== -->
+<h2 id="install">安装与配置</h2>
+
+<h3>安装</h3>
+<pre><code># 从 PyPI 安装
+pip install claude-autosar
+
+# 开发模式（含 dev 依赖）
+pip install -e ".[dev]"
+
+# 验证
+claude-autosar --version</code></pre>
+
+<h3>系统要求</h3>
+<table>
+  <tr><th>依赖</th><th>版本</th><th>说明</th></tr>
+  <tr><td>Python</td><td>≥ 3.11</td><td>推荐 3.12+</td></tr>
+  <tr><td>lxml</td><td>≥ 5.0, &lt; 6.0</td><td>XML 解析核心</td></tr>
+  <tr><td>cantools</td><td>≥ 39.0, &lt; 40.0</td><td>DBC 文件解析</td></tr>
+  <tr><td>rich</td><td>≥ 13.0, &lt; 14.0</td><td>终端美化输出</td></tr>
+  <tr><td>mcp</td><td>≥ 0.9, &lt; 2.0</td><td>MCP 协议（Claude Code 集成）</td></tr>
+  <tr><td>platformdirs</td><td>≥ 4.0, &lt; 5.0</td><td>平台目录探测</td></tr>
+  <tr><td>tomli-w</td><td>≥ 1.0, &lt; 2.0</td><td>TOML 写入</td></tr>
+</table>
+
+<h3>配置文件</h3>
+<p>claude-autosar 使用 4 级配置优先级：</p>
+<pre><code>CLI 参数 > 环境变量 > .autoc/settings.json > claude-autosar init 探测</code></pre>
+
+<p><code>.autoc/settings.json</code> 示例：</p>
+<pre><code>{
+  "tresos_home": "C:/EB/tresos",
+  "mcal_vendor": "nxp",
+  "mcal_vendor_home": "C:/NXP/AUTOSAR",
+  "chip_derivative": "Mcu_s32k148_lqfp176.epd"
+}</code></pre>
+
+<!-- ====== 快速上手 ====== -->
+<h2 id="quickstart">快速上手</h2>
+
+<h3>场景 1：初始化 EB tresos 工程</h3>
+<pre><code># 进入 EB tresos 工程目录（含 .prefs/ 目录）
+cd /path/to/tresos/project
+
+# 交互式初始化
+claude-autosar init
+
+# 非交互式（CI / 脚本）
+claude-autosar init --non-interactive \
+  --tresos-home "C:/EB/tresos" \
+  --mcal-vendor nxp \
+  --chip "Mcu_s32k148_lqfp176.epd"</code></pre>
+
+<h3>场景 2：查看模块配置</h3>
+<pre><code># 自动检测格式（ARXML / XDM），生成 HTML 报告
+claude-autosar bsw-inspect Mcu_Cfg.arxml -o report.html
+
+# 带 lint 检查
+claude-autosar bsw-inspect Mcu_Cfg.arxml --lint -o report.html</code></pre>
+
+<h3>场景 3：修改参数</h3>
+<pre><code># 通过 MCP 工具（Claude Code 内）
+bsw_write(module="Mcu", params=[
+  {"path": "Mcu/ClockConfiguration/McuClockSettingConfig_0/McuClockReferencePointFrequency", "value": "80000000"},
+  {"path": "Mcu/SecConfig/SecurityAttributeConfig_0/McuSecRam", "value": "ENABLE"}
+], project="/path/to/tresos/project")
+
+# 通过 CLI（EB tresos）
+claude-autosar eb save --project /path/to/tresos/project --module Mcu \
+  --param "Mcu/ClockConfiguration/McuClockSettingConfig_0/McuClockReferencePointFrequency=80000000"</code></pre>
+
+<h3>场景 4：模板 diff + apply</h3>
+<pre><code># dry-run：只看 diff 报告
+claude-autosar arxml-apply-template current.arxml template.arxml -o diff.html
+
+# apply：写入变更
+claude-autosar arxml-apply-template current.arxml template.arxml --apply -o diff.html</code></pre>
+
+<h3>场景 5：Lint 检查</h3>
+<pre><code># 对单个文件运行全部规则
+claude-autosar lint Mcu_Cfg.arxml -o lint-report.html
+
+# 只运行指定规则
+claude-autosar lint Mcu_Cfg.arxml --rule COM-AP-001
+
+# 按 severity 过滤
+claude-autosar lint Mcu_Cfg.arxml --severity error</code></pre>
+
+<!-- ====== CLI 命令 ====== -->
+<h1>CLI 命令</h1>
+
+<!-- init -->
+<div class="cmd-card" id="cmd-init">
+  <div class="cmd-header">
+    <code>claude-autosar init</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>初始化 EB tresos 工程：生成 <code>.autoc/autoc.yaml</code> + <code>.autoc/settings.json</code> + 拷贝 BSWMD 模板。</p>
+
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li>
+        <span class="param-name">--project-root</span>
+        <span class="param-desc">EB tresos 工程根目录（含 <code>.prefs/</code>）。默认：当前工作目录</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--tresos-home</span>
+        <span class="param-desc">EB tresos 安装目录。默认：平台默认探测或交互询问</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--mcal-vendor</span>
+        <span class="param-desc">MCAL 厂商：<code>nxp</code> / <code>st</code> / <code>ti</code> / <code>renesas</code> / <code>infineon</code></span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--mcal-vendor-home</span>
+        <span class="param-desc">MCAL 厂商 AUTOSAR 包目录</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--chip</span>
+        <span class="param-desc">芯片衍生文件名（如 <code>Mcu_s32k148_lqfp176.epd</code>）</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--non-interactive</span>
+        <span class="param-desc">非交互模式，缺失参数用默认值。适合 CI / 脚本</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--no-bswmd</span>
+        <span class="param-desc">跳过 BSWMD 拷贝（只写 autoc.yaml）</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--refresh-bswmd</span>
+        <span class="param-desc">强制刷新 BSWMD（即使 mtime 未变）</span>
+        <span class="param-optional">可选</span>
+      </li>
+    </ul>
+
+    <h4>示例</h4>
+<pre><code># 交互式（推荐首次使用）
+claude-autosar init
+
+# CI 非交互
+claude-autosar init --non-interactive \
+  --tresos-home "C:/EB/tresos" \
+  --mcal-vendor nxp \
+  --chip "Mcu_s32k148_lqfp176.epd"
+
+# 只更新 BSWMD
+claude-autosar init --refresh-bswmd</code></pre>
+  </div>
+</div>
+
+<!-- eb -->
+<div class="cmd-card" id="cmd-eb">
+  <div class="cmd-header">
+    <code>claude-autosar eb</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>EB tresos 工具适配器 — 通过 <code>tresos_cmd</code> 执行 save / verify / autocalc。</p>
+
+    <h4>子命令</h4>
+    <table>
+      <tr><th>子命令</th><th>功能</th><th>说明</th></tr>
+      <tr><td><code>save</code></td><td>保存参数到工程</td><td>调用 <code>tresos_cmd save</code></td></tr>
+      <tr><td><code>verify</code></td><td>校验工程配置</td><td>调用 <code>tresos_cmd verify</code>，结构化解析输出</td></tr>
+      <tr><td><code>autocalc</code></td><td>自动计算依赖参数</td><td>调用 <code>tresos_cmd autocalc</code></td></tr>
+    </table>
+
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li>
+        <span class="param-name">--project</span>
+        <span class="param-desc">BSW 工程根目录</span>
+        <span class="param-required">必填</span>
+      </li>
+      <li>
+        <span class="param-name">--module</span>
+        <span class="param-desc">BSW 模块名（如 <code>Mcu</code>、<code>Port</code>、<code>Dio</code>）</span>
+        <span class="param-required">必填</span>
+      </li>
+      <li>
+        <span class="param-name">--param</span>
+        <span class="param-desc">参数路径=值（可多次指定）。类型自动推断：<code>true/false</code>→BOOLEAN，整数→INTEGER，浮点→FLOAT，其他→STRING</span>
+        <span class="param-optional">可选（save）</span>
+      </li>
+      <li>
+        <span class="param-name">--tresos-home</span>
+        <span class="param-desc">EB tresos 安装目录</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--chip-derivative</span>
+        <span class="param-desc">芯片衍生文件名</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--mcal-vendor</span>
+        <span class="param-desc">MCAL 厂商</span>
+        <span class="param-optional">可选</span>
+      </li>
+    </ul>
+
+    <h4>示例</h4>
+<pre><code># 修改 Mcu 模块的时钟频率
+claude-autosar eb save --project /path/to/project --module Mcu \
+  --param "Mcu/ClockConfiguration/McuClockSettingConfig_0/McuClockReferencePointFrequency=80000000"
+
+# 校验工程
+claude-autosar eb verify --project /path/to/project --module Mcu
+
+# 自动计算依赖
+claude-autosar eb autocalc --project /path/to/project --module Mcu</code></pre>
+
+    <div class="info">
+      <strong>类型推断：</strong><code>--param</code> 的值会自动推断类型。<code>true/false</code>→BOOLEAN，纯数字→INTEGER，含小数点→FLOAT，其他→STRING。无需手动指定类型。
+    </div>
+  </div>
+</div>
+
+<!-- davinci -->
+<div class="cmd-card" id="cmd-davinci">
+  <div class="cmd-header">
+    <code>claude-autosar davinci</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>DaVinci Configurator 工具适配器 — save / verify。</p>
+
+    <h4>子命令</h4>
+    <table>
+      <tr><th>子命令</th><th>功能</th></tr>
+      <tr><td><code>save</code></td><td>保存参数到 DaVinci 工程</td></tr>
+      <tr><td><code>verify</code></td><td>校验 DaVinci 工程配置</td></tr>
+    </table>
+
+    <h4>示例</h4>
+<pre><code>claude-autosar davinci save --project /path/to/davinci/project --module Can
+claude-autosar davinci verify --project /path/to/davinci/project --module Can</code></pre>
+  </div>
+</div>
+
+<!-- lint -->
+<div class="cmd-card" id="cmd-lint">
+  <div class="cmd-header">
+    <code>claude-autosar lint</code>
+    <span class="tag tag-cli">CLI</span>
+    <span class="tag tag-new">v0.3.0</span>
+  </div>
+  <div class="cmd-body">
+    <p>对 .arxml / .xdm 文件运行 lint 规则检查。自动检测格式，按 namespace 过滤适用规则。</p>
+
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li>
+        <span class="param-name">path</span>
+        <span class="param-desc">待检查文件路径</span>
+        <span class="param-required">必填</span>
+      </li>
+      <li>
+        <span class="param-name">-o, --output</span>
+        <span class="param-desc">HTML 报告输出路径（默认：不写文件，只输出 JSON 到 stdout）</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--rule RULE_ID</span>
+        <span class="param-desc">只运行指定规则（可多次指定）</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--severity</span>
+        <span class="param-desc">按 severity 过滤：<code>error</code> / <code>warning</code> / <code>info</code></span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--project</span>
+        <span class="param-desc">工程根目录（默认：cwd）</span>
+        <span class="param-optional">可选</span>
+      </li>
+    </ul>
+
+    <h4>示例</h4>
+<pre><code># 运行全部规则，输出 JSON
+claude-autosar lint Mcu_Cfg.arxml
+
+# 生成 HTML 报告
+claude-autosar lint Mcu_Cfg.arxml -o lint-report.html
+
+# 只检查特定规则
+claude-autosar lint Mcu_Cfg.arxml --rule COM-AP-001 --rule NM-AP-002
+
+# 按 severity 过滤
+claude-autosar lint Mcu_Cfg.arxml --severity error</code></pre>
+
+    <h4>规则列表（38 条）</h4>
+    <table>
+      <tr><th>前缀</th><th>格式</th><th>数量</th><th>说明</th></tr>
+      <tr><td>COM-AP-*</td><td>ARXML</td><td>5</td><td>通信模块（ComSignal、ComIPdu）</td></tr>
+      <tr><td>NM-AP-*</td><td>ARXML</td><td>3</td><td>网络管理（CanNm）</td></tr>
+      <tr><td>CANIF-AP-*</td><td>ARXML</td><td>4</td><td>CAN 接口</td></tr>
+      <tr><td>CANTP-AP-*</td><td>ARXML</td><td>2</td><td>CAN 传输协议</td></tr>
+      <tr><td>DEM-AP-*</td><td>ARXML</td><td>2</td><td>诊断事件管理</td></tr>
+      <tr><td>ECUM-AP-*</td><td>ARXML</td><td>3</td><td>ECU 管理</td></tr>
+      <tr><td>GEN-AP-*</td><td>ARXML</td><td>3</td><td>通用规则</td></tr>
+      <tr><td>SPI-AP-*</td><td>ARXML</td><td>2</td><td>SPI 驱动</td></tr>
+      <tr><td>PORT-AP-*</td><td>ARXML</td><td>2</td><td>Port 驱动</td></tr>
+      <tr><td>DIO-AP-*</td><td>ARXML</td><td>1</td><td>DIO 驱动</td></tr>
+      <tr><td>MCU-AP-*</td><td>ARXML</td><td>2</td><td>MCU 驱动</td></tr>
+      <tr><td>其余</td><td>ARXML</td><td>3</td><td>ETHIF / FRIF / LINIF / J1939TP / PDUR</td></tr>
+      <tr><td>XDM-*</td><td>XDM</td><td>7</td><td>DataModel2 格式规则</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- bsw-inspect -->
+<div class="cmd-card" id="cmd-bsw-inspect">
+  <div class="cmd-header">
+    <code>claude-autosar bsw-inspect</code>
+    <span class="tag tag-cli">CLI</span>
+    <span class="tag tag-new">v0.3.0</span>
+  </div>
+  <div class="cmd-body">
+    <p>通用 inspect 入口 — 自动检测 namespace 选择 ARXML / XDM 渲染器，生成单页式 HTML 报告。</p>
+
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li>
+        <span class="param-name">path</span>
+        <span class="param-desc">待检查文件路径（自动检测格式）</span>
+        <span class="param-required">必填</span>
+      </li>
+      <li>
+        <span class="param-name">-o, --output</span>
+        <span class="param-desc">HTML 报告路径（默认：<code>&lt;input&gt;.report.html</code>）</span>
+        <span class="param-optional">可选</span>
+      </li>
+      <li>
+        <span class="param-name">--lint</span>
+        <span class="param-desc">启用 lint 检查（在报告中嵌入 lint 结果）</span>
+        <span class="param-optional">可选</span>
+      </li>
+    </ul>
+
+    <h4>示例</h4>
+<pre><code># ARXML 文件
+claude-autosar bsw-inspect Mcu_Cfg.arxml
+
+# XDM 文件
+claude-autosar bsw-inspect Mcu_Cfg.xdm -o report.html
+
+# 带 lint
+claude-autosar bsw-inspect Mcu_Cfg.arxml --lint -o report.html</code></pre>
+  </div>
+</div>
+
+<!-- arxml-inspect -->
+<div class="cmd-card" id="cmd-arxml-inspect">
+  <div class="cmd-header">
+    <code>claude-autosar arxml-inspect</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>ARXML 专用 inspect — 渲染 IPdu / Signal / 关键参数的 HTML 报告。</p>
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li><span class="param-name">path</span><span class="param-desc">.arxml 文件路径</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">-o, --output</span><span class="param-desc">HTML 输出路径</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">--lint</span><span class="param-desc">启用 lint 检查</span><span class="param-optional">可选</span></li>
+    </ul>
+<pre><code>claude-autosar arxml-inspect Com_Cfg.arxml -o com-report.html --lint</code></pre>
+  </div>
+</div>
+
+<!-- xdm-inspect -->
+<div class="cmd-card" id="cmd-xdm-inspect">
+  <div class="cmd-header">
+    <code>claude-autosar xdm-inspect</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>XDM (DataModel2) 专用 inspect — 渲染模块 / 叶子参数的 HTML 报告。</p>
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li><span class="param-name">path</span><span class="param-desc">.xdm 文件路径</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">-o, --output</span><span class="param-desc">HTML 输出路径</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">--lint</span><span class="param-desc">启用 lint 检查</span><span class="param-optional">可选</span></li>
+    </ul>
+<pre><code>claude-autosar xdm-inspect Mcu_Cfg.xdm -o mcu-report.html</code></pre>
+  </div>
+</div>
+
+<!-- bsw-verify -->
+<div class="cmd-card" id="cmd-bsw-verify">
+  <div class="cmd-header">
+    <code>claude-autosar bsw-verify</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>BSW 模块 verify — 只校验不赋值。调用 EB <code>tresos_cmd verify</code>，结构化解析输出。</p>
+
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li><span class="param-name">--module</span><span class="param-desc">BSW 模块名（如 <code>Mcu</code>）</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">--project</span><span class="param-desc">工程根目录</span><span class="param-optional">可选（默认 cwd）</span></li>
+      <li><span class="param-name">--tresos-home</span><span class="param-desc">EB tresos 安装目录</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">--chip-derivative</span><span class="param-desc">芯片衍生文件名</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">--mcal-vendor</span><span class="param-desc">MCAL 厂商</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">--as-json</span><span class="param-desc">以 JSON 格式输出 verify 报告</span><span class="param-optional">可选</span></li>
+    </ul>
+
+<pre><code>claude-autosar bsw-verify --project /path/to/project --module Mcu
+claude-autosar bsw-verify --project /path/to/project --module Mcu --as-json</code></pre>
+  </div>
+</div>
+
+<!-- arxml-apply-template -->
+<div class="cmd-card" id="cmd-arxml-apply">
+  <div class="cmd-header">
+    <code>claude-autosar arxml-apply-template</code>
+    <span class="tag tag-cli">CLI</span>
+    <span class="tag tag-new">v0.3.0</span>
+  </div>
+  <div class="cmd-body">
+    <p>ARXML 模板 diff + apply — 对比 current vs template，生成 add/modify/delete diff 报告。</p>
+
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li><span class="param-name">path</span><span class="param-desc">当前 .arxml 文件路径</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">template</span><span class="param-desc">模板 .arxml 文件路径</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">-o, --output</span><span class="param-desc">HTML diff 报告路径</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">--apply</span><span class="param-desc">执行写入（默认 dry-run，只生成 diff 报告）</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">--project</span><span class="param-desc">工程根目录（用于 R6 路径解析）</span><span class="param-optional">可选</span></li>
+    </ul>
+
+<pre><code># dry-run：只看 diff
+claude-autosar arxml-apply-template current.arxml template.arxml -o diff.html
+
+# apply：写入变更
+claude-autosar arxml-apply-template current.arxml template.arxml --apply -o diff.html</code></pre>
+
+    <div class="warn">
+      <strong>注意：</strong>默认是 dry-run 模式，不会修改文件。需要加 <code>--apply</code> 才会实际写入。建议先 dry-run 确认 diff，再 apply。
+    </div>
+  </div>
+</div>
+
+<!-- xdm-apply-template -->
+<div class="cmd-card" id="cmd-xdm-apply">
+  <div class="cmd-header">
+    <code>claude-autosar xdm-apply-template</code>
+    <span class="tag tag-cli">CLI</span>
+    <span class="tag tag-new">v0.3.0</span>
+  </div>
+  <div class="cmd-body">
+    <p>XDM 模板 diff + apply — 对比 current vs template .xdm 文件。</p>
+    <p>参数与 <code>arxml-apply-template</code> 相同，只是输入文件为 .xdm 格式。</p>
+
+<pre><code># dry-run
+claude-autosar xdm-apply-template current.xdm template.xdm -o diff.html
+
+# apply
+claude-autosar xdm-apply-template current.xdm template.xdm --apply</code></pre>
+  </div>
+</div>
+
+<!-- session -->
+<div class="cmd-card" id="cmd-session">
+  <div class="cmd-header">
+    <code>claude-autosar session</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>会话管理 — 查看、列表、fork 改参会话。</p>
+
+    <h4>子命令</h4>
+    <table>
+      <tr><th>子命令</th><th>功能</th></tr>
+      <tr><td><code>list</code></td><td>列出所有 session id</td></tr>
+      <tr><td><code>show</code></td><td>查看指定 session 详情</td></tr>
+      <tr><td><code>fork</code></td><td>从某个 entry fork 出新 session</td></tr>
+    </table>
+
+<pre><code># 列出所有会话
+claude-autosar session list
+
+# 查看最新会话
+claude-autosar session show --session latest
+
+# 查看指定会话
+claude-autosar session show --session abc123
+
+# 从某个 entry fork 新会话
+claude-autosar session fork --session abc123 --entry-id 3</code></pre>
+  </div>
+</div>
+
+<!-- log -->
+<div class="cmd-card" id="cmd-log">
+  <div class="cmd-header">
+    <code>claude-autosar log</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>查看改参 changelog — 支持 timeline 和 by-url 两种视图。</p>
+
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li><span class="param-name">--session</span><span class="param-desc">session id 或 <code>latest</code></span><span class="param-required">必填</span></li>
+      <li><span class="param-name">--view</span><span class="param-desc"><code>timeline</code>（时间线视图）或 <code>by-url</code>（按参数 URL 分组）</span><span class="param-required">必填</span></li>
+    </ul>
+
+<pre><code># 时间线视图
+claude-autosar log --session latest --view timeline
+
+# 按参数分组
+claude-autosar log --session latest --view by-url</code></pre>
+  </div>
+</div>
+
+<!-- export -->
+<div class="cmd-card" id="cmd-export">
+  <div class="cmd-header">
+    <code>claude-autosar export</code>
+    <span class="tag tag-cli">CLI</span>
+  </div>
+  <div class="cmd-body">
+    <p>导出会话为自包含 HTML 文件 — 含改参历史、diff、三色 callout。</p>
+
+    <h4>参数</h4>
+    <ul class="param-list">
+      <li><span class="param-name">--session</span><span class="param-desc">session id 或 <code>latest</code></span><span class="param-required">必填</span></li>
+      <li><span class="param-name">-o, --output</span><span class="param-desc">HTML 输出路径</span><span class="param-required">必填</span></li>
+    </ul>
+
+<pre><code>claude-autosar export --session latest -o session-report.html
+claude-autosar export --session abc123 -o report.html</code></pre>
+  </div>
+</div>
+
+<!-- ====== MCP 工具 ====== -->
+<h1>MCP 工具</h1>
+<p>claude-autosar 提供 15 个 MCP 工具，供 Claude Code 子 Agent 直接调用。所有工具通过 stdio 协议通信。</p>
+
+<div class="info">
+  <strong>MCP 启动方式：</strong>在 Claude Code 中配置 <code>claude-autosar</code> 插件，工具自动注册。也可手动启动：<code>python -m claude_autosar.cli.mcp_server</code>
+</div>
+
+<!-- bsw_read / bsw_write -->
+<div class="cmd-card" id="mcp-bsw">
+  <div class="cmd-header">
+    <code>bsw_read</code> / <code>bsw_write</code>
+    <span class="tag tag-mcp">MCP</span>
+  </div>
+  <div class="cmd-body">
+    <h4>bsw_read — 读取模块参数</h4>
+    <p>读取指定 BSW 模块的参数值。自动检测 ARXML / XDM 格式。</p>
+    <ul class="param-list">
+      <li><span class="param-name">module</span><span class="param-desc">模块名（如 <code>Mcu</code>）</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">path</span><span class="param-desc">参数路径（如 <code>Mcu/ClockConfiguration/...</code>）</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">project</span><span class="param-desc">工程根目录</span><span class="param-optional">可选（默认 "."）</span></li>
+    </ul>
+
+    <p>返回值类型自动推断：INTEGER / FLOAT / BOOLEAN / STRING。</p>
+
+    <h4>bsw_write — 写入模块参数</h4>
+    <p>批量写入参数值。使用 surgical patch 保持 byte-identity。</p>
+    <ul class="param-list">
+      <li><span class="param-name">module</span><span class="param-desc">模块名</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">params</span><span class="param-desc">参数列表 <code>[{"path": "...", "value": "..."}]</code></span><span class="param-required">必填</span></li>
+      <li><span class="param-name">project</span><span class="param-desc">工程根目录</span><span class="param-optional">可选</span></li>
+    </ul>
+
+<pre><code>// Claude Code 内调用示例
+bsw_read(module="Mcu", path="Mcu/ClockConfiguration/McuClockSettingConfig_0/McuClockReferencePointFrequency")
+
+bsw_write(module="Mcu", params=[
+  {"path": "Mcu/ClockConfiguration/.../McuClockReferencePointFrequency", "value": "80000000"}
+])</code></pre>
+  </div>
+</div>
+
+<!-- bsw_verify / bsw_autocalc -->
+<div class="cmd-card" id="mcp-verify">
+  <div class="cmd-header">
+    <code>bsw_verify</code> / <code>bsw_autocalc</code>
+    <span class="tag tag-mcp">MCP</span>
+  </div>
+  <div class="cmd-body">
+    <h4>bsw_verify — 校验模块配置</h4>
+    <p>调用 EB <code>tresos_cmd verify</code>，返回结构化报告（severity + message + location）。</p>
+    <ul class="param-list">
+      <li><span class="param-name">module</span><span class="param-desc">模块名</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">project</span><span class="param-desc">工程根目录</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">tresos_home</span><span class="param-desc">EB tresos 安装目录</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">chip_derivative</span><span class="param-desc">芯片衍生文件名</span><span class="param-optional">可选</span></li>
+    </ul>
+
+    <h4>bsw_autocalc — 自动计算依赖</h4>
+    <p>调用 EB <code>tresos_cmd autocalc</code>，自动计算并写入依赖参数。</p>
+    <p>参数与 <code>bsw_verify</code> 相同。</p>
+
+<pre><code>bsw_verify(module="Mcu", project="/path/to/project")
+bsw_autocalc(module="Mcu", project="/path/to/project")</code></pre>
+  </div>
+</div>
+
+<!-- arxml_validate / dbc_parse -->
+<div class="cmd-card" id="mcp-validate">
+  <div class="cmd-header">
+    <code>arxml_validate</code> / <code>dbc_parse</code>
+    <span class="tag tag-mcp">MCP</span>
+  </div>
+  <div class="cmd-body">
+    <h4>arxml_validate — 校验 ARXML 文件</h4>
+    <p>解析 ARXML 文件，返回格式校验结果。</p>
+    <ul class="param-list">
+      <li><span class="param-name">path</span><span class="param-desc">.arxml 文件路径</span><span class="param-required">必填</span></li>
+    </ul>
+
+    <h4>dbc_parse — 解析 DBC 文件</h4>
+    <p>解析 CAN DBC 文件，返回信号 / 报文结构。</p>
+    <ul class="param-list">
+      <li><span class="param-name">path</span><span class="param-desc">.dbc 文件路径</span><span class="param-required">必填</span></li>
+    </ul>
+
+<pre><code>arxml_validate(path="/path/to/Com_Cfg.arxml")
+dbc_parse(path="/path/to/can.dbc")</code></pre>
+  </div>
+</div>
+
+<!-- inspect tools -->
+<div class="cmd-card" id="mcp-inspect">
+  <div class="cmd-header">
+    <code>arxml_inspect</code> / <code>xdm_inspect</code> / <code>bsw_inspect</code>
+    <span class="tag tag-mcp">MCP</span>
+    <span class="tag tag-new">v0.3.0</span>
+  </div>
+  <div class="cmd-body">
+    <p>三个 inspect 工具分别对应 ARXML、XDM 和自动检测格式。生成单页式 HTML 报告。</p>
+    <ul class="param-list">
+      <li><span class="param-name">path</span><span class="param-desc">待检查文件路径</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">output</span><span class="param-desc">HTML 报告路径</span><span class="param-optional">可选</span></li>
+      <li><span class="param-name">lint</span><span class="param-desc">是否启用 lint 检查</span><span class="param-optional">可选（默认 false）</span></li>
+      <li><span class="param-name">project</span><span class="param-desc">工程根目录</span><span class="param-optional">可选</span></li>
+    </ul>
+
+<pre><code>arxml_inspect(path="Mcu_Cfg.arxml", lint=true)
+xdm_inspect(path="Mcu_Cfg.xdm", output="report.html")
+bsw_inspect(path="Mcu_Cfg.arxml")  // 自动检测格式</code></pre>
+  </div>
+</div>
+
+<!-- apply_template tools -->
+<div class="cmd-card" id="mcp-apply">
+  <div class="cmd-header">
+    <code>arxml_apply_template</code> / <code>xdm_apply_template</code>
+    <span class="tag tag-mcp">MCP</span>
+    <span class="tag tag-new">v0.3.0</span>
+  </div>
+  <div class="cmd-body">
+    <p>模板 diff + apply 工具。对比 current vs template，返回 diff 结果。默认 dry-run。</p>
+    <ul class="param-list">
+      <li><span class="param-name">path</span><span class="param-desc">当前文件路径</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">template</span><span class="param-desc">模板文件路径</span><span class="param-required">必填</span></li>
+      <li><span class="param-name">project</span><span class="param-desc">工程根目录</span><span class="param-optional">可选</span></li>
+    </ul>
+
+<pre><code>// dry-run（默认）
+arxml_apply_template(path="current.arxml", template="template.arxml")
+
+// 返回 diff 结果（add/modify/delete 列表）</code></pre>
+  </div>
+</div>
+
+<!-- session / log tools -->
+<div class="cmd-card" id="mcp-session">
+  <div class="cmd-header">
+    <code>session_list</code> / <code>session_show</code> / <code>session_export</code> / <code>log_export</code>
+    <span class="tag tag-mcp">MCP</span>
+  </div>
+  <div class="cmd-body">
+    <h4>session_list — 列出会话</h4>
+    <p>返回所有 session id 列表。</p>
+
+    <h4>session_show — 查看会话详情</h4>
+    <ul class="param-list">
+      <li><span class="param-name">session_id</span><span class="param-desc">session id 或 <code>latest</code></span><span class="param-required">必填</span></li>
+    </ul>
+
+    <h4>session_export — 导出会话为 HTML</h4>
+    <ul class="param-list">
+      <li><span class="param-name">session_id</span><span class="param-desc">session id 或 <code>latest</code></span><span class="param-required">必填</span></li>
+      <li><span class="param-name">output</span><span class="param-desc">HTML 输出路径</span><span class="param-required">必填</span></li>
+    </ul>
+
+    <h4>log_export — 导出 changelog</h4>
+    <ul class="param-list">
+      <li><span class="param-name">session_id</span><span class="param-desc">session id 或 <code>latest</code></span><span class="param-required">必填</span></li>
+    </ul>
+
+<pre><code>session_list()
+session_show(session_id="latest")
+session_export(session_id="latest", output="report.html")
+log_export(session_id="latest")</code></pre>
+  </div>
+</div>
+
+<!-- ====== 参考 ====== -->
+<h1>参考</h1>
+
+<!-- 配置文件 -->
+<h2 id="config">配置文件</h2>
+
+<h3>.autoc/autoc.yaml</h3>
+<p>工程级配置文件，由 <code>claude-autosar init</code> 生成。</p>
+<pre><code># 工程根目录
+project_root: .
+
+# BSWMD 模板路径
+extra_bswmd_paths:
+  - .autoc/bswmd/r22/
+
+# 模块列表（自动扫描）
+modules:
+  - Mcu
+  - Port
+  - Dio
+  - Can</code></pre>
+
+<h3>.autoc/settings.json</h3>
+<p>工具路径和厂商配置。</p>
+<pre><code>{
+  "tresos_home": "C:/EB/tresos",
+  "mcal_vendor": "nxp",
+  "mcal_vendor_home": "C:/NXP/AUTOSAR",
+  "chip_derivative": "Mcu_s32k148_lqfp176.epd"
+}</code></pre>
+
+<!-- 数据模型 -->
+<h2 id="data-model">数据模型</h2>
+
+<h3>不可变 dataclass</h3>
+<p>所有数据模型使用 <code>frozen=True</code>，修改时通过 <code>with_X()</code> 返回新实例：</p>
+
+<pre><code>from claude_autosar.core.bsw.config import BSWModule, BSWParam, ParamValue, ParamType
+
+# 创建参数
+param = BSWParam(
+    path="Mcu/ClockConfiguration/McuClockSettingConfig_0/McuClockReferencePointFrequency",
+    value=ParamValue(raw="80000000", type=ParamType.INTEGER)
+)
+
+# 修改参数（返回新实例）
+new_param = param.with_value(ParamValue(raw="160000000", type=ParamType.INTEGER))</code></pre>
+
+<h3>ParamType 枚举</h3>
+<table>
+  <tr><th>值</th><th>说明</th></tr>
+  <tr><td><code>INTEGER</code></td><td>整数</td></tr>
+  <tr><td><code>FLOAT</code></td><td>浮点数</td></tr>
+  <tr><td><code>STRING</code></td><td>字符串</td></tr>
+  <tr><td><code>BOOLEAN</code></td><td>布尔值（true/false）</td></tr>
+  <tr><td><code>ENUMERATION</code></td><td>枚举值</td></tr>
+  <tr><td><code>FUNCTION_NAME</code></td><td>函数名（AUTOSAR 回调）</td></tr>
+</table>
+
+<!-- 安全机制 -->
+<h2 id="security">安全机制</h2>
+
+<h3>XXE 防护</h3>
+<p>所有 XML 解析使用 <code>_safe_parse()</code>，显式禁用外部实体：</p>
+<pre><code>parser = etree.XMLParser(
+    resolve_entities=False,  # 禁用实体解析
+    no_network=True,         # 禁止网络访问
+    dtd_validation=False,    # 不验证 DTD
+    load_dtd=False           # 不加载 DTD
+)</code></pre>
+
+<h3>路径防御</h3>
+<p>MCP 工具的 <code>project</code> 参数限制在 <code>_ALLOWED_PROJECT_ROOTS</code>（cwd）内，防止路径遍历攻击。</p>
+
+<h3>输入校验</h3>
+<ul>
+  <li><code>module</code> 参数：正则白名单 <code>^[A-Za-z][A-Za-z0-9_]*$</code></li>
+  <li><code>path</code> 参数：拒绝 <code>..</code> 路径遍历</li>
+  <li>XPath 查询：参数化，防止注入</li>
+</ul>
+
+<h3>依赖安全</h3>
+<p>所有依赖版本 pin 上下界，防止供应链攻击。</p>
+
+<!-- 更新日志 -->
+<h2 id="changelog">更新日志</h2>
+
+<h3>v0.3.0（2026-06-14）</h3>
+<ul>
+  <li>双格式模板 diff + apply（ARXML + XDM）</li>
+  <li>bsw_verify 增强（结构化 verify 报告）</li>
+  <li>lint 引擎 38 条规则（29 ARXML + 9 XDM）</li>
+  <li>15 个 MCP 工具</li>
+  <li>XXE 安全加固</li>
+  <li>CLI lazy import（启动 5.2ms）</li>
+  <li>1719 测试通过，90.38% 覆盖率</li>
+</ul>
+
+<hr>
+<p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 40px;">
+  claude-autosar v0.3.0 · MIT License · <a href="https://github.com/jasontaotao/claude-autosar">GitHub</a> · <a href="https://pypi.org/project/claude-autosar/">PyPI</a>
+</p>
+
+</div><!-- /main -->
+</div><!-- /wrapper -->
+</body>
+</html>

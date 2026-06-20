@@ -279,12 +279,12 @@ class TestXDMRoundTrip:
         _set_value_in_tree(doc.tree, "Mcu", "McuClockFrequency", "100000000")
 
         # monkeypatch os.replace 触发失败
-        import claude_autosar.core.bsw.arxml_io as arxml_io_mod
+        import claude_autosar.core.bsw.io.xml_io_base as xml_io_base_mod
 
         def _raise_replace(*_args: object, **_kwargs: object) -> None:
             raise OSError("simulated atomic write failure")
 
-        monkeypatch.setattr(arxml_io_mod.os, "replace", _raise_replace)
+        monkeypatch.setattr(xml_io_base_mod.os, "replace", _raise_replace)
 
         # 写时必须抛 ARXMLError（与现状一致）但原文件不变
         from claude_autosar.core.bsw.arxml_io import ARXMLError

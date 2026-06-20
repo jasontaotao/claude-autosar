@@ -381,6 +381,97 @@ def _param_cell(value: Any) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 公共 API：ARXML 树提取（Sprint 11 T11.4 提取）
+# ---------------------------------------------------------------------------
+# lint/extract.py 等模块应调用这些公共函数，而非直接调用 _extract_* 私有函数。
+
+
+def extract_module_names(root: Any, default_ns: str) -> list[str]:
+    """收集顶层 ``<ECUC-MODULE-CONFIGURATION-VALUES>`` 的 SHORT-NAME。"""
+    return _extract_module_names(root, default_ns)
+
+
+def extract_ipdus(root: Any, default_ns: str) -> list[dict[str, Any]]:
+    """提取 ComIPdu / ComTxIPdu / ComRxIPdu 容器的关键参数。"""
+    return _extract_ipdus(root, default_ns)
+
+
+def extract_signals_by_ipdu(
+    root: Any, default_ns: str
+) -> dict[str, list[dict[str, Any]]]:
+    """按 IPdu 分组提取信号参数。"""
+    return _extract_signals_by_ipdu(root, default_ns)
+
+
+def extract_key_params(root: Any, default_ns: str) -> list[dict[str, str]]:
+    """提取顶层容器的关键参数（非 IPdu）。"""
+    return _extract_key_params(root, default_ns)
+
+
+def extract_os_tasks(root: Any, default_ns: str) -> list[dict[str, Any]]:
+    """提取 OsTask 容器的关键参数（name / priority / stack_size）。"""
+    return _extract_containers_by_type(root, default_ns, "OsTask", ("OsTaskPriority", "OsTaskStackDepth"))
+
+
+def extract_nvm_blocks(root: Any, default_ns: str) -> list[dict[str, Any]]:
+    """提取 NvMBlockDescriptor 容器的关键参数（name / block_size / crc_type）。"""
+    return _extract_containers_by_type(
+        root, default_ns, "NvMBlockDescriptor",
+        ("NvMBlockCrcType", "NvMBlockSize", "NvMBlockJobPriority"),
+    )
+
+
+def extract_fee_blocks(root: Any, default_ns: str) -> list[dict[str, Any]]:
+    """提取 FeeBlockConfiguration 容器的关键参数（name / block_size）。"""
+    return _extract_containers_by_type(
+        root, default_ns, "FeeBlockConfiguration",
+        ("FeeBlockSize", "FeeNumberOfShortSegments"),
+    )
+
+
+def _extract_containers_by_type(
+    root: Any,
+    default_ns: str,
+    container_type: str,
+    param_names: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    """通用提取：按 container type 短名提取容器及其关键参数。"""
+    nsmap = {"ar": default_ns}
+    result: list[dict[str, Any]] = []
+
+    # 找所有 ECUC-PARAM-CONF-CONTAINER
+    for container in root.xpath(
+        "//ar:ECUC-PARAM-CONF-CONTAINER", namespaces=nsmap
+    ):
+        # 检查 DEFINITION-REF 是否包含目标 container type
+        def_ref = container.find("{*}DEFINITION-REF")
+        if def_ref is None or def_ref.text is None:
+            continue
+        if f"/{container_type}" not in def_ref.text:
+            continue
+
+        sn = get_child_text(container, "SHORT-NAME")
+        record: dict[str, Any] = {"name": sn or "<unknown>"}
+
+        # 提取关键参数
+        for pv in container.xpath(
+            ".//ar:ECUC-NUMERICAL-PARAM-VALUE | .//ar:ECUC-TEXTUAL-PARAM-VALUE",
+            namespaces=nsmap,
+        ):
+            pv_def_ref = pv.find("{*}DEFINITION-REF")
+            if pv_def_ref is None or pv_def_ref.text is None:
+                continue
+            pv_short = pv_def_ref.text.rsplit("/", 1)[-1] if "/" in pv_def_ref.text else pv_def_ref.text
+            if pv_short in param_names:
+                val = pv.find("{*}VALUE")
+                record[pv_short] = val.text if val is not None else None
+
+        result.append(record)
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # 内部：ARXML 树提取
 # ---------------------------------------------------------------------------
 

@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from claude_autosar.core.bsw.arxml_io import ARXMLError, detect_namespaces
+from claude_autosar.core.bsw.arxml_io import ARXMLError, build_default_nsmap
 from claude_autosar.core.bsw.arxml_io import read as _arxml_read
 
 __all__ = [
@@ -55,12 +55,22 @@ class ArxmlLintData:
     :param signals_by_ipdu: ``{ipdu_name: (signal_record, ...)}``
     :param key_params: 顶层容器（ComGeneral / EcuMConfiguration 等）下的关键参数
         列表；每个 ``dict`` 含 ``container`` / ``name`` / ``value`` 字段。
+    :param os_tasks: OsTask 容器列表（每个 dict 含 ``name`` / ``priority`` /
+        ``stack_size`` 等字段）。Sprint 12 T12.2 新增。
+    :param nvm_blocks: NvMBlockDescriptor 容器列表（每个 dict 含 ``name`` /
+        ``block_size`` / ``crc_type`` 等字段）。Sprint 12 T12.2 新增。
+    :param fee_blocks: FeeBlockConfiguration 容器列表（每个 dict 含 ``name`` /
+        ``block_size`` 等字段）。Sprint 12 T12.2 新增。
     """
 
     module_name: str
     ipdus: tuple[dict[str, Any], ...]
     signals_by_ipdu: dict[str, tuple[dict[str, Any], ...]]
     key_params: tuple[dict[str, str], ...]
+    # Sprint 12 T12.2 新增（向后兼容：默认空元组）
+    os_tasks: tuple[dict[str, Any], ...] = ()
+    nvm_blocks: tuple[dict[str, Any], ...] = ()
+    fee_blocks: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -100,7 +110,9 @@ def extract_arxml_for_lint(path: Path) -> ArxmlLintData:
     except (OSError, FileNotFoundError) as e:
         raise ARXMLError(f"ARXML file not readable: {p}: {e}") from e
 
-    nsmap = detect_namespaces(p)
+    # 直接复用已解析的 doc tree 提取 nsmap，避免 detect_namespaces 再次完整解析文件
+    root = doc.tree.getroot()
+    nsmap = build_default_nsmap(root)
     default_ns = nsmap.get("ar", "")
     if not default_ns:
         raise ARXMLError(
@@ -109,19 +121,26 @@ def extract_arxml_for_lint(path: Path) -> ArxmlLintData:
 
     # 延迟 import 避免 lint → inspector → arxml_io 的循环（虽然实际
     # 不会循环，但 inspector 自身用 lxml 较重，按需加载更友好）
+    # Sprint 11 T11.4：改用公共 API
     from claude_autosar.core.bsw.inspector.arxml_report import (
-        _extract_ipdus,
-        _extract_key_params,
-        _extract_module_names,
-        _extract_signals_by_ipdu,
+        extract_fee_blocks,
+        extract_ipdus,
+        extract_key_params,
+        extract_module_names,
+        extract_nvm_blocks,
+        extract_os_tasks,
+        extract_signals_by_ipdu,
     )
-
-    root = doc.tree.getroot()
-    module_names = _extract_module_names(root, default_ns)
+    module_names = extract_module_names(root, default_ns)
     module_name = module_names[0] if module_names else "<unknown-module>"
-    ipdus = _extract_ipdus(root, default_ns)
-    sigs_by_ipdu_raw = _extract_signals_by_ipdu(root, default_ns)
-    key_params = _extract_key_params(root, default_ns)
+    ipdus = extract_ipdus(root, default_ns)
+    sigs_by_ipdu_raw = extract_signals_by_ipdu(root, default_ns)
+    key_params = extract_key_params(root, default_ns)
+
+    # Sprint 12 T12.2：提取 Os/NvM/Fee 数据
+    os_tasks = extract_os_tasks(root, default_ns)
+    nvm_blocks = extract_nvm_blocks(root, default_ns)
+    fee_blocks = extract_fee_blocks(root, default_ns)
 
     # list → tuple（frozen + hashable）
     sigs_by_ipdu: dict[str, tuple[dict[str, Any], ...]] = {
@@ -133,6 +152,9 @@ def extract_arxml_for_lint(path: Path) -> ArxmlLintData:
         ipdus=tuple(ipdus),
         signals_by_ipdu=sigs_by_ipdu,
         key_params=tuple(key_params),
+        os_tasks=tuple(os_tasks),
+        nvm_blocks=tuple(nvm_blocks),
+        fee_blocks=tuple(fee_blocks),
     )
 
 
@@ -168,14 +190,14 @@ def extract_xdm_for_lint(path: Path) -> XdmLintData:
     nsmap = dict(root.nsmap) if getattr(root, "nsmap", None) else {}
     default_ns = nsmap.get(None, "")
 
-    # 同样延迟 import inspector 私有函数
+    # Sprint 11 T11.4：改用公共 API
     from claude_autosar.core.bsw.inspector.xdm_report import (
-        _extract_module_name,
-        _flatten_module_tree,
+        extract_module_name,
+        flatten_module_tree,
     )
 
-    module_name = _extract_module_name(root, default_ns) or "<unknown-module>"
-    containers_raw, leaves_raw = _flatten_module_tree(root, module_name, default_ns)
+    module_name = extract_module_name(root, default_ns) or "<unknown-module>"
+    containers_raw, leaves_raw = flatten_module_tree(root, module_name, default_ns)
 
     return XdmLintData(
         module_name=module_name,

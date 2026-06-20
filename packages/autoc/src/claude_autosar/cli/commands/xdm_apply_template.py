@@ -71,7 +71,12 @@ def _render_diff_html(
     template: Path,
     diff_rows: tuple[tuple[str, str, str, str, str], ...],
 ) -> str:
-    """渲染最简 diff HTML 报告（路径 / op / current / template）。"""
+    """渲染最简 diff HTML 报告（路径 / op / current / template）。
+
+    HIGH-5 修复：5 个动态字段全部经 :func:`html.escape`（XSS 防御）。
+    """
+    from html import escape as _html_escape
+
     css = """
 body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
        margin: 2em; line-height: 1.5; color: #1a1a1a; }
@@ -89,16 +94,20 @@ tr:nth-child(even) td { background: #fafafa; }
                padding: 0.6em 0.9em; border-radius: 4px; margin: 0.5em 0; }
 """.strip()
     rows_html = "\n".join(
-        f"<tr><td>{path_e}</td><td class='op-{op}'>{op}</td>"
-        f"<td>{cur or ''}</td><td>{tpl or ''}</td><td>{note}</td></tr>"
+        f"<tr><td>{_html_escape(path_e, quote=True)}</td>"
+        f"<td class='op-{_html_escape(op, quote=True)}'>{_html_escape(op, quote=True)}</td>"
+        f"<td>{_html_escape(cur, quote=True) if cur else ''}</td>"
+        f"<td>{_html_escape(tpl, quote=True) if tpl else ''}</td>"
+        f"<td>{_html_escape(note, quote=True) if note else ''}</td></tr>"
         for (path_e, op, cur, tpl, note) in diff_rows
     )
     return (
         f"<!DOCTYPE html>\n<html><head><meta charset='utf-8'>"
         f"<title>XDM Template Diff</title><style>{css}</style></head>\n"
         f"<body>\n<h1>XDM Template Diff</h1>\n"
-        f"<div class='summary-box'><strong>current:</strong> {path} &nbsp; "
-        f"<strong>template:</strong> {template}</div>\n"
+        f"<div class='summary-box'><strong>current:</strong> "
+        f"{_html_escape(str(path), quote=True)} &nbsp; "
+        f"<strong>template:</strong> {_html_escape(str(template), quote=True)}</div>\n"
         f"<table><thead><tr><th>path</th><th>op</th><th>current</th>"
         f"<th>template</th><th>note</th></tr></thead>"
         f"<tbody>\n{rows_html}\n</tbody></table>\n"

@@ -28,15 +28,14 @@ def _detect_arxml_module_name(path: Path) -> str | None:
     任意失败（XML 畸形 / 无 module）一律返回 ``None``；caller 决定 fallback。
     """
     try:
-        from lxml import etree
-
         from claude_autosar.core.bsw.arxml_io import detect_namespaces
+        from claude_autosar.core.bsw.xml_safe import _safe_parse
 
         nsmap = detect_namespaces(path)
         ar_uri = nsmap.get("ar")
         if not ar_uri:
             return None
-        tree = etree.parse(str(path))
+        tree = _safe_parse(path)
         root = tree.getroot()
         modules = root.xpath(
             "//ar:ECUC-MODULE-CONFIGURATION-VALUES",
@@ -108,7 +107,13 @@ def _render_diff_html(
 
     ``diff_rows`` = ``(path, op, current_raw, template_raw, note)`` 元组列表。
     自包含 inline CSS（复用 inspector summary-box 风格）。
+
+    HIGH-5 修复：5 个动态字段（path / op / cur / tpl / note）全部经
+    :func:`html.escape`，防 XSS 注入（ARXML/XDM value 含 ``<script>``
+    时直接渲染会执行恶意脚本）。
     """
+    from html import escape as _html_escape
+
     css = """
 body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
        margin: 2em; line-height: 1.5; color: #1a1a1a; }
@@ -126,16 +131,20 @@ tr:nth-child(even) td { background: #fafafa; }
                padding: 0.6em 0.9em; border-radius: 4px; margin: 0.5em 0; }
 """.strip()
     rows_html = "\n".join(
-        f"<tr><td>{path_e}</td><td class='op-{op}'>{op}</td>"
-        f"<td>{cur or ''}</td><td>{tpl or ''}</td><td>{note}</td></tr>"
+        f"<tr><td>{_html_escape(path_e, quote=True)}</td>"
+        f"<td class='op-{_html_escape(op, quote=True)}'>{_html_escape(op, quote=True)}</td>"
+        f"<td>{_html_escape(cur, quote=True) if cur else ''}</td>"
+        f"<td>{_html_escape(tpl, quote=True) if tpl else ''}</td>"
+        f"<td>{_html_escape(note, quote=True) if note else ''}</td></tr>"
         for (path_e, op, cur, tpl, note) in diff_rows
     )
     return (
         f"<!DOCTYPE html>\n<html><head><meta charset='utf-8'>"
         f"<title>ARXML Template Diff</title><style>{css}</style></head>\n"
         f"<body>\n<h1>ARXML Template Diff</h1>\n"
-        f"<div class='summary-box'><strong>current:</strong> {path} &nbsp; "
-        f"<strong>template:</strong> {template}</div>\n"
+        f"<div class='summary-box'><strong>current:</strong> "
+        f"{_html_escape(str(path), quote=True)} &nbsp; "
+        f"<strong>template:</strong> {_html_escape(str(template), quote=True)}</div>\n"
         f"<table><thead><tr><th>path</th><th>op</th><th>current</th>"
         f"<th>template</th><th>note</th></tr></thead>"
         f"<tbody>\n{rows_html}\n</tbody></table>\n"

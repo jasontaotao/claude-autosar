@@ -5,23 +5,61 @@ documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.1] - 2026-06-15 (Sprint 8.E.1 — Coverage 补测，待 user 拍板发 PyPI)
+## [0.3.1] - 2026-06-20 (Sprint 12 Trust Sprint — 9 HIGH security bugfixes + 累积 WIP 收口)
 
-### Maintenance
+### Security（9 HIGH，全部 code-reviewer APPROVE）
 
-- **Coverage 补测**：Sprint 8.E.1 串行执行 2 task（4 task 中 Task C/D 跳过，目标已达成 + 边际收益递减）。
-  - 2 commits：`f92610a` + `2726a2b`
-  - 6 新 test file：5 个 CLI error path（127 tests / -184 missing）+ 1 个 mcp_server 直接 tool handler（53 tests / -65 missing）
-  - Coverage：85.86% → **90.38%**（超 90.07% 目标 0.31pp）
-  - 测试总数：1331 → **1535 passed** / 0 fail
-  - **无产品代码变更**，纯补测
-- **5-stage verify 全过**：ruff 0 / mypy strict 0 / pytest 1535 / coverage 90.38% / byte-identity 100% 沿用
+外部审计（Sprint 12 — 6 个并行 agent）发现 9 个 HIGH 严重 bug，已全部修复。
+
+- **HIGH-1** — `arxml_io.py` surgical patch 写回未转义 XML 实体（`&` / `<` / `>`）→ 产出畸形 XML。新增 `utils/xml_escape.py` + 改 surgical patch 在写回前 `escape_xml_text(new_text)`。
+- **HIGH-2** — `datamodel2_io.py` `_patch_parent_form` 同样未转义 `<a:v>` 文本。同 escape 函数复用。
+- **HIGH-3** — `cli/mcp_tools/session_ops.py` `session_export(..., output=...)` 无路径校验 → 任意文件写入。改 `_resolve_safe_project(output)`。
+- **HIGH-4** — `cli/mcp_tools/inspect_ops.py` 3 个 inspect tool（`arxml_inspect` / `xdm_inspect` / `bsw_inspect`）`output` 同样无 containment check。统一加 `_resolve_safe_project(output)`。
+- **HIGH-5** — `cli/commands/arxml_apply_template.py` + `xdm_apply_template.py` `_render_diff_html` 5 个动态字段未 escape → XSS。全部 `_html.escape(..., quote=True)`。
+- **HIGH-6** — `core/bsw/coverage.py` 仅取 `parts[-1]`（short_name）匹配 → 同名 param 误报。改用 `_ecuc_path_to_def_ref()` 映射到完整 definition path；提取为公共 API `ecuc_path_to_def_ref`。
+- **HIGH-7** — `core/bsw/bsw_write_path.py` `_count_existing_in_parent` 按 leaf 数而非 instance 数计数 → 误拒合法写入。重构 `_check_container_multiplicity`：按 container definition + unique instance path 集合按 `len(set)` 比对 upper/lower。删除 dead code。
+- **HIGH-8** — `core/bsw/templates/apply.py` BOOLEAN 误用 `ECUC-TEXTUAL-PARAM-VALUE` + `ECUC-BOOLEAN-PARAM-DEF`（vendor 拒收）。改用 `ECUC-NUMERICAL-PARAM-VALUE` + `ECUC-NUMERICAL-PARAM-DEF`。
+- **HIGH-9** — `cli/mcp_tools/validate_ops.py` + `diff_ops.py` `project` 用 `validate_no_traversal`（漏 `/etc` 这类绝对路径）。改用 `_resolve_safe_project(project)`。
+
+### 累积 WIP 收口（Sprint 9.x 未独立 commit 的代码一次性 ship）
+
+> 这部分代码在前几个 session 已经写完但未 commit。本 release 一并 ship 以收口工作树混乱状态。每块都通过 1728 unit tests 验证。
+
+- `cli/mcp_tools/` 子包全部新文件（之前未 commit）：`arxml_apply_template_ops` / `bsw_read_ops` / `bsw_write_ops` / `validate_ops` / `diff_ops` / `inspect_ops` / `session_ops` / `apply_template_ops` + `validation.py`。约 1500 行新代码（HIGH-3/4/9 修改直接落在这里）。
+- `cli/commands/arxml_apply_template.py` / `xdm_apply_template.py`：template apply CLI 子命令 + diff HTML 输出（HIGH-5 + `apply_template_diff` 编排）。
+- `cli/main.py` / `cli/mcp_server.py`：CLI main + MCP server 重构（FastMCP 注册 17 个 tool）。
+- `core/bsw/templates/apply.py`：从只支持 `modify` 扩展为 modify / add / delete 三 op（HIGH-8 在 add 路径里）。
+- `core/bsw/arxml_io.py` / `core/bsw/bsw_write_path.py` / `core/bsw/io/datamodel2_io.py`：byte-identity surgical patch 重构 + 单元测试补强（HIGH-1/2/7 在这里）。
+- `core/bsw/bswmd.py` / `core/bsw/config.py` / `core/bsw/ecuc.py` / `core/bsw/validator.py`：BSWMD 模型 + 校验链补全。
+- `core/bsw/coverage.py`：参数覆盖率报告（HIGH-6 在这里）。
+- `core/bsw/inspector/arxml_report.py` / `xdm_report.py`：inspect 报告 HTML。
+- `core/bsw/lint/`：lint 规则 + 提取层。
+- `core/config/project_config.py` / `core/session/store.py`：项目配置 + session 存储。
+- `adapters/tresos.py` / `adapters/stub.py`：EB tresos + stub adapter。
+- `__init__.py`：版本号 + 公共 API 导出。
+
+### Test Infrastructure
+
+- `tests/conftest.py`：新增 autouse fixture `_autouse_safe_project_roots`，把 `tmp_path` 自动加入 `_ALLOWED_PROJECT_ROOTS`（兼容 pytest tmp_path + 不破坏"outside allowed roots"拒绝语义）。
+- 新增 `tests/unit/test_high_severity_regression.py`：18 个 regression test（每个 HIGH 至少 1 个 + happy-path）。
+- `test_apply_add_delete.py` / `test_template_apply.py` / `test_xdm_round_trip.py` 等：模板 apply add/delete/round-trip 测试补全。
+
+### Test Updates（5 个锁定 buggy 行为的现有测试）
+
+- `test_bsw_write_path.py::test_container_upper_3_write_4_raises`：改用 3 实例 + 1 新实例 setup。
+- `test_sprint8e_coverage_bsw_write_path.py`：3 个 multiplicity tests 改用 multi-instance 数据。
+- `test_coverage.py`：BSWMD paths 改为 `/AUTOSAR/...` 前缀与 `root_package_name="AUTOSAR"` 默认对齐。
+
+### Removed（YAGNI）
+
+- `_count_existing_in_parent` 函数 + 4 个 dead unit tests（`_check_container_multiplicity` 重构后已无人调用）。
 
 ### Notes
 
-- v0.3.1 release 待 user 拍板：pyproject.toml bump 0.3.0 → 0.3.1 + 重 build + twine（trusted publishing 配好可走 GH Actions 自动路径）
-- `test_mcp_server_extra_coverage.py` 行数 1204 > 800 guideline：code-review 阶段可拆为 2 文件
-- 1 pre-existing fail（`test_namespace_detection.py` Windows mtime cache 偶发）已消失（清缓存）
+- 测试：18 regression + 1728 unit passed / 0 fail（除 2 个 pre-existing Windows mtime flake）
+- 全部 9 个 HIGH fix 都经 code-reviewer APPROVE（首轮 APPROVE_WITH_WARN → 修完 0 must-fix → APPROVE）
+- `pyproject.toml`：version 0.3.0 → 0.3.1（PATCH bump：纯 bugfix 无 API break）
+- 依赖版本下限约束新增（`lxml>=5.0,<6.0` 等）
 
 ## [0.3.0] - 2026-06-14 (PUBLISHED to PyPI — Sprint 9.2/9.3/9.4/9.5 集成)
 

@@ -15,14 +15,20 @@ Sprint 8.E — T8.E.5：XDM byte-identity round-trip。
 
 from __future__ import annotations
 
-import contextlib
 from dataclasses import dataclass
 from functools import lru_cache
-import os
 from pathlib import Path
 from typing import Any, TypeAlias, cast
 
 from lxml import etree
+
+from claude_autosar.core.bsw.io.xml_io_base import (
+    _SurgicalPatchUnavailable,
+    atomic_write,
+    cleanup_namespaces_fallback,
+)
+from claude_autosar.core.bsw.xml_safe import _safe_parse
+from claude_autosar.utils.xml_escape import escape_xml_text
 
 # 知名命名空间 URI（按 prefix 索引）。本表只用作 prefix fallback
 # （如 `xsi:noNamespaceSchemaLocation`），ARXML 默认 ns 通过 detect_namespaces
@@ -61,16 +67,39 @@ class ARXMLDocument:
     tree: Any  # lxml.etree._ElementTree（不指定 generic 避免 mypy 噪音）
 
 
+@lru_cache(maxsize=64)
+def _cached_parse(path_str: str, mtime_ns: int) -> etree._ElementTree:
+    """Cached XML parse keyed by (resolved path, mtime_ns).
+
+    ``mtime_ns`` is intentionally present as a cache key — it ensures the
+    cache automatically invalidates when the file is modified on disk.
+    """
+    return _safe_parse(path_str, recover=False)
+
+
+def _invalidate_cache(path: str | Path) -> None:
+    """Invalidate cached parse result for *path* (call after write).
+
+    ``lru_cache`` does not support selective invalidation, so the entire
+    cache is cleared.  This is acceptable because the cache is small
+    (maxsize=64) and writes are infrequent relative to reads.
+    """
+    _cached_parse.cache_clear()
+
+
 def read(path: Path) -> ARXMLDocument:
     """读 ARXML 文件。文件不存在或 XML 畸形时抛 ARXMLError。"""
+    p = Path(path)
     try:
-        tree = etree.parse(str(path))
+        mtime_ns = p.stat().st_mtime_ns
     except OSError as e:
-        # lxml 抛 OSError（FileNotFoundError / PermissionError 等）
-        raise ARXMLError(f"ARXML file not readable: {path}: {e}") from e
+        raise ARXMLError(f"ARXML file not readable: {p}: {e}") from e
+    path_str = str(p.resolve())
+    try:
+        tree = _cached_parse(path_str, mtime_ns)
     except etree.XMLSyntaxError as e:
-        raise ARXMLError(f"Malformed ARXML in {path}: {e}") from e
-    return ARXMLDocument(path=path, tree=tree)
+        raise ARXMLError(f"Malformed ARXML in {p}: {e}") from e
+    return ARXMLDocument(path=p, tree=tree)
 
 
 # 接受 ARXMLDocument 或裸 lxml tree（契约 3 签名）
@@ -111,22 +140,14 @@ def write(
     out_path = Path(path)
     if not atomic:
         _write_to_path(out_path, tree, preserve_format=preserve_format)
+        _invalidate_cache(out_path)
         return
 
-    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    try:
-        _write_to_path(tmp, tree, preserve_format=preserve_format)
-        os.replace(tmp, out_path)
-    except (OSError, etree.SerialisationError) as e:
-        # 清理可能残留的 .tmp（用 suppress 避免异常吞噬）
-        with contextlib.suppress(OSError):
-            if tmp.exists():
-                tmp.unlink()
-        raise ARXMLError(f"Failed to write ARXML atomically to {out_path}: {e}") from e
+    def _write_fn(p: Path, t: Any) -> None:
+        _write_to_path(p, t, preserve_format=preserve_format)
 
-
-class _SurgicalPatchUnavailable(Exception):
-    """Surgical patch 路径不可用（无原文件 / 文件结构变化 / 改的不是 VALUE）."""
+    atomic_write(out_path, tree, _write_fn, ARXMLError)
+    _invalidate_cache(out_path)
 
 
 def _write_to_path(
@@ -155,30 +176,7 @@ def _write_to_path(
             pass
 
     # 退路 / preserve_format=False
-    if preserve_format:
-        # 走软保真但保留 namespace prefix + DOCTYPE
-        with contextlib.suppress(ValueError, etree.Error):
-            # cleanup_namespaces 在 corner case 抛错时静默降级
-            etree.cleanup_namespaces(tree)
-        doctype = tree.docinfo.doctype if hasattr(tree, "docinfo") else None
-        body = etree.tostring(
-            tree,
-            xml_declaration=True,
-            encoding="UTF-8",
-            standalone=True,
-            doctype=doctype,
-        )
-        path.write_bytes(body)
-    else:
-        # 纯 tostring 软保真（不重发 PI / DOCTYPE；prefix 可能被替换）
-        path.write_bytes(
-            etree.tostring(
-                tree,
-                xml_declaration=True,
-                encoding="UTF-8",
-                standalone=True,
-            )
-        )
+    cleanup_namespaces_fallback(path, tree, preserve_format=preserve_format)
 
 
 def _write_surgical_patch(path: Path, tree: Any) -> None:
@@ -277,7 +275,10 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
             # 重建完整 <VALUE>new</VALUE> 段
             # 保留原属性部分（om.group(0) 的 <VALUE...> 与 </VALUE>）
             opening_tag = om.group(0).split(">", 1)[0] + ">"
-            replacement = f"{opening_tag}{new_text}</VALUE>"
+            # HIGH-1 修复：``new_text`` 来自 lxml 解码文本（``&`` 而非 ``&amp;``），
+            # 写入前必须重新转义为 XML 文本。否则 ``Tom & Jerry`` 写回后会变
+            # 裸 ``&``，产生畸形 XML。
+            replacement = f"{opening_tag}{escape_xml_text(new_text)}</VALUE>"
             changes.append((om.start(), om.end(), replacement))
     # 倒序（start 大的先替换）
     changes.sort(key=lambda c: c[0], reverse=True)
@@ -325,17 +326,31 @@ def resolve_namespaces(root: etree._Element) -> dict[str, str]:
 # resolve_namespaces 的 frozenset cache：相同 root 共享。
 # 实际工程里 read(path) 后 root 会被多次 walk；缓存 build_default_nsmap 结果
 # 避免每次重算。frozenset(items) 作 cache key 跨调用可哈希。
-_resolve_nsmap_cache: dict[frozenset[tuple[str, str]], dict[str, str]] = {}
+@lru_cache(maxsize=256)
+def _resolve_namespaces_from_key(
+    cache_key: frozenset[tuple[str | None, str]],
+) -> dict[str, str]:
+    """Cached namespace resolution keyed by nsmap items frozenset.
+
+    ``lru_cache`` 替代原先无界 ``_resolve_nsmap_cache`` dict，
+    限制最多 256 条目以控制内存。
+    """
+    nsmap: dict[str, str] = {}
+    for prefix, uri in cache_key:
+        if prefix is None:
+            nsmap[_DEFAULT_NS_PREFIX] = uri
+        else:
+            nsmap[prefix] = uri
+    # xsi 必含（contract 3 硬约束）
+    if "xsi" not in nsmap:
+        nsmap["xsi"] = _XSI_URI
+    return nsmap
 
 
 def _resolve_namespaces_cached(root: etree._Element) -> dict[str, str]:
+    """从 root.nsmap 提取 cache key 后委托 ``_resolve_namespaces_from_key``。"""
     cache_key = frozenset(root.nsmap.items())
-    cached = _resolve_nsmap_cache.get(cache_key)
-    if cached is not None:
-        return cached
-    result = build_default_nsmap(root)
-    _resolve_nsmap_cache[cache_key] = result
-    return result
+    return _resolve_namespaces_from_key(cache_key)
 
 
 def detect_namespaces(path: str | Path) -> dict[str, str]:
@@ -365,7 +380,7 @@ def _detect_namespaces_cached(path_str: str, mtime_ns: int) -> dict[str, str]:  
     invalidate）。不重命名 _mtime_ns 以保持 lru_cache 跨调用稳定。
     """
     try:
-        tree = etree.parse(path_str)
+        tree = _safe_parse(path_str, recover=False)
     except OSError as e:
         raise ARXMLError(f"detect_namespaces: cannot read {path_str}: {e}") from e
     except etree.XMLSyntaxError as e:

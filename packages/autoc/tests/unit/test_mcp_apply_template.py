@@ -145,8 +145,8 @@ class TestToolRegistration:
         """_TOOL_NAMES 元组新增 2 个 apply-template tool。"""
         assert "arxml_apply_template" in _TOOL_NAMES
         assert "xdm_apply_template" in _TOOL_NAMES
-        # 原 13 + 新 2 = 15
-        assert len(_TOOL_NAMES) == 15
+        # 原 13 + 新 2 + 1 validate (Sprint 10) + 1 diff (Sprint 11) = 17
+        assert len(_TOOL_NAMES) == 17
 
     def test_tool_funcs_includes_two_apply_template(self) -> None:
         """_TOOL_FUNCS 字典映射正确（key 与函数名一致）。"""

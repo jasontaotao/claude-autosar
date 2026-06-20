@@ -23,7 +23,8 @@ from claude_autosar.core.bsw.bsw_write_path import (
 )
 from claude_autosar.core.bsw.bswmd import BSWMDRegistry
 from claude_autosar.core.bsw.config import BSWParam
-from claude_autosar.core.bsw.ecuc import _find_module_root, _local_tag, load_module
+from claude_autosar.core.bsw.arxml_utils import find_module_root, local_tag
+from claude_autosar.core.bsw.ecuc import load_module
 from claude_autosar.core.bsw.ecuc import set_value as ecuc_set_value
 
 
@@ -210,14 +211,14 @@ def _update_tree_value(
 
     root = tree.getroot()
     # nsmap 重建（如果调用方没传）：用 root.nsmap 构造。
-    # 当前 _find_module_root / _find_leaf_value_elem 都用 {*} wildcard，nsmap
+    # 当前 find_module_root / _find_leaf_value_elem 都用 {*} wildcard，nsmap
     # 仅作将来 xpath 替换的扩展点；为契约 3 保持签名一致仍消费之。
     if nsmap is None:
         from claude_autosar.core.bsw.arxml_io import build_default_nsmap
 
         nsmap = build_default_nsmap(root)
 
-    module_elem = _find_module_root(root, module_name)
+    module_elem = find_module_root(root, module_name)
     if module_elem is None:
         raise ValueError(f"Module root {module_name!r} not found in tree")
 
@@ -239,10 +240,10 @@ def _find_leaf_value_elem(
         # 最后一段：找 ECUC-PARAMETER-VALUE
         target_short = segments[0]
         for child in container_elem:
-            tag = _local_tag(child)
+            tag = local_tag(child)
             if tag == "PARAMETER-VALUES":
                 for pv in child:
-                    ptag = _local_tag(pv)
+                    ptag = local_tag(pv)
                     if ptag in (
                         "ECUC-NUMERICAL-PARAM-VALUE",
                         "ECUC-TEXTUAL-PARAM-VALUE",
@@ -261,10 +262,10 @@ def _find_leaf_value_elem(
     target_short = segments[0]
     rest = segments[1:]
     for child in container_elem:
-        tag = _local_tag(child)
+        tag = local_tag(child)
         if tag in ("CONTAINERS", "SUB-CONTAINERS"):
             for sub in child:
-                if _local_tag(sub) in (
+                if local_tag(sub) in (
                     "ECUC-PARAM-CONF-CONTAINER",
                     "ECUC-POST-BUILD-VARIANT-CONF-CONTAINER",
                 ):

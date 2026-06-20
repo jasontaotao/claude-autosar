@@ -301,41 +301,47 @@ def test_apply_empty_diff_returns_noop(
 
 
 # ---------------------------------------------------------------------------
-# 8. add op → NotImplementedError（M1-T 范围外）
+# 8. add op — Sprint 12 T12.4 已支持
 # ---------------------------------------------------------------------------
 
 
-def test_apply_raises_on_add_op() -> None:
-    """add op → NotImplementedError。"""
+def test_apply_add_op_supported(tmp_path: Path) -> None:
+    """Sprint 12: add op 已支持，不再抛 NotImplementedError。"""
+    doc = _copy_to_tmp(ARXML_SIMPLE, tmp_path)
+
     add_diff = TemplateDiff(
-        path="Can/CanNewParam",
+        path="Can/CanGeneral/NewParam",
         current=None,
-        template=ECUCValue(path="Can/CanNewParam", raw="0", type="INTEGER"),
+        template=ECUCValue(path="Can/CanGeneral/NewParam", raw="42", type="INTEGER"),
         op="add",
     )
     diff = TemplateDiffResult(module_name="Can", diffs=(add_diff,))
 
-    with pytest.raises(NotImplementedError, match="add"):
-        apply_template_diff(Path("/tmp/nonexistent.arxml"), diff, mode=ApplyMode.DRY_RUN)
+    # 不再抛 NotImplementedError
+    result = apply_template_diff(doc, diff, mode=ApplyMode.DRY_RUN)
+    assert result.diffs_applied == 1
 
 
 # ---------------------------------------------------------------------------
-# 9. delete op → NotImplementedError
+# 9. delete op — Sprint 12 T12.4 已支持
 # ---------------------------------------------------------------------------
 
 
-def test_apply_raises_on_delete_op() -> None:
-    """delete op → NotImplementedError。"""
+def test_apply_delete_op_supported(tmp_path: Path) -> None:
+    """Sprint 12: delete op 已支持，不再抛 NotImplementedError。"""
+    doc = _copy_to_tmp(ARXML_SIMPLE, tmp_path)
+
     del_diff = TemplateDiff(
-        path="Can/CanOldParam",
-        current=ECUCValue(path="Can/CanOldParam", raw="0", type="INTEGER"),
+        path="Can/CanGeneral/CanMainFunctionBusOffPeriod",
+        current=ECUCValue(path="Can/CanGeneral/CanMainFunctionBusOffPeriod", raw="0", type="INTEGER"),
         template=None,
         op="delete",
     )
     diff = TemplateDiffResult(module_name="Can", diffs=(del_diff,))
 
-    with pytest.raises(NotImplementedError, match="delete"):
-        apply_template_diff(Path("/tmp/nonexistent.arxml"), diff, mode=ApplyMode.DRY_RUN)
+    # 不再抛 NotImplementedError
+    result = apply_template_diff(doc, diff, mode=ApplyMode.DRY_RUN)
+    assert result.diffs_applied == 1
 
 
 # ---------------------------------------------------------------------------
@@ -411,8 +417,8 @@ def test_apply_does_not_mutate_input_diff(
 def test_apply_arxml_full_template_diff_sync(
     tmp_path: Path,
 ) -> None:
-    """完整模板同步：构造一个 (modify, modify, add) 的 diff，apply 抛
-    NotImplementedError（add 不在 M1-T 范围）；纯 modify-only diff 则成功。
+    """完整模板同步：构造一个 (modify, modify) 的 diff，apply 成功。
+    Sprint 12 T12.4：add/delete 已支持，不再抛 NotImplementedError。
     """
     doc = _copy_to_tmp(ARXML_SIMPLE, tmp_path)
     # 构造 2 个 modify（同 path 不同 raw）— apply 成功

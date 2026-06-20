@@ -169,6 +169,11 @@ def _ecuc_path_to_def_ref(ecuc_path: str, root_pkg: str) -> str:
     return "/" + root_pkg + "/" + "/".join(cleaned)
 
 
+# Public alias — 同名函数无下划线，供 ``coverage`` / 未来调用方使用。
+# code-reviewer 推荐（M3）：跨模块使用私有函数信号应升级为公共 API。
+ecuc_path_to_def_ref = _ecuc_path_to_def_ref
+
+
 def _strip_instance_index(short_name: str) -> str:
     """去掉 EB tresos 自动加的实例下标（``McuClockSettingConfig_0`` → ``McuClockSettingConfig``）。
 
@@ -196,32 +201,58 @@ def _check_container_multiplicity(
 ) -> None:
     """按容器分组 + multiplicity 上下限校验 writes 数量。
 
-    当前阶段（T8.E.3 + T8.E.0b 之后，lookup 仍是 stub）的覆盖范围：
-      - param 路径的"父容器"= 去掉最后一段 short_name 的 ECUC 路径
-      - 容器的 multiplicity 通过 ``lookup_container`` 取；未命中则走 fallback
-        （不抛；与 "BSWMD 没记录的 path → fallback" 一致）
+    HIGH-7 修复：按 *container definition*（而非 instance path）聚合所有
+    existing values + writes 的 instance path 集合，按去重后的实例数比对
+    upper / lower multiplicity。旧实现按 leaf 数计数（一个 4-param 容器有 2
+    实例会算出 8 leaves）→ 误拒合法写入。
+
+    算法：
+      1. 把每个 value 的 parent path 通过 ``_ecuc_path_to_def_ref`` 映射到
+         container def_ref（如 ``Mcu/Cfg_0`` → ``/AUTOSAR/Mcu/Cfg``）。
+      2. 按 def_ref 分组，每个 set 收集 unique instance paths。
+      3. 对每个有 BSWMD 记录的 container def，比较 ``len(set)`` vs
+         upper / lower。
+
+    Fallback：parent 不在 BSWMD → 跳过该 value（不计入任何容器）。
     """
-    # 按父容器分组 writes（key = ECUC 父容器路径）
-    by_container: dict[str, list[BSWParam]] = {}
+    # key = container def_ref（如 "/AUTOSAR/Mcu/Cfg"）
+    # value = set of instance paths（如 {"Mcu/Cfg_0", "Mcu/Cfg_1"}）
+    instances_by_container: dict[str, set[str]] = {}
+
+    # 收集 existing values 的 instance path
+    for v in current_values:
+        v_path = getattr(v, "path", None)
+        if not isinstance(v_path, str) or not v_path:
+            continue
+        parent = _parent_container_path(v_path)
+        if parent == "":
+            continue  # 顶层 param 不属于任何 container
+        def_ref = _ecuc_path_to_def_ref(parent, registry.root_package_name)
+        if registry.lookup_container(def_ref) is None:
+            continue  # 未知 container → fallback（与旧行为一致）
+        instances_by_container.setdefault(def_ref, set()).add(parent)
+
+    # 收集 writes 的 instance path
     for param in writes:
         parent = _parent_container_path(param.path)
-        by_container.setdefault(parent, []).append(param)
+        if parent == "":
+            continue
+        def_ref = _ecuc_path_to_def_ref(parent, registry.root_package_name)
+        if registry.lookup_container(def_ref) is None:
+            continue
+        instances_by_container.setdefault(def_ref, set()).add(parent)
 
-    for parent_path, child_writes in by_container.items():
-        # parent 容器在 BSWMD 里查不到 → fallback
-        def_ref = _ecuc_path_to_def_ref(parent_path, registry.root_package_name)
+    # 按 container def 检查 multiplicity
+    for def_ref, instance_paths in instances_by_container.items():
         container_def = registry.lookup_container(def_ref)
         if container_def is None:
             continue
-
-        # 总实例数 = 已有（current_values）+ 本次 writes 落在此容器的
-        existing_in_parent = _count_existing_in_parent(current_values, parent_path)
-        total = existing_in_parent + len(child_writes)
+        total = len(instance_paths)
 
         # upper=-1 = unbounded，永不超
         if container_def.upper_multiplicity != -1 and total > container_def.upper_multiplicity:
             raise BSWWritePathError(
-                param_path=parent_path,
+                param_path=def_ref,
                 param_index=None,
                 reason=(
                     f"container exceeds UPPER-MULTIPLICITY=" f"{container_def.upper_multiplicity}"
@@ -233,7 +264,7 @@ def _check_container_multiplicity(
 
         if total < container_def.lower_multiplicity:
             raise BSWWritePathError(
-                param_path=parent_path,
+                param_path=def_ref,
                 param_index=None,
                 reason=(
                     f"container below LOWER-MULTIPLICITY=" f"{container_def.lower_multiplicity}"
@@ -253,31 +284,6 @@ def _parent_container_path(ecuc_path: str) -> str:
     if len(segments) <= 1:
         return ""
     return "/".join(segments[:-1])
-
-
-def _count_existing_in_parent(
-    current_values: tuple[object, ...],
-    parent_path: str,
-) -> int:
-    """统计 current_values 里"父容器 == parent_path"的 leaf 数。
-
-    ECUCValue 形态用 duck-typing：取 ``.path`` 属性。
-    parent 为空时（顶层）→ 全部算。
-    """
-    count = 0
-    for v in current_values:
-        v_path = getattr(v, "path", None)
-        if not isinstance(v_path, str):
-            continue
-        if parent_path == "":
-            # 顶层 param：ECUC 路径只有一段
-            segments = [seg for seg in v_path.split("/") if seg]
-            if len(segments) == 1:
-                count += 1
-        elif v_path.startswith(parent_path + "/") or v_path == parent_path:
-            # 在父容器内的 leaf
-            count += 1
-    return count
 
 
 # =============================================================================

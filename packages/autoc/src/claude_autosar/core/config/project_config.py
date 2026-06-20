@@ -13,6 +13,7 @@ Sprint 8.E — T8.E.0a。契约 1 锁定：frozen dataclass + ``load()`` 三层�
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 import os
 from pathlib import Path
 import platform
@@ -277,6 +278,84 @@ def _parse_scalar(token: str) -> Any:
     return token
 
 
+def _safe_mtime(path: Path) -> int:
+    """获取文件 mtime_ns；文件不存在返回 0。"""
+    try:
+        return path.stat().st_mtime_ns
+    except OSError:
+        return 0
+
+
+@lru_cache(maxsize=16)
+def _load_cached_impl(
+    base_dir_str: str,
+    local_path_str: str,
+    local_mtime_ns: int,
+    user_path_str: str,
+    user_mtime_ns: int,
+) -> ProjectConfig:
+    """ProjectConfig.load() 的缓存实现。按 (路径, mtime) 键缓存结果。"""
+    base_dir = Path(base_dir_str)
+    local_path = Path(local_path_str)
+    user_path = Path(user_path_str)
+
+    local_data = load_yaml(local_path)
+    user_data = load_yaml(user_path)
+
+    # 三层合并：local 覆盖 user
+    merged = _merge_yaml(user_data, local_data)
+
+    # 必填字段校验
+    project_root_raw = merged.get(_FIELD_PROJECT_ROOT)
+    if not project_root_raw or not isinstance(project_root_raw, str):
+        raise ProjectConfigError(
+            f"未找到 autoc.yaml 或缺字段 '{_FIELD_PROJECT_ROOT}'。"
+            f"请先运行 `autoc init` 配置 EB tresos 工程。",
+        )
+
+    # 可选字段
+    tresos_home_raw = merged.get(_FIELD_TRESOS_HOME)
+    tresos_home: Path | None
+    if tresos_home_raw is None or tresos_home_raw == "":
+        tresos_home = default_tresos_home()
+    elif isinstance(tresos_home_raw, str):
+        tresos_home = Path(tresos_home_raw).expanduser()
+    else:
+        raise ProjectConfigError(
+            f"字段 '{_FIELD_TRESOS_HOME}' 必须是字符串路径或 null。",
+        )
+
+    extra_raw = merged.get(_FIELD_EXTRA_BSWMD_PATHS) or []
+    if not isinstance(extra_raw, list):
+        raise ProjectConfigError(
+            f"字段 '{_FIELD_EXTRA_BSWMD_PATHS}' 必须是字符串列表。",
+        )
+    extra_paths: list[Path] = []
+    for item in extra_raw:
+        if not isinstance(item, str):
+            raise ProjectConfigError(
+                f"'{_FIELD_EXTRA_BSWMD_PATHS}' 列表元素必须是字符串。",
+            )
+        extra_paths.append(Path(item).expanduser())
+
+    # 解析 project_root 为绝对路径
+    project_root = Path(project_root_raw).expanduser()
+    if not project_root.is_absolute():
+        project_root = (base_dir / project_root).resolve()
+    else:
+        project_root = project_root.resolve()
+
+    # bswmd_root 默认 <project_root>/.autoc/bswmd/r22/
+    bswmd_root = (project_root / ".autoc" / "bswmd" / "r22").resolve()
+
+    return ProjectConfig(
+        project_root=project_root,
+        tresos_home=tresos_home,
+        bswmd_root=bswmd_root,
+        extra_bswmd_paths=tuple(extra_paths),
+    )
+
+
 # =============================================================================
 # ProjectConfig
 # =============================================================================
@@ -308,7 +387,7 @@ class ProjectConfig:
         *,
         cwd: Path | None = None,
     ) -> ProjectConfig:
-        """三层合并加载（D13 决定 cwd 驱动）。
+        """三层合并加载（D13 决定 cwd 驱动）。结果按 YAML mtime 缓存。
 
         1. ``<cwd>/.autoc/autoc.yaml``              # 工程本地（最高优先）
         2. ``~/.autoc/agent/autoc.yaml``             # 用户级
@@ -324,60 +403,16 @@ class ProjectConfig:
         local_path = (base_dir / _LOCAL_CONFIG).resolve()
         user_path = _USER_CONFIG
 
-        local_data = load_yaml(local_path)
-        user_data = load_yaml(user_path)
+        # mtime 作为缓存键：文件不存在 → 0
+        local_mtime = _safe_mtime(local_path)
+        user_mtime = _safe_mtime(user_path)
 
-        # 三层合并：local 覆盖 user
-        merged = _merge_yaml(user_data, local_data)
-
-        # 必填字段校验
-        project_root_raw = merged.get(_FIELD_PROJECT_ROOT)
-        if not project_root_raw or not isinstance(project_root_raw, str):
-            raise ProjectConfigError(
-                f"未找到 autoc.yaml 或缺字段 '{_FIELD_PROJECT_ROOT}'。"
-                f"请先运行 `autoc init` 配置 EB tresos 工程。",
-            )
-
-        # 可选字段
-        tresos_home_raw = merged.get(_FIELD_TRESOS_HOME)
-        tresos_home: Path | None
-        if tresos_home_raw is None or tresos_home_raw == "":
-            tresos_home = default_tresos_home()
-        elif isinstance(tresos_home_raw, str):
-            tresos_home = Path(tresos_home_raw).expanduser()
-        else:
-            raise ProjectConfigError(
-                f"字段 '{_FIELD_TRESOS_HOME}' 必须是字符串路径或 null。",
-            )
-
-        extra_raw = merged.get(_FIELD_EXTRA_BSWMD_PATHS) or []
-        if not isinstance(extra_raw, list):
-            raise ProjectConfigError(
-                f"字段 '{_FIELD_EXTRA_BSWMD_PATHS}' 必须是字符串列表。",
-            )
-        extra_paths: list[Path] = []
-        for item in extra_raw:
-            if not isinstance(item, str):
-                raise ProjectConfigError(
-                    f"'{_FIELD_EXTRA_BSWMD_PATHS}' 列表元素必须是字符串。",
-                )
-            extra_paths.append(Path(item).expanduser())
-
-        # 解析 project_root 为绝对路径
-        project_root = Path(project_root_raw).expanduser()
-        if not project_root.is_absolute():
-            project_root = (base_dir / project_root).resolve()
-        else:
-            project_root = project_root.resolve()
-
-        # bswmd_root 默认 <project_root>/.autoc/bswmd/r22/
-        bswmd_root = (project_root / ".autoc" / "bswmd" / "r22").resolve()
-
-        return cls(
-            project_root=project_root,
-            tresos_home=tresos_home,
-            bswmd_root=bswmd_root,
-            extra_bswmd_paths=tuple(extra_paths),
+        return _load_cached_impl(
+            base_dir_str=str(base_dir),
+            local_path_str=str(local_path),
+            local_mtime_ns=local_mtime,
+            user_path_str=str(user_path),
+            user_mtime_ns=user_mtime,
         )
 
     # ------------------------------------------------------------------

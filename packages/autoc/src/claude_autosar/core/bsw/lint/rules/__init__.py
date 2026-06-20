@@ -1,4 +1,4 @@
-"""Sprint 9.4 + v2.4.1 — 38 条 lint 规则注册（修正版）。
+"""Sprint 9.4 + v2.4.1 + Sprint 12 — 45 条 lint 规则注册。
 
 公共 API：
 
@@ -62,6 +62,15 @@ from claude_autosar.core.bsw.lint.rules.arxml_rules.nm_ap_003 import NmAp003Rule
 from claude_autosar.core.bsw.lint.rules.arxml_rules.pdur_ap_001 import PduRAp001Rule
 from claude_autosar.core.bsw.lint.rules.arxml_rules.pdur_ap_002 import PduRAp002Rule
 
+# Sprint 12 T12.1 新增
+from claude_autosar.core.bsw.lint.rules.arxml_rules.os_ap_001 import OsAp001Rule
+from claude_autosar.core.bsw.lint.rules.arxml_rules.os_ap_002 import OsAp002Rule
+from claude_autosar.core.bsw.lint.rules.arxml_rules.nvm_ap_001 import NvmAp001Rule
+from claude_autosar.core.bsw.lint.rules.arxml_rules.nvm_ap_002 import NvmAp002Rule
+from claude_autosar.core.bsw.lint.rules.arxml_rules.fee_ap_001 import FeeAp001Rule
+from claude_autosar.core.bsw.lint.rules.arxml_rules.ethtp_ap_001 import EthtpAp001Rule
+from claude_autosar.core.bsw.lint.rules.arxml_rules.ethtp_ap_002 import EthtpAp002Rule
+
 # ──────────────────────────────────────────────────────────────
 # XDM 规则（9 条 — 原 2 条 + v2.4.1 新增 7 条）
 # ──────────────────────────────────────────────────────────────
@@ -111,6 +120,14 @@ __all__ = [
     "NmAp003Rule",
     "PduRAp001Rule",
     "PduRAp002Rule",
+    # arxml — Sprint 12 T12.1 新增
+    "OsAp001Rule",
+    "OsAp002Rule",
+    "NvmAp001Rule",
+    "NvmAp002Rule",
+    "FeeAp001Rule",
+    "EthtpAp001Rule",
+    "EthtpAp002Rule",
     # xdm — 原有
     "DemAp001Rule",
     "DemAp004Rule",
@@ -163,6 +180,14 @@ ALL_RULES: tuple[LintRule, ...] = cast(
         NmAp003Rule(),
         PduRAp001Rule(),
         PduRAp002Rule(),
+        # Sprint 12 T12.1 新增
+        OsAp001Rule(),
+        OsAp002Rule(),
+        NvmAp001Rule(),
+        NvmAp002Rule(),
+        FeeAp001Rule(),
+        EthtpAp001Rule(),
+        EthtpAp002Rule(),
         # xdm
         DioAp001Rule(),
         McuAp001Rule(),

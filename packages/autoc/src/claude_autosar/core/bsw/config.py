@@ -7,17 +7,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
 
-
-class ParamType(Enum):
-    """BSW 参数类型枚举。"""
-
-    INTEGER = "integer"
-    FLOAT = "float"
-    STRING = "string"
-    BOOLEAN = "boolean"
-    ENUMERATION = "enumeration"
+from claude_autosar.core.bsw.types import ParamType
 
 
 @dataclass(frozen=True)
@@ -180,11 +171,15 @@ class BSWModule:
                 raise ValueError(
                     f"BSWParam.path must be hierarchical (contain '/'), got {p.path!r}"
                 )
+            ecuc_type = _PARAM_TO_ECUC_TYPE.get(p.value.type)
+            if ecuc_type is None:
+                # FUNCTION_NAME 等非标准 ECUC 类型跳过（与 ecuc.py 行为一致）
+                continue
             values.append(
                 ECUCValue(
                     path=p.path,
                     raw=p.value.raw,
-                    type=_PARAM_TO_ECUC_TYPE[p.value.type],  # type: ignore[arg-type]
+                    type=ecuc_type,  # type: ignore[arg-type]
                 )
             )
         return ECUCDocument(

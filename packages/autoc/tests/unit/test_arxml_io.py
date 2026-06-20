@@ -13,6 +13,8 @@ import pytest
 from claude_autosar.core.bsw.arxml_io import (
     ARXMLDocument,
     ARXMLError,
+    _cached_parse,
+    _invalidate_cache,
     find_elements,
     get_attribute,
     get_child_text,
@@ -105,7 +107,7 @@ class TestWrite:
 
         with (
             patch(
-                "claude_autosar.core.bsw.arxml_io.os.replace",
+                "claude_autosar.core.bsw.io.xml_io_base.os.replace",
                 side_effect=OSError("simulated rename failure"),
             ),
             pytest.raises(ARXMLError),
@@ -297,3 +299,115 @@ class TestRoundTrip:
             namespaces={"ar": "http://autosar.org/schema/r4.0"},
         )[0]
         assert get_child_text(parent2, "VALUE") == "999"
+
+
+# ---------------------------------------------------------------------------
+# parse cache (_cached_parse / _invalidate_cache)
+# ---------------------------------------------------------------------------
+
+
+class TestParseCache:
+    """Document-level parse cache: _cached_parse with mtime-based invalidation."""
+
+    def setup_method(self) -> None:
+        """每个测试前清空缓存，避免跨测试干扰。"""
+        _cached_parse.cache_clear()
+
+    def test_read_cache_hit(self, tmp_path: Path) -> None:
+        """读同一文件两次，_safe_parse 只应被调用一次（第二次走缓存）。"""
+        f = tmp_path / "cached.arxml"
+        _write_xml(f, _SAMPLE_XML)
+
+        with patch(
+            "claude_autosar.core.bsw.arxml_io._safe_parse",
+            wraps=__import__(
+                "claude_autosar.core.bsw.arxml_io", fromlist=["_safe_parse"]
+            )._safe_parse,
+        ) as mock_parse:
+            doc1 = read(f)
+            doc2 = read(f)
+
+        # _safe_parse 只调一次（第二次命中缓存）
+        assert mock_parse.call_count == 1
+        # 两次返回的 tree 应该是同一个对象（缓存命中）
+        assert doc1.tree is doc2.tree
+
+    def test_read_cache_miss_on_mtime_change(self, tmp_path: Path) -> None:
+        """文件 mtime 变化后，缓存应失效，读到新内容。"""
+        f = tmp_path / "mtime.arxml"
+        _write_xml(f, _SAMPLE_XML)
+
+        doc1 = read(f)
+        root1 = doc1.tree.getroot()
+
+        # 修改文件内容（mtime 会随之变化）
+        new_xml = _SAMPLE_XML.replace("<VALUE>80000000</VALUE>", "<VALUE>99999999</VALUE>")
+        _write_xml(f, new_xml)
+
+        doc2 = read(f)
+        root2 = doc2.tree.getroot()
+
+        # 新文件应包含修改后的值
+        value_elems = root2.iter()
+        found_new_value = False
+        for elem in value_elems:
+            if isinstance(elem.tag, str) and elem.text == "99999999":
+                found_new_value = True
+                break
+        assert found_new_value, "缓存未失效：读到的仍是旧内容"
+        # tree 不应是同一个对象
+        assert doc1.tree is not doc2.tree
+
+    def test_write_invalidates_cache(self, tmp_path: Path) -> None:
+        """write() 后再 read() 应该拿到新内容（缓存被清除）。"""
+        f = tmp_path / "write_inv.arxml"
+        _write_xml(f, _SAMPLE_XML)
+
+        doc = read(f)
+        # 修改值
+        parent = find_elements(
+            doc,
+            "//ar:ECUC-NUMERICAL-PARAM-VALUE",
+            namespaces={"ar": "http://autosar.org/schema/r4.0"},
+        )[0]
+        set_child_text(parent, "VALUE", "42")
+        write(doc, atomic=False)
+
+        # 重新读 —— 应该拿到写入的新值
+        doc2 = read(f)
+        parent2 = find_elements(
+            doc2,
+            "//ar:ECUC-NUMERICAL-PARAM-VALUE",
+            namespaces={"ar": "http://autosar.org/schema/r4.0"},
+        )[0]
+        assert get_child_text(parent2, "VALUE") == "42"
+
+    def test_cache_size_limit(self, tmp_path: Path) -> None:
+        """读 65 个不同文件后，缓存满（maxsize=64），最早的条目应被 evict。"""
+        _cached_parse.cache_clear()
+        assert _cached_parse.cache_info().maxsize == 64
+
+        paths: list[Path] = []
+        for i in range(65):
+            f = tmp_path / f"file_{i}.arxml"
+            _write_xml(f, _SAMPLE_XML)
+            paths.append(f)
+
+        # 依次读取 65 个文件
+        for p in paths:
+            read(p)
+
+        info = _cached_parse.cache_info()
+        # 缓存满，hits + misses 应该反映了 65 次 miss
+        assert info.misses == 65
+        assert info.currsize <= 64
+
+    def test_invalidate_cache_clears_all(self, tmp_path: Path) -> None:
+        """_invalidate_cache 应清空整个缓存。"""
+        f = tmp_path / "inv.arxml"
+        _write_xml(f, _SAMPLE_XML)
+        read(f)
+        assert _cached_parse.cache_info().currsize >= 1
+
+        _invalidate_cache(f)
+        assert _cached_parse.cache_info().currsize == 0

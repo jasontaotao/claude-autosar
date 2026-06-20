@@ -101,23 +101,27 @@ def apply_template_diff(
             diffs=(),
         )
 
-    # 暂只支持 modify；add / delete 显式抛错（plan §2.3 锁定 M1-T 范围）
-    non_modify = [d for d in diffs_tuple if getattr(d, "op", "modify") != "modify"]
-    if non_modify:
-        ops = sorted({str(getattr(d, "op", "unknown")) for d in non_modify})
-        raise NotImplementedError(
-            f"apply_template_diff: M1-T 范围只支持 modify op；"
-            f"diff 含 {ops!r}（其他 op 在后续 sprint 实施）"
-        )
-
     # 读 doc → 走对应 IO 改 VALUE / a:a value → 写回
     loaded = dispatcher_read(doc_path)
     original_size = doc_path.stat().st_size
 
-    _apply_modify_to_tree(loaded, diffs_tuple)
+    # Sprint 12 T12.4：支持 modify / add / delete
+    modify_diffs = tuple(d for d in diffs_tuple if getattr(d, "op", "modify") == "modify")
+    add_diffs = tuple(d for d in diffs_tuple if getattr(d, "op", "add") == "add")
+    delete_diffs = tuple(d for d in diffs_tuple if getattr(d, "op", "delete") == "delete")
+
+    if modify_diffs:
+        _apply_modify_to_tree(loaded, modify_diffs)
+    if add_diffs:
+        _apply_add_to_tree(loaded, add_diffs)
+    if delete_diffs:
+        _apply_delete_to_tree(loaded, delete_diffs)
 
     if mode == ApplyMode.APPLY:
-        dispatcher_write(loaded, preserve_format=True)
+        # Sprint 12 T12.4：add/delete 需要 preserve_format=False 以重建完整 XML
+        # modify 保持 preserve_format=True 以保留字节一致性
+        has_structural = bool(add_diffs or delete_diffs)
+        dispatcher_write(loaded, preserve_format=not has_structural)
         new_size = doc_path.stat().st_size
         bytes_changed = abs(new_size - original_size)
     else:
@@ -162,6 +166,34 @@ def _apply_modify_to_tree(
         return
     if loaded.format == "xdm":
         _apply_modify_xdm(loaded, diffs)
+        return
+    raise ValueError(f"apply_template_diff: unknown format {loaded.format!r}")
+
+
+def _apply_add_to_tree(
+    loaded: LoadedDocument,
+    diffs: tuple[object, ...],
+) -> None:
+    """对 in-memory tree 添加每个 add diff 的新参数节点。"""
+    if loaded.format == "arxml":
+        _apply_add_arxml(loaded, diffs)
+        return
+    if loaded.format == "xdm":
+        _apply_add_xdm(loaded, diffs)
+        return
+    raise ValueError(f"apply_template_diff: unknown format {loaded.format!r}")
+
+
+def _apply_delete_to_tree(
+    loaded: LoadedDocument,
+    diffs: tuple[object, ...],
+) -> None:
+    """对 in-memory tree 删除每个 delete diff 的参数节点。"""
+    if loaded.format == "arxml":
+        _apply_delete_arxml(loaded, diffs)
+        return
+    if loaded.format == "xdm":
+        _apply_delete_xdm(loaded, diffs)
         return
     raise ValueError(f"apply_template_diff: unknown format {loaded.format!r}")
 
@@ -247,6 +279,139 @@ def _apply_modify_arxml(
         arxml_io.set_child_text(param_value, "VALUE", new_raw)
 
 
+def _apply_add_arxml(
+    loaded: LoadedDocument,
+    diffs: tuple[object, ...],
+) -> None:
+    """ARXML 端 add apply：在 parent container 下创建新的 param-value 节点。"""
+    from claude_autosar.core.bsw import arxml_io
+
+    tree = loaded.tree
+    root = tree.getroot() if hasattr(tree, "getroot") else tree
+
+    for d in diffs:
+        if getattr(d, "op", "add") != "add":
+            continue
+        template = getattr(d, "template", None)
+        if template is None:
+            continue
+        path = getattr(template, "path", None) or getattr(d, "path", None)
+        new_raw = getattr(template, "raw", None)
+        param_type = getattr(template, "type", "STRING")
+        if not path or new_raw is None:
+            continue
+
+        segments = path.strip("/").split("/")
+        if len(segments) < 2:
+            continue
+
+        target_param_short = segments[-1]
+        container_segments = segments[:-1]
+        module_name = container_segments[0]
+        nested_containers = container_segments[1:]
+
+        # 找 module root
+        module_elem = _find_module_root_arxml(root, module_name)
+        if module_elem is None:
+            continue
+
+        # 逐层下钻到 parent container
+        parent = module_elem
+        for cname in nested_containers:
+            found = _find_child_container_arxml(parent, cname)
+            if found is None:
+                parent = None
+                break
+            parent = found
+        if parent is None:
+            continue
+
+        # 确定 param-value tag（根据类型）
+        # HIGH-8 修复：BOOLEAN 必须用 ECUC-NUMERICAL-PARAM-VALUE（数字 0/1）
+        # + DEST="ECUC-NUMERICAL-PARAM-DEF"。AUTOSAR 没单独的 BOOLEAN-PARAM-DEF；
+        # EB tresos / Vector 会拒绝 ``ECUC-TEXTUAL-PARAM-VALUE`` + ``ECUC-BOOLEAN-PARAM-DEF``。
+        if param_type in ("INTEGER", "FLOAT", "BOOLEAN"):
+            pv_tag = "ECUC-NUMERICAL-PARAM-VALUE"
+        else:
+            pv_tag = "ECUC-TEXTUAL-PARAM-VALUE"
+
+        # 构造 DEFINITION-REF 路径
+        def_ref_path = f"/{'/'.join(segments)}"
+
+        # 找或创建 PARAMETER-VALUES wrapper
+        pv_wrapper = parent.find("{*}PARAMETER-VALUES")
+        if pv_wrapper is None:
+            from lxml import etree
+
+            nsmap = {"ar": "http://autosar.org/schema/r4.0"}
+            pv_wrapper = etree.SubElement(parent, "{http://autosar.org/schema/r4.0}PARAMETER-VALUES")
+
+        # 创建新的 param-value 节点
+        from lxml import etree
+
+        ns = "http://autosar.org/schema/r4.0"
+        pv_elem = etree.SubElement(pv_wrapper, f"{{{ns}}}{pv_tag}")
+        def_ref = etree.SubElement(pv_elem, f"{{{ns}}}DEFINITION-REF")
+        # HIGH-8 修复：DEST 同上 — BOOLEAN 也用 NUMERICAL-DEF
+        if param_type == "STRING":
+            dest = "ECUC-STRING-PARAM-DEF"
+        else:
+            dest = f"ECUC-{param_type}-PARAM-DEF" if param_type != "BOOLEAN" else "ECUC-NUMERICAL-PARAM-DEF"
+        def_ref.set("DEST", dest)
+        def_ref.text = def_ref_path
+        value = etree.SubElement(pv_elem, f"{{{ns}}}VALUE")
+        value.text = new_raw
+
+
+def _apply_delete_arxml(
+    loaded: LoadedDocument,
+    diffs: tuple[object, ...],
+) -> None:
+    """ARXML 端 delete apply：从 parent container 删除匹配的 param-value 节点。"""
+    tree = loaded.tree
+    root = tree.getroot() if hasattr(tree, "getroot") else tree
+
+    for d in diffs:
+        if getattr(d, "op", "delete") != "delete":
+            continue
+        current = getattr(d, "current", None)
+        if current is None:
+            continue
+        path = getattr(current, "path", None) or getattr(d, "path", None)
+        if not path:
+            continue
+
+        segments = path.strip("/").split("/")
+        if len(segments) < 2:
+            continue
+
+        target_param_short = segments[-1]
+        container_segments = segments[:-1]
+        module_name = container_segments[0]
+        nested_containers = container_segments[1:]
+
+        # 找 module root
+        module_elem = _find_module_root_arxml(root, module_name)
+        if module_elem is None:
+            continue
+
+        # 逐层下钻到 parent container
+        parent = module_elem
+        for cname in nested_containers:
+            found = _find_child_container_arxml(parent, cname)
+            if found is None:
+                parent = None
+                break
+            parent = found
+        if parent is None:
+            continue
+
+        # 找匹配的 param-value 节点并删除
+        param_value = _find_param_value_arxml(parent, target_param_short)
+        if param_value is not None:
+            param_value.getparent().remove(param_value)
+
+
 def _find_module_root_arxml(root: Any, module_name: str) -> Any | None:
     """找 ``<ECUC-MODULE-CONFIGURATION-VALUES>`` SHORT-NAME == module_name."""
     for elem in root.iter("{*}ECUC-MODULE-CONFIGURATION-VALUES"):
@@ -262,20 +427,23 @@ def _find_child_container_arxml(parent: Any, container_name: str) -> Any | None:
     兼容 ::
 
       <CONTAINERS><ECUC-CONTAINER-VALUE>...  (wrapper 形式)
+      <CONTAINERS><ECUC-PARAM-CONF-CONTAINER>...  (AUTOSAR 标准)
       <SUB-CONTAINERS><ECUC-CONTAINER-VALUE>...
       <ECUC-CONTAINER-VALUE>...  (无 wrapper)
+      <ECUC-PARAM-CONF-CONTAINER>...  (无 wrapper)
     """
+    _CONTAINER_TAGS = ("ECUC-CONTAINER-VALUE", "ECUC-PARAM-CONF-CONTAINER")
     for child in parent:
         if not isinstance(child.tag, str):
             continue
         local = _local_tag_str(child.tag)
         if local in ("CONTAINERS", "SUB-CONTAINERS"):
             for sub in child:
-                if _local_tag_str(sub.tag) == "ECUC-CONTAINER-VALUE":
+                if _local_tag_str(sub.tag) in _CONTAINER_TAGS:
                     sn = sub.find("{*}SHORT-NAME")
                     if sn is not None and sn.text == container_name:
                         return sub
-        elif local == "ECUC-CONTAINER-VALUE":
+        elif local in _CONTAINER_TAGS:
             sn = child.find("{*}SHORT-NAME")
             if sn is not None and sn.text == container_name:
                 return child
@@ -395,6 +563,95 @@ def _apply_modify_xdm(
 
         # 改 value 属性
         datamodel2_io.set_attribute(var_elem, "value", new_raw)
+
+
+def _apply_add_xdm(
+    loaded: LoadedDocument,
+    diffs: tuple[object, ...],
+) -> None:
+    """XDM 端 add apply：在 parent container 下创建新的 d:var 节点。"""
+    from lxml import etree
+
+    tree = loaded.tree
+    root = tree.getroot() if hasattr(tree, "getroot") else tree
+    d_ns = "http://www.tresos.de/_projects/DataModel2/06/data.xsd"
+
+    for d in diffs:
+        if getattr(d, "op", "add") != "add":
+            continue
+        template = getattr(d, "template", None)
+        if template is None:
+            continue
+        path = getattr(template, "path", None) or getattr(d, "path", None)
+        new_raw = getattr(template, "raw", None)
+        if not path or new_raw is None:
+            continue
+
+        segments = path.strip("/").split("/")
+        if len(segments) < 2:
+            continue
+
+        var_name = segments[-1]
+        container_segments = segments[:-1]
+
+        # 从 root 下钻到 parent container
+        parent = root
+        for cname in container_segments:
+            found = _find_child_container_xdm(parent, cname)
+            if found is None:
+                parent = None
+                break
+            parent = found
+        if parent is None:
+            continue
+
+        # 创建新的 d:var 节点
+        var_elem = etree.SubElement(parent, f"{{{d_ns}}}var")
+        var_elem.set("name", var_name)
+        var_elem.set("value", new_raw)
+        var_elem.set("type", "STRING")  # 默认类型
+
+
+def _apply_delete_xdm(
+    loaded: LoadedDocument,
+    diffs: tuple[object, ...],
+) -> None:
+    """XDM 端 delete apply：从 parent container 删除匹配的 d:var 节点。"""
+    tree = loaded.tree
+    root = tree.getroot() if hasattr(tree, "getroot") else tree
+
+    for d in diffs:
+        if getattr(d, "op", "delete") != "delete":
+            continue
+        current = getattr(d, "current", None)
+        if current is None:
+            continue
+        path = getattr(current, "path", None) or getattr(d, "path", None)
+        if not path:
+            continue
+
+        segments = path.strip("/").split("/")
+        if len(segments) < 2:
+            continue
+
+        var_name = segments[-1]
+        container_segments = segments[:-1]
+
+        # 从 root 下钻到 parent container
+        parent = root
+        for cname in container_segments:
+            found = _find_child_container_xdm(parent, cname)
+            if found is None:
+                parent = None
+                break
+            parent = found
+        if parent is None:
+            continue
+
+        # 找匹配的 d:var 节点并删除
+        var_elem = _find_var_xdm(parent, var_name)
+        if var_elem is not None:
+            var_elem.getparent().remove(var_elem)
 
 
 def _find_child_container_xdm(parent: Any, container_name: str) -> Any | None:

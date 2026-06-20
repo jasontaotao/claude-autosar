@@ -87,8 +87,25 @@ def _fake_ctx_for_stub(args: argparse.Namespace) -> EcuConfigProjectContext:
     )
 
 
+def _infer_param_type(value_str: str) -> ParamType:
+    """根据值内容推断 ParamType（boolean → integer → float → string）。"""
+    if value_str.lower() in ("true", "false"):
+        return ParamType.BOOLEAN
+    try:
+        int(value_str)
+        return ParamType.INTEGER
+    except ValueError:
+        pass
+    try:
+        float(value_str)
+        return ParamType.FLOAT
+    except ValueError:
+        pass
+    return ParamType.STRING
+
+
 def _parse_params(raw_list: list[str], module: str) -> list[BSWParam]:
-    """把 --param path=value 列表转成 BSWParam list（type 默认 INTEGER）。
+    """把 --param path=value 列表转成 BSWParam list（type 按值推断）。
 
     path 接受以下两种格式：
       - 相对路径（不含 module 前缀）："Container/ParamName" → "Mcu/Container/ParamName"
@@ -101,8 +118,9 @@ def _parse_params(raw_list: list[str], module: str) -> list[BSWParam]:
             continue
         k, v = kv.split("=", 1)
         raw_path = k.strip()
+        v_stripped = v.strip()
         path = raw_path if raw_path.startswith(f"{module}/") else f"{module}/{raw_path}"
-        out.append(BSWParam(path, ParamValue(v.strip(), ParamType.INTEGER)))
+        out.append(BSWParam(path, ParamValue(v_stripped, _infer_param_type(v_stripped))))
     return out
 
 

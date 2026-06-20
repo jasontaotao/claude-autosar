@@ -38,10 +38,10 @@ def test_all_38_rules_have_applies_to_tag() -> None:
         ), f"{rule.__class__.__name__}.applies_to={rule.applies_to!r} 不在白名单"
 
 
-def test_rules_for_namespace_arxml_returns_29() -> None:
-    """29 条 arxml 规则 — 原 8 条 + v2.4.1 新增 21 条。"""
+def test_rules_for_namespace_arxml_returns_36() -> None:
+    """36 条 arxml 规则 — 原 8 条 + v2.4.1 新增 21 条 + Sprint 12 新增 7 条。"""
     rules = rules_for_namespace("arxml")
-    assert len(rules) == 29
+    assert len(rules) == 36
     rule_ids = {r.rule_id for r in rules}
     assert rule_ids == {
         "CANIF-AP-007",
@@ -62,6 +62,9 @@ def test_rules_for_namespace_arxml_returns_29() -> None:
         "ECUM-AP-004",
         "ETHIF-AP-001",
         "ETHIF-AP-002",
+        "ETHTP-AP-001",
+        "ETHTP-AP-002",
+        "FEE-AP-001",
         "FRIF-AP-001",
         "GEN-AP-002",
         "GEN-AP-003",
@@ -71,6 +74,10 @@ def test_rules_for_namespace_arxml_returns_29() -> None:
         "NM-AP-001",
         "NM-AP-002",
         "NM-AP-003",
+        "NVM-AP-001",
+        "NVM-AP-002",
+        "OS-AP-001",
+        "OS-AP-002",
         "PDUR-AP-001",
         "PDUR-AP-002",
     }

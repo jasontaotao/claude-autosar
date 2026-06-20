@@ -22,6 +22,7 @@ from claude_autosar.adapters.protocol import (
     SaveResult,
     VerifyResult,
 )
+from claude_autosar.core.bsw.xml_safe import _safe_parse
 
 
 class TresosAdapterError(RuntimeError):
@@ -56,7 +57,7 @@ class TresosAdapter:
         if not project_xml.is_file():
             raise TresosAdapterError(f".project not found: {project_xml}")
         try:
-            tree = etree.parse(str(project_xml))
+            tree = _safe_parse(project_xml, recover=False)
         except etree.XMLSyntaxError as e:
             raise TresosAdapterError(f"malformed .project XML at {project_xml}: {e}") from e
 

@@ -42,13 +42,19 @@ Sprint 8.E.5 验收：XDM byte-identity 写回 ≥ 99% 字节相同（PIs / DOCT
 
 from __future__ import annotations
 
-import contextlib
-import os
 from pathlib import Path
 import re
 from typing import Any, TypeAlias, cast
 
 from lxml import etree
+
+from claude_autosar.core.bsw.io.xml_io_base import (
+    _SurgicalPatchUnavailable,
+    atomic_write,
+    cleanup_namespaces_fallback,
+)
+from claude_autosar.core.bsw.xml_safe import _safe_fromstring, _safe_parse
+from claude_autosar.utils.xml_escape import escape_xml_text
 
 # ---------------------------------------------------------------------------
 # Well-known DataModel2 namespace URIs
@@ -98,10 +104,6 @@ class DataModel2Error(Exception):
     """DataModel2 I/O 失败时抛出的统一异常（包装 lxml/OSError）。"""
 
 
-class _SurgicalPatchUnavailable(Exception):
-    """Surgical patch 路径不可用（无原文件 / 文件结构变化 / 改的不是 attr/value）。"""
-
-
 # ---------------------------------------------------------------------------
 # read / write
 # ---------------------------------------------------------------------------
@@ -114,12 +116,12 @@ def _parse_xdm(path: str | Path) -> Any:
     扩展）可能引入 lxml 严格 parser 不识别的属性 / 元素。``recover=True``
     让 lxml 容忍并继续解析，而不是抛 ``XMLSyntaxError``。
     """
-    parser = etree.XMLParser(
+    return _safe_parse(
+        path,
         recover=True,
         remove_blank_text=False,  # 保留原缩进（surgical patch 需要）
         huge_tree=True,
     )
-    return etree.parse(str(path), parser=parser)
 
 
 def read(path: str | Path) -> Any:
@@ -178,16 +180,10 @@ def write(
         _write_to_path(out_path, tree, preserve_format=preserve_format)
         return
 
-    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    try:
-        _write_to_path(tmp, tree, preserve_format=preserve_format)
-        os.replace(tmp, out_path)
-    except (OSError, etree.SerialisationError) as e:
-        # 清理可能残留的 .tmp
-        with contextlib.suppress(OSError):
-            if tmp.exists():
-                tmp.unlink()
-        raise DataModel2Error(f"Failed to write XDM atomically to {out_path}: {e}") from e
+    def _write_fn(p: Path, t: Any) -> None:
+        _write_to_path(p, t, preserve_format=preserve_format)
+
+    atomic_write(out_path, tree, _write_fn, DataModel2Error)
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +216,7 @@ def _write_to_path(
             pass
 
     # 退路 / preserve_format=False
-    _cleanup_namespaces_fallback(path, tree, preserve_format=preserve_format)
+    cleanup_namespaces_fallback(path, tree, preserve_format=preserve_format)
 
 
 def _byte_identical_patch(path: Path, tree: Any) -> None:
@@ -304,7 +300,7 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
     except Exception:  # noqa: BLE001
         new_canonical = b""  # 走后续 patch 失败 → fallback
     try:
-        orig_canonical = etree.tostring(etree.fromstring(original_bytes), method="c14n")
+        orig_canonical = etree.tostring(_safe_fromstring(original_bytes), method="c14n")
     except Exception:  # noqa: BLE001
         orig_canonical = b""
     if new_canonical and orig_canonical and new_canonical == orig_canonical:
@@ -459,42 +455,14 @@ def _patch_parent_form(
     changes: list[tuple[int, int, str]] = []
     for om, new_text in zip(av_matches, new_av_texts, strict=False):
         if om.group(1) != new_text:
-            replacement = f"<a:v>{new_text}</a:v>"
+            # HIGH-2 修复：``new_text`` 来自 lxml 解码文本，写回前必须 escape。
+            # 否则 ``Tom & Jerry`` 写回裸 ``&``，产生畸形 XML。
+            replacement = f"<a:v>{escape_xml_text(new_text)}</a:v>"
             changes.append((om.start(), om.end(), replacement))
     changes.sort(key=lambda c: c[0], reverse=True)
     for start, end, replacement in changes:
         out = out[:start] + replacement + out[end:]
     return out.encode("utf-8")
-
-
-def _cleanup_namespaces_fallback(
-    path: Path,
-    tree: Any,
-    *,
-    preserve_format: bool,
-) -> None:
-    """退路：cleanup_namespaces + tostring + 重建 DOCTYPE."""
-    if preserve_format:
-        with contextlib.suppress(ValueError, etree.Error):
-            etree.cleanup_namespaces(tree)
-        doctype = tree.docinfo.doctype if hasattr(tree, "docinfo") else None
-        body = etree.tostring(
-            tree,
-            xml_declaration=True,
-            encoding="UTF-8",
-            standalone=True,
-            doctype=doctype,
-        )
-        path.write_bytes(body)
-    else:
-        path.write_bytes(
-            etree.tostring(
-                tree,
-                xml_declaration=True,
-                encoding="UTF-8",
-                standalone=True,
-            )
-        )
 
 
 # ---------------------------------------------------------------------------

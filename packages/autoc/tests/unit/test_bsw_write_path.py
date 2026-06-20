@@ -384,7 +384,9 @@ class TestValidateWrites:
     def test_container_upper_3_write_4_raises(self) -> None:
         """upper=3 写 4 个 → 抛，msg 含 "UPPER-MULTIPLICITY=3"。
 
-        current_values 给 3 个（在容器内），writes 给 2 个 → 总 5 > 3。
+        HIGH-7 修复后：existing 3 个实例 + writes 1 个新实例 → 4 > 3 → 抛。
+        （旧版本用 leaf 计数：3 existing leaves + 2 writes = 5 > 3 也抛，
+        但 reject 原因错误——bug 把同一实例的多个 leaf 算成多个 instance。）
         """
         reg = _build_registry_with_param(
             short_name="Freq",
@@ -394,15 +396,16 @@ class TestValidateWrites:
             min_val="0",
             max_val="100",
         )
+        # 3 个独立实例（Cfg_0 / Cfg_1 / Cfg_2），每个 1 leaf
         existing = (
-            ECUCValue(path="Mcu/Cfg/OtherA", raw="1", type="INTEGER"),
-            ECUCValue(path="Mcu/Cfg/OtherB", raw="2", type="INTEGER"),
-            ECUCValue(path="Mcu/Cfg/OtherC", raw="3", type="INTEGER"),
+            ECUCValue(path="Mcu/Cfg_0/Other", raw="1", type="INTEGER"),
+            ECUCValue(path="Mcu/Cfg_1/Other", raw="2", type="INTEGER"),
+            ECUCValue(path="Mcu/Cfg_2/Other", raw="3", type="INTEGER"),
         )
-        p1 = BSWParam(path="Mcu/Cfg/Freq", value=ParamValue(raw="50", type=ParamType.INTEGER))
-        p2 = BSWParam(path="Mcu/Cfg/Freq", value=ParamValue(raw="60", type=ParamType.INTEGER))
+        # 写 1 个新实例 → 总 4 > 3
+        p1 = BSWParam(path="Mcu/Cfg_3/Freq", value=ParamValue(raw="50", type=ParamType.INTEGER))
         with pytest.raises(BSWWritePathError) as exc_info:
-            validate_writes_against_bswmd(reg, "Mcu", existing, (p1, p2))
+            validate_writes_against_bswmd(reg, "Mcu", existing, (p1,))
         assert "UPPER-MULTIPLICITY=3" in str(exc_info.value)
         assert exc_info.value.expected_max == 3
 

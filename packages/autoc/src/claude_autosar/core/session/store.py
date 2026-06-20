@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 import json
 import os
 from pathlib import Path
@@ -98,18 +99,12 @@ class SessionStore:
             os.fsync(f.fileno())
 
     def read(self, session_id: str) -> Session:
-        """读取整个 session。不存在文件抛 SessionStoreError。"""
+        """读取整个 session。不存在文件抛 SessionStoreError。按 mtime 缓存。"""
         path = self._path(session_id)
         if not path.is_file():
             raise SessionStoreError(f"session not found: {session_id}")
-        entries = self._parse_lines(_read_lines(path))
-        if not entries:
-            return Session(id=session_id, started_at="", entries=())
-        return Session(
-            id=session_id,
-            started_at=entries[0].timestamp,
-            entries=tuple(entries),
-        )
+        mtime_ns = path.stat().st_mtime_ns
+        return _read_cached(str(path), mtime_ns, session_id)
 
     def tail(self, session_id: str, n: int) -> list[SessionEntry]:
         """返回最后 n 条 entry（n<=0 返回空）。"""
@@ -139,6 +134,21 @@ class SessionStore:
                 raise SessionStoreError(f"corrupt JSONL at line {i}: {e}") from e
             out.append(SessionEntry.from_dict(obj))
         return out
+
+
+@lru_cache(maxsize=32)
+def _read_cached(path_str: str, mtime_ns: int, session_id: str) -> Session:
+    """SessionStore.read() 的缓存实现。按 (path, mtime) 键缓存。"""
+    path = Path(path_str)
+    lines = _read_lines(path)
+    entries = SessionStore._parse_lines(lines)
+    if not entries:
+        return Session(id=session_id, started_at="", entries=())
+    return Session(
+        id=session_id,
+        started_at=entries[0].timestamp,
+        entries=tuple(entries),
+    )
 
 
 def new_session_id() -> str:

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from claude_autosar.cli.main import build_parser, main
+from claude_autosar.cli.main import _first_positional, build_parser, main
 
 pytestmark = pytest.mark.autosar
 
@@ -135,6 +135,56 @@ def test_main_dispatches_to_session_list() -> None:
     assert "session" in _DISPATCH
     assert _DISPATCH["session"][0] is not None  # register fn
     assert _DISPATCH["session"][1] is not None  # run fn
+
+
+# ---------------------------------------------------------------------------
+# _first_positional: flag 跳过逻辑
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "argv, expected",
+    [
+        # 布尔 flag 不跳过后续 token
+        (["--verbose", "eb", "save"], "eb"),
+        (["--no-color", "eb", "save"], "eb"),
+        # 需要值的 long flag 跳过下一个 token
+        (["--project", "/tmp", "eb", "save"], "eb"),
+        (["--module", "Mcu", "eb", "save"], "eb"),
+        (["--tresos-home", "/opt/tresos", "eb", "save"], "eb"),
+        (["--adapter", "stub", "eb", "save"], "eb"),
+        (["--param", "x=1", "eb", "save"], "eb"),
+        # 需要值的短 flag 跳过下一个 token
+        (["-o", "out.html", "eb", "save"], "eb"),
+        (["--output", "out.html", "eb", "save"], "eb"),
+        # 多个 flag 混合
+        (["--verbose", "-o", "out.html", "eb", "save"], "eb"),
+        (["--project", "/tmp", "--module", "Mcu", "eb", "save"], "eb"),
+        # 无 flag
+        (["eb", "save"], "eb"),
+        # 全是 flag，无位置 token
+        (["--help"], None),
+        (["--verbose"], None),
+    ],
+    ids=[
+        "bool-long-flag-verbose",
+        "bool-long-flag-nocolor",
+        "value-long-flag-project",
+        "value-long-flag-module",
+        "value-long-flag-tresos-home",
+        "value-long-flag-adapter",
+        "value-long-flag-param",
+        "value-short-flag-o",
+        "value-long-flag-output",
+        "mixed-bool-and-value-flags",
+        "multiple-value-flags",
+        "no-flags",
+        "all-flags-no-positional",
+        "bool-flag-only-no-positional",
+    ],
+)
+def test_first_positional(argv: list[str], expected: str | None) -> None:
+    assert _first_positional(argv) == expected
 
 
 # ---------------------------------------------------------------------------

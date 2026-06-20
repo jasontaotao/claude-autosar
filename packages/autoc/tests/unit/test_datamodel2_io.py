@@ -159,7 +159,7 @@ class TestWrite:
 
         with (
             patch(
-                "claude_autosar.core.bsw.io.datamodel2_io.os.replace",
+                "claude_autosar.core.bsw.io.xml_io_base.os.replace",
                 side_effect=OSError("simulated rename failure"),
             ),
             pytest.raises(DataModel2Error),

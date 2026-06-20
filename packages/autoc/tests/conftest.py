@@ -12,6 +12,28 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _autouse_safe_project_roots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """把 ``tmp_path`` 加入 MCP ``_ALLOWED_PROJECT_ROOTS``，让需要 ``project=tmp_path`` 的
+    测试与 ``_resolve_safe_project``（H4 防御）兼容。
+
+    测试若想验证 *outside allowed roots* 拒绝路径，应使用绝对路径如
+    ``/nonexistent_root_for_test_*`` —— 这类路径既不在 cwd 也不在 tmp_path，
+    仍会被正确拒绝。
+
+    Sprint 12 审计修复（HIGH-9）：``bsw_validate`` / ``bsw_diff`` 现在
+    走 ``_resolve_safe_project`` 替 ``validate_no_traversal``，需要
+    ``project`` 落在 allowed roots；旧测试用 ``project=tmp_path`` 不能直接通过，
+    由本 fixture 兜底。
+    """
+    import claude_autosar.cli.mcp_server as srv
+
+    roots = frozenset({Path.cwd().resolve(), tmp_path.resolve()})
+    monkeypatch.setattr(srv, "_ALLOWED_PROJECT_ROOTS", roots)
+
+
 @pytest.fixture
 def tmp_workspace(tmp_path: Path) -> Iterator[Path]:
     """临时工作目录。"""

@@ -268,6 +268,23 @@ def _value_css_class(vtype: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 公共 API：DataModel2 树提取（Sprint 11 T11.4 提取）
+# ---------------------------------------------------------------------------
+
+
+def extract_module_name(root: Any, default_ns: str) -> str | None:
+    """找 ``<d:chc name=X type=AR-ELEMENT>`` 返回 X。"""
+    return _extract_module_name(root, default_ns)
+
+
+def flatten_module_tree(
+    root: Any, module_name: str, default_ns: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """扁平化 DataModel2 树，返回 (containers, leaves)。"""
+    return _flatten_module_tree(root, module_name, default_ns)
+
+
+# ---------------------------------------------------------------------------
 # 内部：DataModel2 树扁平化
 # ---------------------------------------------------------------------------
 

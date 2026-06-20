@@ -25,6 +25,8 @@ Lookup API（T8.E.2）：
     - ``lookup_container(def_ref_path)`` — 命中 ContainerDef 或 None
     - ``lookup_module(module_name)`` — 命中 ModuleDef 或 None
     - ``__contains__(def_ref_path)`` — 命中 module / container / param 都算 True
+
+解析辅助函数已拆分至 ``bswmd_parser.py``。
 """
 
 from __future__ import annotations
@@ -32,12 +34,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import logging
 from pathlib import Path
-from typing import Literal
 
 from lxml import etree
 
 # ProjectConfig 消费契约 1
 from claude_autosar.core.config.project_config import ProjectConfig
+from claude_autosar.core.bsw.types import ParamType
 
 __all__ = [
     "ParamType",
@@ -48,29 +50,8 @@ __all__ = [
     "BSWMDError",
 ]
 
-
-# =============================================================================
-# 类型别名
-# =============================================================================
-
-
-ParamType = Literal["INTEGER", "FLOAT", "STRING", "BOOLEAN", "ENUMERATION", "FUNCTION_NAME"]
-
-
-# BSWMD 元素 localname 白名单（按 AUTOSAR / EB tresos 标准）
-_LOCAL_MODULE_DEF = "ECUC-MODULE-DEF"
-_LOCAL_CONTAINER_DEF = "ECUC-PARAM-CONF-CONTAINER-DEF"
-_LOCAL_CHOICE_CONTAINER_DEF = "ECUC-CHOICE-CONTAINER-DEF"
-
-# ECUC-*-PARAM-DEF localname → ParamType 映射
-_PARAM_TYPE_FROM_LOCAL: dict[str, ParamType] = {
-    "ECUC-INTEGER-PARAM-DEF": "INTEGER",
-    "ECUC-FLOAT-PARAM-DEF": "FLOAT",
-    "ECUC-STRING-PARAM-DEF": "STRING",
-    "ECUC-BOOLEAN-PARAM-DEF": "BOOLEAN",
-    "ECUC-ENUMERATION-PARAM-DEF": "ENUMERATION",
-    "ECUC-FUNCTION-NAME-DEF": "FUNCTION_NAME",
-}
+# 缓存未命中标记（区分 "缓存了 None" 和 "未缓存"）
+_SENTINEL = object()
 
 
 # =============================================================================
@@ -162,11 +143,17 @@ class BSWMDRegistry:
         modules: 模块定义表（key = 模块 SHORT-NAME）。
         root_package_name: 探测到的 BSWMD 根 ``<AR-PACKAGE>`` SHORT-NAME。
         source_paths: 实际加载的文件路径（用于诊断 / 调试）。
+
+    内部维护 ``_lookup_cache``，缓存 ``_walk_path`` 的结果以避免重复树遍历。
+    该字段不参与 __init__ / __repr__ / __eq__，对外完全透明。
     """
 
     modules: dict[str, ModuleDef] = field(default_factory=dict)
     root_package_name: str = "AUTOSAR"
     source_paths: tuple[Path, ...] = field(default_factory=tuple)
+    _lookup_cache: dict[str, ParamDef | ContainerDef | ModuleDef | None] = field(
+        init=False, repr=False, compare=False, default_factory=dict
+    )
 
     # ------------------------------------------------------------------
     # 加载入口
@@ -250,11 +237,22 @@ class BSWMDRegistry:
         Args:
             paths: 一个或多个 ``.arxml`` 路径。
             nsmap: 调用方提供的 namespace 表（仅用于显式控制；
-                ``None`` 时走 ``etree.parse`` 自动探测）。
+                ``None`` 时走 ``_safe_parse`` 自动探测）。
 
         Returns:
             合并后的 ``BSWMDRegistry``。
         """
+        # 延迟导入解析辅助（避免循环依赖；bswmd_parser 在模块级导入本模块数据类）
+        from claude_autosar.core.bsw.bswmd_parser import (
+            LOCAL_MODULE_DEF,
+            _find_short_name,
+            _iter_ar_packages,
+            _iter_children_by_localname,
+            _parse_module_def,
+            _root_pkg_for_module,
+        )
+        from claude_autosar.core.bsw.xml_safe import _safe_parse
+
         if not paths:
             raise ValueError("BSWMDRegistry.load: paths is empty")
 
@@ -266,7 +264,7 @@ class BSWMDRegistry:
             if not path.exists():
                 raise ValueError(f"BSWMD file not found: {path}")
             try:
-                tree = etree.parse(str(path))
+                tree = _safe_parse(path, recover=False)
             except (etree.XMLSyntaxError, OSError) as exc:
                 raise BSWMDError(f"failed to parse {path}: {exc}") from exc
 
@@ -293,7 +291,7 @@ class BSWMDRegistry:
                 for elements_block in _iter_children_by_localname(pkg, "ELEMENTS"):
                     for module_elem in _iter_children_by_localname(
                         elements_block,
-                        _LOCAL_MODULE_DEF,
+                        LOCAL_MODULE_DEF,
                     ):
                         module = _parse_module_def(
                             module_elem,
@@ -303,7 +301,7 @@ class BSWMDRegistry:
                             # 同名 module 后加载覆盖前加载（D11）
                             modules[module.short_name] = module
                 # 兼容老 schema：ECUC-MODULE-DEF 直接在 AR-PACKAGE 下（罕见）
-                for module_elem in _iter_children_by_localname(pkg, _LOCAL_MODULE_DEF):
+                for module_elem in _iter_children_by_localname(pkg, LOCAL_MODULE_DEF):
                     module = _parse_module_def(
                         module_elem,
                         root_pkg_name=pkg_root_name,
@@ -400,7 +398,7 @@ class BSWMDRegistry:
     # ------------------------------------------------------------------
 
     def _walk_path(self, def_ref_path: str) -> ParamDef | ContainerDef | ModuleDef | None:
-        """通用 path walk：split + 逐层下钻。
+        """通用 path walk：split + 逐层下钻。结果缓存在 ``_lookup_cache``。
 
         算法（plan R4.a 锁定）：
             1. ``split('/')`` 去掉空段 → parts
@@ -412,6 +410,21 @@ class BSWMDRegistry:
 
         返回类型可能为 ParamDef / ContainerDef / ModuleDef；调用方按需 cast。
         """
+        # 缓存命中 → 直接返回（用 _SENTINEL 区分"缓存了 None"和"未缓存"）
+        if def_ref_path in self._lookup_cache:
+            return self._lookup_cache[def_ref_path]
+
+        result = self._walk_path_inner(def_ref_path)
+        self._lookup_cache[def_ref_path] = result
+        return result
+
+    def _walk_path_inner(
+        self, def_ref_path: str
+    ) -> ParamDef | ContainerDef | ModuleDef | None:
+        """实际的 path walk 逻辑（不含缓存）。"""
+        # 延迟导入（避免循环依赖）
+        from claude_autosar.core.bsw.bswmd_parser import _descend
+
         if not def_ref_path:
             return None
         parts = [p for p in def_ref_path.split("/") if p]
@@ -454,311 +467,3 @@ class BSWMDRegistry:
             f"root_package_name={self.root_package_name!r}, "
             f"source_paths={len(self.source_paths)} files)"
         )
-
-
-# =============================================================================
-# 内部：解析辅助
-# =============================================================================
-
-
-def _find_short_name(elem: etree._Element) -> str | None:
-    """从 ECUC 元素的子节点读 ``<SHORT-NAME>`` 文本。
-
-    Args:
-        elem: lxml Element。
-
-    Returns:
-        SHORT-NAME 文本；缺省或找不到 → ``None``。
-    """
-    for child in elem:
-        if isinstance(child.tag, str) and etree.QName(child.tag).localname == "SHORT-NAME":
-            return (child.text or "").strip() or None
-    return None
-
-
-def _iter_ar_packages(root: etree._Element) -> list[etree._Element]:
-    """返回 root 下所有 ``<AR-PACKAGE>`` 元素（深度优先）。
-
-    BSWMD 模板结构：``<AUTOSAR> → <AR-PACKAGES> → <AR-PACKAGE> 兄弟节点（可能多层）``。
-    我们要解析所有兄弟包（多包 vendor 模板）。
-    """
-    return [
-        e
-        for e in root.iter()
-        if isinstance(e.tag, str) and etree.QName(e.tag).localname == "AR-PACKAGE"
-    ]
-
-
-def _iter_children_by_localname(
-    elem: etree._Element,
-    local: str,
-) -> list[etree._Element]:
-    """返回 elem 的直接子元素中 localname == ``local`` 的列表。"""
-    return [c for c in elem if isinstance(c.tag, str) and etree.QName(c.tag).localname == local]
-
-
-def _find_child_by_localname(
-    elem: etree._Element,
-    local: str,
-) -> etree._Element | None:
-    """返回 elem 的直接子元素中 localname == ``local`` 的第一个。"""
-    for c in elem:
-        if isinstance(c.tag, str) and etree.QName(c.tag).localname == local:
-            return c
-    return None
-
-
-def _get_child_text(elem: etree._Element, local: str) -> str | None:
-    """取 elem 下第一个 localname == ``local`` 的子元素的文本。"""
-    child = _find_child_by_localname(elem, local)
-    if child is None:
-        return None
-    return (child.text or "").strip() or None
-
-
-def _parse_multiplicity(
-    elem: etree._Element,
-    *,
-    lower_default: int = 0,
-    upper_default: int = 1,
-) -> tuple[int, int]:
-    """从 ``<LOWER-MULTIPLICITY>`` / ``<UPPER-MULTIPLICITY>`` 读整数。
-
-    D5 决定：
-        - 缺省 lower=0 / upper=1
-        - upper=``"unbounded"`` → ``-1``
-        - 任何非整数 upper → 1（容错）
-
-    Returns:
-        ``(lower_multiplicity, upper_multiplicity)``
-    """
-    lower_text = _get_child_text(elem, "LOWER-MULTIPLICITY")
-    upper_text = _get_child_text(elem, "UPPER-MULTIPLICITY")
-
-    try:
-        lower = int(lower_text) if lower_text is not None else lower_default
-    except ValueError:
-        lower = lower_default
-
-    if upper_text is None:
-        upper = upper_default
-    elif upper_text.strip().lower() == "unbounded":
-        upper = -1
-    else:
-        try:
-            upper = int(upper_text)
-        except ValueError:
-            upper = upper_default
-
-    return lower, upper
-
-
-def _root_pkg_for_module(
-    pkg: etree._Element,
-    *,
-    fallback: str,
-) -> str:
-    """取 AR-PACKAGE 的 SHORT-NAME 作为其内部 module 的根包名。"""
-    sn = _find_short_name(pkg)
-    return sn if sn else fallback
-
-
-def _parse_module_def(
-    elem: etree._Element,
-    *,
-    root_pkg_name: str,
-) -> ModuleDef | None:
-    """解析 ``<ECUC-MODULE-DEF>`` 元素为 ``ModuleDef``。"""
-    sn = _find_short_name(elem)
-    if not sn:
-        return None
-
-    full_path = f"/{root_pkg_name}/{sn}"
-    containers, params = _parse_module_body(elem, full_path)
-    return ModuleDef(
-        short_name=sn,
-        full_path=full_path,
-        containers=containers,
-        params=params,
-    )
-
-
-def _parse_module_body(
-    elem: etree._Element,
-    full_path: str,
-) -> tuple[dict[str, ContainerDef], dict[str, ParamDef]]:
-    """解析 ``<ECUC-MODULE-DEF>`` 体内的 ``<CONTAINERS>`` 和顶层 ``<PARAMETERS>``。
-
-    BSWMD 模板里 ``<ECUC-MODULE-DEF>`` 的结构可能是：
-        - ``<CONTAINERS> → <ECUC-PARAM-CONF-CONTAINER-DEF> 兄弟``
-        - ``<CONTAINERS> → <ECUC-CHOICE-CONTAINER-DEF>``（CHOICE 本任务不展开子集，
-          但 CHOICE 自身被解析为 ``ContainerDef`` 上层）
-        - 顶层 ``<PARAMETERS> → <ECUC-*-PARAM-DEF> 兄弟``
-    """
-    containers: dict[str, ContainerDef] = {}
-    params: dict[str, ParamDef] = {}
-
-    for child in elem:
-        if not isinstance(child.tag, str):
-            continue
-        local = etree.QName(child.tag).localname
-        if local == "CONTAINERS":
-            for container_elem in child:
-                if not isinstance(container_elem.tag, str):
-                    continue
-                c_local = etree.QName(container_elem.tag).localname
-                if c_local in (_LOCAL_CONTAINER_DEF, _LOCAL_CHOICE_CONTAINER_DEF):
-                    cd = _parse_container_def(container_elem, full_path)
-                    if cd is not None:
-                        containers[cd.short_name] = cd
-        elif local == "PARAMETERS":
-            for param_elem in child:
-                if not isinstance(param_elem.tag, str):
-                    continue
-                p_local = etree.QName(param_elem.tag).localname
-                if p_local.endswith("-PARAM-DEF") or p_local == "ECUC-FUNCTION-NAME-DEF":
-                    pd = _parse_param_def(param_elem, full_path)
-                    if pd is not None:
-                        params[pd.short_name] = pd
-    return containers, params
-
-
-def _parse_container_def(
-    elem: etree._Element,
-    parent_path: str,
-) -> ContainerDef | None:
-    """递归解析 ``<ECUC-PARAM-CONF-CONTAINER-DEF>`` 元素为 ``ContainerDef``。"""
-    sn = _find_short_name(elem)
-    if not sn:
-        return None
-    full_path = f"{parent_path}/{sn}"
-    lower, upper = _parse_multiplicity(elem)
-
-    param_defs: dict[str, ParamDef] = {}
-    sub_container_defs: dict[str, ContainerDef] = {}
-
-    for child in elem:
-        if not isinstance(child.tag, str):
-            continue
-        local = etree.QName(child.tag).localname
-        if local == "PARAMETERS":
-            for param_elem in child:
-                if not isinstance(param_elem.tag, str):
-                    continue
-                p_local = etree.QName(param_elem.tag).localname
-                if p_local.endswith("-PARAM-DEF") or p_local == "ECUC-FUNCTION-NAME-DEF":
-                    pd = _parse_param_def(param_elem, full_path)
-                    if pd is not None:
-                        param_defs[pd.short_name] = pd
-        elif local == "SUB-CONTAINERS":
-            for sub_elem in child:
-                if not isinstance(sub_elem.tag, str):
-                    continue
-                s_local = etree.QName(sub_elem.tag).localname
-                if s_local in (_LOCAL_CONTAINER_DEF, _LOCAL_CHOICE_CONTAINER_DEF):
-                    sub_cd = _parse_container_def(sub_elem, full_path)
-                    if sub_cd is not None:
-                        sub_container_defs[sub_cd.short_name] = sub_cd
-    return ContainerDef(
-        short_name=sn,
-        full_path=full_path,
-        lower_multiplicity=lower,
-        upper_multiplicity=upper,
-        param_defs=param_defs,
-        sub_container_defs=sub_container_defs,
-    )
-
-
-def _parse_param_def(
-    elem: etree._Element,
-    parent_path: str,
-) -> ParamDef | None:
-    """解析 ``<ECUC-*-PARAM-DEF>`` 元素为 ``ParamDef``。
-
-    元素类型 → ``param_type`` 的映射见 ``_PARAM_TYPE_FROM_LOCAL``。
-    ENUMERATION 解析 ``<LITERALS> → <ECUC-ENUMERATION-LITERAL-DEF> → <SHORT-NAME>``。
-    """
-    local = etree.QName(elem.tag).localname
-    param_type = _PARAM_TYPE_FROM_LOCAL.get(local)
-    if param_type is None:
-        # 未知 PARAM-DEF 类型 → 跳过（不抛，向后兼容）
-        return None
-
-    sn = _find_short_name(elem)
-    if not sn:
-        return None
-    full_path = f"{parent_path}/{sn}"
-
-    min_text = _get_child_text(elem, "MIN")
-    max_text = _get_child_text(elem, "MAX")
-    default_text: str | None = None
-    # <DEFAULT-VALUE> 是 wrapper，<ECUC-NUMERICAL-PARAM-VALUE> 在内
-    dv = _find_child_by_localname(elem, "DEFAULT-VALUE")
-    if dv is not None:
-        for sub in dv:
-            if isinstance(sub.tag, str) and etree.QName(sub.tag).localname == "VALUE":
-                default_text = (sub.text or "").strip() or None
-                break
-        if default_text is None:
-            # 直接是 ECUC-*-PARAM-VALUE 的 text（少见 schema 变体）
-            default_text = (dv.text or "").strip() or None
-
-    lower, upper = _parse_multiplicity(elem)
-
-    symbol_strings: tuple[str, ...] = ()
-    if param_type == "ENUMERATION":
-        symbols: list[str] = []
-        literals = _find_child_by_localname(elem, "LITERALS")
-        if literals is not None:
-            for lit in literals:
-                if not isinstance(lit.tag, str):
-                    continue
-                if etree.QName(lit.tag).localname == "ECUC-ENUMERATION-LITERAL-DEF":
-                    lit_sn = _find_short_name(lit)
-                    if lit_sn:
-                        symbols.append(lit_sn)
-        symbol_strings = tuple(symbols)
-
-    return ParamDef(
-        short_name=sn,
-        full_path=full_path,
-        param_type=param_type,
-        min=min_text,
-        max=max_text,
-        default=default_text,
-        lower_multiplicity=lower,
-        upper_multiplicity=upper,
-        symbol_strings=symbol_strings,
-    )
-
-
-def _descend(
-    node: ModuleDef | ContainerDef | ParamDef,
-    short_name: str,
-    *,
-    prefer_param: bool = False,
-) -> ModuleDef | ContainerDef | ParamDef | None:
-    """在 module / container / param 内按 SHORT-NAME 找下一个节点。
-
-    ModuleDef：
-        - 在 ``containers`` 中找
-        - 也可命中顶层 ``params``（BSWMD module 偶尔有顶层 param）
-    ContainerDef：
-        - 优先在 ``sub_container_defs`` 中找
-        - ``prefer_param=True`` 时（如最后一段），可在 ``param_defs`` 中找
-    ParamDef：是叶子，return None（不能再下钻）
-    """
-    if isinstance(node, ModuleDef):
-        sub = node.containers.get(short_name)
-        if sub is not None:
-            return sub
-        return node.params.get(short_name)
-    if isinstance(node, ContainerDef):
-        sub = node.sub_container_defs.get(short_name)
-        if sub is not None:
-            return sub
-        if prefer_param:
-            return node.param_defs.get(short_name)
-        return None
-    # ParamDef is a leaf — can't descend
-    return None

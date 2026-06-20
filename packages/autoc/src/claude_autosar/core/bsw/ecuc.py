@@ -7,7 +7,7 @@ Sprint 3 — T3.2。
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -15,6 +15,10 @@ from claude_autosar.core.bsw.arxml_io import (
     build_default_nsmap,
     detect_namespaces,
     read,
+)
+from claude_autosar.core.bsw.arxml_utils import (
+    find_module_root as _find_module_root,
+    local_tag as _local_tag,
 )
 from claude_autosar.core.bsw.bswmd import BSWMDRegistry
 
@@ -66,11 +70,23 @@ class ECUCValue:
 
 @dataclass(frozen=True)
 class ECUCDocument:
-    """不可变 ECUC 文档：path + module_name + values。"""
+    """不可变 ECUC 文档：path + module_name + values。
+
+    内部维护 ``_path_index``（path → values 下标的映射），使 get_value /
+    set_value 的查找从 O(n) 降到 O(1)。该字段不参与 __init__ / __repr__ /
+    __eq__，对外完全透明。
+    """
 
     path: Path
     module_name: str
     values: tuple[ECUCValue, ...]
+    _path_index: dict[str, int] = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        # frozen=True 禁止常规赋值，用 object.__setattr__ 绕过
+        object.__setattr__(
+            self, "_path_index", {v.path: i for i, v in enumerate(self.values)}
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -129,11 +145,11 @@ def load_module(
 
 
 def get_value(doc: ECUCDocument, path: str) -> ECUCValue | None:
-    """按 path 查一个值；不存在返回 None。"""
-    for v in doc.values:
-        if v.path == path:
-            return v
-    return None
+    """按 path 查一个值；不存在返回 None。O(1) 查找（内部走 _path_index）。"""
+    idx = doc._path_index.get(path)
+    if idx is None:
+        return None
+    return doc.values[idx]
 
 
 def set_value(
@@ -149,16 +165,12 @@ def set_value(
     nsmap=None（默认）：与 doc 探测时一致；本函数不重探测（set_value 是纯
     immutable 映射操作，不需 nsmap；保留 kw 为后续 Sprint 9.x BSWMD 校验扩展用）。
     """
-    new_values: list[ECUCValue] = []
-    found = False
-    for v in doc.values:
-        if v.path == path:
-            new_values.append(ECUCValue(path=v.path, raw=new_raw, type=v.type))
-            found = True
-        else:
-            new_values.append(v)
-    if not found:
+    idx = doc._path_index.get(path)
+    if idx is None:
         raise ValueError(f"Path {path!r} not in ECUCDocument for module {doc.module_name!r}")
+    old = doc.values[idx]
+    new_values = list(doc.values)
+    new_values[idx] = ECUCValue(path=old.path, raw=new_raw, type=old.type)
     return ECUCDocument(
         path=doc.path,
         module_name=doc.module_name,
@@ -167,24 +179,13 @@ def set_value(
 
 
 def list_paths(doc: ECUCDocument) -> tuple[str, ...]:
-    """返回所有值的 path 排序后元组。"""
-    return tuple(sorted(v.path for v in doc.values))
+    """返回所有值的 path 排序后元组。O(n) 排序，但 path 收集 O(1)。"""
+    return tuple(sorted(doc._path_index.keys()))
 
 
 # ---------------------------------------------------------------------------
 # 内部：reference chain 解析
 # ---------------------------------------------------------------------------
-
-
-def _find_module_root(root: Any, module_name: str) -> Any | None:
-    """在 ARXML root 下找 SHORT-NAME == module_name 的 ECUC-MODULE-CONFIGURATION-VALUES。"""
-
-    # ECUC-MODULE-CONFIGURATION-VALUES 可能在任意命名空间下
-    for elem in root.iter("{*}ECUC-MODULE-CONFIGURATION-VALUES"):
-        sn = elem.find("{*}SHORT-NAME")
-        if sn is not None and sn.text == module_name:
-            return elem
-    return None
 
 
 def _walk(
@@ -350,11 +351,3 @@ def _map_param_type_to_ecuc(
     if param_type in ("INTEGER", "FLOAT", "STRING", "BOOLEAN", "ENUMERATION"):
         return cast(ECUCType, param_type)
     return None
-
-
-def _local_tag(elem: Any) -> str:
-    """返回 elem 的 local tag（去命名空间）。"""
-    from lxml import etree
-
-    qname = etree.QName(elem.tag)
-    return cast(str, qname.localname)

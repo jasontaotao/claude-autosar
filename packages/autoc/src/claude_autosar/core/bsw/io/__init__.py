@@ -4,6 +4,9 @@ Sprint 9.0 引入。``arxml_io``（v1 资产，AUTOSAR ARXML 用）保留不动�
 ``datamodel2_io``（本子包，Sprint 9.0 新增）专攻 EB tresos DataModel2
 .xdm 文件（``http://www.tresos.de/_projects/DataModel2/16/root.xsd``）。
 
+Sprint 9.5 引入 ``xml_io_base``：提取 ``arxml_io`` 与 ``datamodel2_io``
+的共同模式（atomic write、cleanup fallback、``_SurgicalPatchUnavailable``）。
+
 命名空间表（DataModel2 1.0 alias + 2.0 16 root 头）：
 
   - d:  http://www.tresos.de/_projects/DataModel2/06/data.xsd  (2.0 短 alias)
@@ -21,3 +24,15 @@ EB 私有 ``<EAS-*>/<EAS-INFO>`` 节点（Infineon / NXP / Renesas 等 vendor
 扩展）以 lxml recovery parser 容忍，遇到未知 prefix 的元素跳过 lxml
 严格校验，由调用方按需解释。
 """
+
+from claude_autosar.core.bsw.io.xml_io_base import (
+    _SurgicalPatchUnavailable,
+    atomic_write,
+    cleanup_namespaces_fallback,
+)
+
+__all__ = [
+    "_SurgicalPatchUnavailable",
+    "atomic_write",
+    "cleanup_namespaces_fallback",
+]

@@ -45,8 +45,8 @@ class TestToolRegistration:
         assert "arxml_inspect" in _TOOL_NAMES
         assert "xdm_inspect" in _TOOL_NAMES
         assert "bsw_inspect" in _TOOL_NAMES
-        # 总数：原 10 + 3 inspect (Sprint 9.1) + 2 apply_template (Sprint 9.2-γ) = 15
-        assert len(_TOOL_NAMES) == 15
+        # 总数：原 10 + 3 inspect (Sprint 9.1) + 2 apply_template (Sprint 9.2-γ) + 1 validate (Sprint 10) + 1 diff (Sprint 11) = 17
+        assert len(_TOOL_NAMES) == 17
 
     def test_tool_funcs_includes_three_inspect(self) -> None:
         """_TOOL_FUNCS 字典映射正确（key 与函数名一致）。"""

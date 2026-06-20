@@ -31,6 +31,7 @@ from claude_autosar.adapters.protocol import (
 )
 from claude_autosar.adapters.stub import StubTresosAdapter
 from claude_autosar.cli.commands import eb
+from claude_autosar.core.bsw.config import ParamType
 
 pytestmark = pytest.mark.autosar
 
@@ -126,6 +127,89 @@ class TestParseParams:
         out = eb._parse_params(["  Mcu/Clock/F  =1  "], "Mcu")
         assert out[0].path == "Mcu/Clock/F"
         assert out[0].value.raw == "1"
+
+
+# ---------------------------------------------------------------------------
+# _infer_param_type — 类型推断辅助函数
+# ---------------------------------------------------------------------------
+
+
+class TestInferParamType:
+    """``_infer_param_type`` 必须按值内容推断 ParamType，不再硬编码 INTEGER。"""
+
+    def test_integer_value(self) -> None:
+        assert eb._infer_param_type("100") is ParamType.INTEGER
+
+    def test_integer_zero(self) -> None:
+        assert eb._infer_param_type("0") is ParamType.INTEGER
+
+    def test_integer_negative(self) -> None:
+        assert eb._infer_param_type("-5") is ParamType.INTEGER
+
+    def test_float_value(self) -> None:
+        assert eb._infer_param_type("3.14") is ParamType.FLOAT
+
+    def test_float_scientific_notation(self) -> None:
+        assert eb._infer_param_type("1e10") is ParamType.FLOAT
+
+    def test_float_negative(self) -> None:
+        assert eb._infer_param_type("-0.5") is ParamType.FLOAT
+
+    def test_boolean_true(self) -> None:
+        assert eb._infer_param_type("true") is ParamType.BOOLEAN
+
+    def test_boolean_false(self) -> None:
+        assert eb._infer_param_type("false") is ParamType.BOOLEAN
+
+    def test_boolean_case_insensitive(self) -> None:
+        assert eb._infer_param_type("True") is ParamType.BOOLEAN
+        assert eb._infer_param_type("FALSE") is ParamType.BOOLEAN
+
+    def test_string_value(self) -> None:
+        assert eb._infer_param_type("HSI") is ParamType.STRING
+
+    def test_string_mixed_alphanumeric(self) -> None:
+        assert eb._infer_param_type("XTAL123") is ParamType.STRING
+
+    def test_string_empty(self) -> None:
+        """空字符串不是数字也不是布尔 → STRING。"""
+        assert eb._infer_param_type("") is ParamType.STRING
+
+    def test_one_point_zero_is_float(self) -> None:
+        """'1.0' 含小数点 → float，不是 int。"""
+        assert eb._infer_param_type("1.0") is ParamType.FLOAT
+
+
+class TestParseParamsTypeInference:
+    """``_parse_params`` 必须根据值内容推断类型（不再是硬编码 INTEGER）。"""
+
+    def test_integer_param(self) -> None:
+        out = eb._parse_params(["Mcu/Clock/Freq=100"], "Mcu")
+        assert out[0].value.type is ParamType.INTEGER
+
+    def test_float_param(self) -> None:
+        out = eb._parse_params(["Mcu/Clock/Ratio=3.14"], "Mcu")
+        assert out[0].value.type is ParamType.FLOAT
+
+    def test_boolean_param(self) -> None:
+        out = eb._parse_params(["Mcu/Clock/Enabled=true"], "Mcu")
+        assert out[0].value.type is ParamType.BOOLEAN
+
+    def test_string_param(self) -> None:
+        out = eb._parse_params(["Mcu/Clock/ClockName=HSI"], "Mcu")
+        assert out[0].value.type is ParamType.STRING
+
+    def test_negative_integer(self) -> None:
+        out = eb._parse_params(["Mcu/Clock/Offset=-5"], "Mcu")
+        assert out[0].value.type is ParamType.INTEGER
+
+    def test_scientific_notation_is_float(self) -> None:
+        out = eb._parse_params(["Mcu/Clock/Freq=1e10"], "Mcu")
+        assert out[0].value.type is ParamType.FLOAT
+
+    def test_zero_is_integer(self) -> None:
+        out = eb._parse_params(["Mcu/Clock/Val=0"], "Mcu")
+        assert out[0].value.type is ParamType.INTEGER
 
 
 # ---------------------------------------------------------------------------
