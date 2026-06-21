@@ -11,15 +11,6 @@ import json
 import sys
 from typing import Any
 
-from claude_autosar.core.log.changelog import (
-    extract_changes,
-    render_by_url,
-    render_timeline,
-)
-from claude_autosar.core.session.store import SessionStore, SessionStoreError
-from claude_autosar.core.session.tree import SessionTree
-
-
 def register(subparsers: Any) -> None:
     """挂载到主 argparse subparsers。"""
     p = subparsers.add_parser("log", help="改参 changelog")
@@ -47,6 +38,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run(args: argparse.Namespace) -> int:
     """执行 log 子命令。返回 exit code。"""
+    from claude_autosar.core.log.changelog import (
+        extract_changes,
+        render_by_url,
+        render_timeline,
+    )
+    from claude_autosar.core.session.store import SessionStore, SessionStoreError
+    from claude_autosar.core.session.tree import SessionTree
+
     store = SessionStore()
     sid = args.session_id
     if sid == "latest":

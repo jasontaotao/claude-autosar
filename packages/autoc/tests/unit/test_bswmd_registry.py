@@ -238,11 +238,11 @@ class TestBSWMDCoverageSchemaVariants:
 class TestBSWMDCoverageMerge:
     """``merge`` 异常 / 边界。"""
 
-    def test_merge_with_non_registry_returns_not_implemented(self) -> None:
-        """行 335-336：``merge`` 非 ``BSWMDRegistry`` → ``NotImplemented``。"""
+    def test_merge_with_non_registry_raises_type_error(self) -> None:
+        """行 334：``merge`` 非 ``BSWMDRegistry`` → ``TypeError``。"""
         reg = BSWMDRegistry()
-        result = reg.merge("not a registry")  # type: ignore[arg-type]
-        assert result is NotImplemented
+        with pytest.raises(TypeError, match="expected BSWMDRegistry"):
+            reg.merge("not a registry")  # type: ignore[arg-type]
 
     def test_merge_with_other_empty_registry(self) -> None:
         """``merge`` 对方是空 registry 时 root_package_name 保留 self。"""

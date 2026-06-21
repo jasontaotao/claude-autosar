@@ -58,8 +58,9 @@ def get_or_create_current_session(store: SessionStore) -> str:
 
 def set_current_session(store: SessionStore, session_id: str) -> None:
     """显式设置 current session（用于 fork 后切换）。"""
-    current_file = store.dir / _CURRENT_FILE
-    current_file.write_text(session_id, encoding="utf-8")
+    with _RECORDER_LOCK:
+        current_file = store.dir / _CURRENT_FILE
+        current_file.write_text(session_id, encoding="utf-8")
 
 
 @dataclass(frozen=True)

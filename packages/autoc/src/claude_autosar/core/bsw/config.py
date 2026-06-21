@@ -149,11 +149,15 @@ class BSWModule:
 
         params: list[BSWParam] = []
         for v in doc.values:  # type: ignore[attr-defined]
-            assert isinstance(v, ECUCValue)
+            if not isinstance(v, ECUCValue):
+                raise TypeError(f"expected ECUCValue, got {type(v).__name__}")
+            param_type = _ECUC_TO_PARAM_TYPE.get(v.type)
+            if param_type is None:
+                continue  # skip unknown types like FUNCTION_NAME
             params.append(
                 BSWParam(
                     path=v.path,
-                    value=ParamValue(raw=v.raw, type=_ECUC_TO_PARAM_TYPE[v.type]),
+                    value=ParamValue(raw=v.raw, type=param_type),
                 )
             )
         return cls(name=doc.module_name, params=tuple(params))  # type: ignore[attr-defined]

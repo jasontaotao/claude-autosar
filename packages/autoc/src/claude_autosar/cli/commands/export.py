@@ -11,11 +11,6 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from claude_autosar.core.session.exporter import export_html
-from claude_autosar.core.session.store import SessionStore, SessionStoreError
-from claude_autosar.core.session.tree import SessionTree
-
-
 def register(subparsers: Any) -> None:
     """挂载到主 argparse subparsers。"""
     p = subparsers.add_parser("export", help="导出 session 为 HTML")
@@ -44,6 +39,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run(args: argparse.Namespace) -> int:
     """执行 export 子命令。返回 exit code。"""
+    from claude_autosar.core.session.exporter import export_html
+    from claude_autosar.core.session.store import SessionStore, SessionStoreError
+    from claude_autosar.core.session.tree import SessionTree
+
     store = SessionStore()
     sid = args.session_id
     if sid == "latest":

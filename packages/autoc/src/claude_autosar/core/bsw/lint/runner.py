@@ -39,6 +39,7 @@ class LintSummary:
     :param warnings: WARNING 级别计数
     :param infos: INFO 级别计数
     :param by_rule_id: ``{rule_id: count}`` 计数
+    :param rule_errors: 执行期间抛异常的规则数
     """
 
     total: int
@@ -46,6 +47,7 @@ class LintSummary:
     warnings: int
     infos: int
     by_rule_id: dict[str, int] = field(default_factory=dict)
+    rule_errors: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -60,13 +62,14 @@ class LintRunner:
                   :data:`claude_autosar.core.bsw.lint.rules.ALL_RULES`
     """
 
-    __slots__ = ("_rules",)
+    __slots__ = ("_rules", "_rule_errors")
 
     def __init__(self, rules: tuple[LintRule, ...]) -> None:
         # 显式转 tuple 防外部 list 突变；不接受 None
         if rules is None:
             raise ValueError("rules must be a tuple, not None")
         self._rules: tuple[LintRule, ...] = tuple(rules)
+        self._rule_errors: int = 0
 
     @property
     def rules(self) -> tuple[LintRule, ...]:
@@ -80,19 +83,21 @@ class LintRunner:
         规则返回 generator 也接受 — 用 list 展平。
 
         :param extracted: ``ArxmlLintData`` / ``XdmLintData``（duck typing）
-        :return: 全部 violation tuple（按规则执行顺序）
+        :return: (全部 violation tuple, 规则执行异常数)
         """
         all_violations: list[LintViolation] = []
+        self._rule_errors = 0
         for rule in self._rules:
             try:
                 yielded = rule.check(extracted)
             except Exception as exc:  # noqa: BLE001 — 规则级隔离
-                _logger.warning(
+                self._rule_errors += 1
+                _logger.error(
                     "lint rule %r raised on %r: %s",
                     getattr(rule, "rule_id", "<unknown>"),
                     extracted,
                     exc,
-                    exc_info=False,
+                    exc_info=True,
                 )
                 continue
             if yielded is None:
@@ -113,12 +118,13 @@ class LintRunner:
                         continue
                     all_violations.append(v)
             except Exception as exc:  # noqa: BLE001 — 规则级隔离（generator raise）
-                _logger.warning(
+                self._rule_errors += 1
+                _logger.error(
                     "lint rule %r raised during iteration on %r: %s",
                     getattr(rule, "rule_id", "<unknown>"),
                     extracted,
                     exc,
-                    exc_info=False,
+                    exc_info=True,
                 )
         return tuple(all_violations)
 
@@ -155,4 +161,5 @@ class LintRunner:
             warnings=warnings,
             infos=infos,
             by_rule_id=by_rule,
+            rule_errors=getattr(self, "_rule_errors", 0),
         )

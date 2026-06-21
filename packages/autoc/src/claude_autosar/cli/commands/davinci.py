@@ -65,8 +65,25 @@ def _build_adapter(args: argparse.Namespace) -> _HasVerifySave:
     return DavinciAdapter()
 
 
+def _infer_param_type(value_str: str) -> ParamType:
+    """根据值内容推断 ParamType（boolean → integer → float → string）。"""
+    if value_str.lower() in ("true", "false"):
+        return ParamType.BOOLEAN
+    try:
+        int(value_str)
+        return ParamType.INTEGER
+    except ValueError:
+        pass
+    try:
+        float(value_str)
+        return ParamType.FLOAT
+    except ValueError:
+        pass
+    return ParamType.STRING
+
+
 def _parse_params(raw_list: list[str], module: str) -> list[BSWParam]:
-    """同 eb._parse_params 逻辑。"""
+    """同 eb._parse_params 逻辑（type 按值推断）。"""
     out: list[BSWParam] = []
     for kv in raw_list:
         if "=" not in kv:
@@ -74,8 +91,9 @@ def _parse_params(raw_list: list[str], module: str) -> list[BSWParam]:
             continue
         k, v = kv.split("=", 1)
         raw_path = k.strip()
+        v_stripped = v.strip()
         path = raw_path if raw_path.startswith(f"{module}/") else f"{module}/{raw_path}"
-        out.append(BSWParam(path, ParamValue(v.strip(), ParamType.INTEGER)))
+        out.append(BSWParam(path, ParamValue(v_stripped, _infer_param_type(v_stripped))))
     return out
 
 
@@ -107,7 +125,7 @@ def run(
     if args.davinci_command == "verify":
         return _run_verify(adapter, ctx, args.module)
 
-    print(json.dumps({"success": False, "error": f"unknown subcommand {args.davinci_command!r}"}))
+    print(json.dumps({"success": False, "error": f"unknown subcommand {args.davinci_command!r}"}), file=sys.stderr)
     return 1
 
 
@@ -130,7 +148,7 @@ def _run_save(
         if suggestions:
             payload["suggestions"] = list(suggestions)
             _emit_did_you_mean(suggestions)
-        print(json.dumps(payload))
+        print(json.dumps(payload), file=sys.stderr)
         return 1
     payload = {
         "success": result.success,

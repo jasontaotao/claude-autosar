@@ -138,7 +138,7 @@ class TestRunHappy:
             mcal_vendor="nxp",
             mcal_vendor_home="/tmp/nxp",
         )
-        with mock.patch.object(cli_mod, "_mcp_bsw_verify", return_value=fake_result) as m:
+        with mock.patch("claude_autosar.cli.mcp_server.bsw_verify", return_value=fake_result) as m:
             exit_code = cli_mod.run(args)
         assert exit_code == 0
         m.assert_called_once_with(
@@ -161,7 +161,7 @@ class TestRunHappy:
 
         fake_result = {"success": True, "module": "Mcu", "report": {"has_errors": False}}
         args = _args(as_json=True)
-        with mock.patch.object(cli_mod, "_mcp_bsw_verify", return_value=fake_result) as m:
+        with mock.patch("claude_autosar.cli.mcp_server.bsw_verify", return_value=fake_result) as m:
             exit_code = cli_mod.run(args)
         assert exit_code == 0
         # kwargs 透传
@@ -173,7 +173,7 @@ class TestRunHappy:
         from claude_autosar.cli.commands import bsw_verify as cli_mod
 
         fake_result = {"success": False, "module": "Port", "error": "boom"}
-        with mock.patch.object(cli_mod, "_mcp_bsw_verify", return_value=fake_result):
+        with mock.patch("claude_autosar.cli.mcp_server.bsw_verify", return_value=fake_result):
             cli_mod.run(_args(module="Port"))
         captured = capsys.readouterr()
         # stdout 含 JSON
@@ -194,7 +194,7 @@ class TestRunError:
         """tool 抛异常 → stderr JSON + exit 1（与 eb/davinci CLI 一致）。"""
         from claude_autosar.cli.commands import bsw_verify as cli_mod
 
-        with mock.patch.object(cli_mod, "_mcp_bsw_verify", side_effect=RuntimeError("boom")):
+        with mock.patch("claude_autosar.cli.mcp_server.bsw_verify", side_effect=RuntimeError("boom")):
             exit_code = cli_mod.run(_args())
         assert exit_code == 1
         captured = capsys.readouterr()
@@ -213,9 +213,9 @@ class TestRunError:
 
 
 def test_cli_imports_bsw_verify_from_mcp_server() -> None:
-    """CLI 不重复实现 bsw_verify 业务逻辑；从 mcp_server import。"""
+    """CLI 不重复实现 bsw_verify 业务逻辑；从 mcp_server import（延迟 import 模式）。"""
     from claude_autosar.cli import mcp_server
-    from claude_autosar.cli.commands import bsw_verify as cli_mod
 
-    # 同一对象（import 别名 → 同一个函数对象）
-    assert cli_mod._mcp_bsw_verify is mcp_server.bsw_verify
+    # run() 内部延迟 import claude_autosar.cli.mcp_server.bsw_verify
+    # 验证 mcp_server 模块确实导出了 bsw_verify 函数
+    assert callable(mcp_server.bsw_verify)

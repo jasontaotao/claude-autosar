@@ -120,7 +120,7 @@ def modify_and_verify(
         # 解析 ECUC 文档以验证 path 存在 / ECUC 模块名匹配
         try:
             doc = load_module(target_file, req.module)
-        except Exception as e:
+        except (ValueError, OSError, etree.XMLSyntaxError) as e:
             _restore_from_snapshot(snapshot_file, target_file)
             raise ValidatorError(f"Failed to load ECUC module {req.module!r}: {e}") from e
 
@@ -139,7 +139,7 @@ def modify_and_verify(
                 _update_tree_value(arxml_doc.tree, req.module, param)
             # T8.E.5: 走 preserve_format=True 保留 PIs / DOCTYPE / 注释 / 属性顺序 / namespace prefix
             arxml_write(arxml_doc.tree, target_file, atomic=True, preserve_format=True)
-        except Exception as e:
+        except (ValueError, OSError, etree.XMLSyntaxError) as e:
             _restore_from_snapshot(snapshot_file, target_file)
             raise ValidatorError(f"Failed to write modified ARXML to {target_file}: {e}") from e
 
@@ -147,10 +147,10 @@ def modify_and_verify(
         verify_result = adapter.verify(ctx, req.module)
         verify_output = (verify_result.stdout or "") + (verify_result.stderr or "")
         if not verify_result.success:
-            _restore_from_snapshot(snapshot_file, target_file)
+            rolled_back = _restore_from_snapshot(snapshot_file, target_file)
             return ModifyResult(
                 success=False,
-                rolled_back=True,
+                rolled_back=rolled_back,
                 verify_output=verify_output,
                 error=f"verify failed (returncode={verify_result.returncode})",
             )
@@ -187,10 +187,17 @@ def _locate_module_file(project_path: Path, module: str) -> Path | None:
     return None
 
 
-def _restore_from_snapshot(snapshot_file: Path, target_file: Path) -> None:
-    """Best-effort 还原。失败 swallowed。"""
-    with contextlib.suppress(OSError):
+def _restore_from_snapshot(snapshot_file: Path, target_file: Path) -> bool:
+    """Best-effort 还原。返回 True 成功，False 失败（已记录日志）。"""
+    try:
         shutil.copy2(snapshot_file, target_file)
+    except OSError:
+        import logging
+        logging.getLogger(__name__).error(
+            "Failed to restore snapshot %s -> %s", snapshot_file, target_file
+        )
+        return False
+    return True
 
 
 def _update_tree_value(
@@ -207,7 +214,8 @@ def _update_tree_value(
     nsmap=非空：调用方显式提供，避免重复 build_default_nsmap。
     """
     segments = param.path.split("/")
-    assert segments[0] == module_name, f"path {param.path!r} 不属于模块 {module_name!r}"
+    if segments[0] != module_name:
+        raise ValueError(f"path module '{segments[0]}' does not match expected module '{module_name}'")
 
     root = tree.getroot()
     # nsmap 重建（如果调用方没传）：用 root.nsmap 构造。

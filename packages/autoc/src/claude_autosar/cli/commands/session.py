@@ -13,14 +13,6 @@ import json
 import sys
 from typing import Any
 
-from claude_autosar.core.session.store import (
-    SessionStore,
-    SessionStoreError,
-    new_session_id,
-)
-from claude_autosar.core.session.tree import SessionTree
-
-
 def register(subparsers: Any) -> None:
     """挂载到主 argparse subparsers。"""
     p = subparsers.add_parser("session", help="会话查询与 fork")
@@ -54,6 +46,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run(args: argparse.Namespace) -> int:
     """执行 session 子命令。返回 exit code。"""
+    from claude_autosar.core.session.store import (
+        SessionStore,
+        SessionStoreError,
+        new_session_id,
+    )
+    from claude_autosar.core.session.tree import SessionTree
+
     store = SessionStore()
     cmd = args.session_command
 
@@ -75,6 +74,8 @@ def _run_list(store: SessionStore) -> int:
 
 
 def _run_show(store: SessionStore, session_id: str) -> int:
+    from claude_autosar.core.session.store import SessionStoreError
+
     if session_id == "latest":
         resolved = _resolve_latest(store)
         if resolved is None:
@@ -120,6 +121,9 @@ def _run_show(store: SessionStore, session_id: str) -> int:
 
 
 def _run_fork(store: SessionStore, source_session: str, entry_id: str) -> int:
+    from claude_autosar.core.session.store import SessionStoreError, new_session_id
+    from claude_autosar.core.session.tree import SessionTree
+
     try:
         source_tree = SessionTree.from_session_id(source_session, store)
     except SessionStoreError as e:

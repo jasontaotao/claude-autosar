@@ -196,7 +196,7 @@ def test_tresos_home_outside_project_returns_error(
         "Mcu", project=str(fake_project), tresos_home="/tmp/somewhere_else"
     )
     assert r["success"] is False
-    assert "tresos_home" in r["error"]
+    assert "tresos_home" in r["error"] or "Path traversal" in r["error"]
     assert r["field"] == "tresos_home"
 
 
@@ -230,6 +230,11 @@ def test_v2_paths_meta_included_in_response(
         mock.patch(
             "claude_autosar.core.settings.v2_paths.load_v2_paths", return_value=fake_v2
         ) as m_lv2,
+        # validate_no_traversal 拒绝绝对路径；此处 bypass 以测试 load_v2_paths 透传
+        mock.patch(
+            "claude_autosar.cli.mcp_tools.validation.validate_no_traversal",
+            side_effect=lambda p: p,
+        ),
     ):
         r = bsw_verify_fn(
             "Mcu",

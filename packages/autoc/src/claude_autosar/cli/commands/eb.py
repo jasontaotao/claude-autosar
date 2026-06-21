@@ -141,7 +141,7 @@ def run(
     try:
         ctx = adapter.discover(args.project, tresos_home)
     except Exception as e:
-        print(json.dumps({"success": False, "error": f"discover failed: {e}"}))
+        print(json.dumps({"success": False, "error": f"discover failed: {e}"}), file=sys.stderr)
         return 1
 
     # 2. 分发
@@ -152,7 +152,7 @@ def run(
     if args.eb_command == "autocalc":
         return _run_autocalc(adapter, ctx, args.module)
 
-    print(json.dumps({"success": False, "error": f"unknown subcommand {args.eb_command!r}"}))
+    print(json.dumps({"success": False, "error": f"unknown subcommand {args.eb_command!r}"}), file=sys.stderr)
     return 1
 
 
@@ -175,7 +175,7 @@ def _run_save(
         if suggestions:
             payload["suggestions"] = list(suggestions)
             _emit_did_you_mean(suggestions)
-        print(json.dumps(payload))
+        print(json.dumps(payload), file=sys.stderr)
         return 1
     payload = {
         "success": result.success,

@@ -97,10 +97,11 @@ class TestValidateModuleName:
 
 
 class TestValidateNoTraversal:
-    def test_valid_path(self) -> None:
+    def test_rejects_absolute_path(self) -> None:
         from claude_autosar.cli.mcp_tools.validation import validate_no_traversal
 
-        assert validate_no_traversal("/valid/path") == "/valid/path"
+        with pytest.raises(ValueError, match="Path traversal"):
+            validate_no_traversal("/valid/path")
 
     def test_valid_relative(self) -> None:
         from claude_autosar.cli.mcp_tools.validation import validate_no_traversal

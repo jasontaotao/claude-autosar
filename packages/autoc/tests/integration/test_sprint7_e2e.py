@@ -420,10 +420,11 @@ def test_cli_eb_save_and_mcp_bsw_write_return_consistent_shape(
         f"stdout: {cli_proc.stdout}\nstderr: {cli_proc.stderr}"
     )
     if cli_proc.returncode != 0:
-        # 业务层失败时，stdout JSON 必须含明确的错误信号
-        # v0.3.0: 错误进 stdout 的 {"success": false, "error": "..."} 而非 stderr
+        # 业务层失败时，stderr JSON 必须含明确的错误信号
+        # v0.3.0+: 错误进 stderr 的 {"success": false, "error": "..."}
+        err_out = cli_proc.stderr or cli_proc.stdout
         assert (
-            "ValidatorError" in cli_proc.stdout or "Path" in cli_proc.stdout
+            "ValidatorError" in err_out or "Path" in err_out
         ), f"业务层失败但缺错误信号\nstdout: {cli_proc.stdout}\nstderr: {cli_proc.stderr}"
 
 

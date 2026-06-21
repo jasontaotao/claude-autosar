@@ -13,14 +13,17 @@ def session_list(*, session_dir: str | None = None) -> list[str] | dict[str, Any
 
     :return: session id 列表；路径校验失败时返回 error dict。
     """
-    from claude_autosar.cli.mcp_server import _default_session_dir
+    from claude_autosar.cli.mcp_server import _default_session_dir, _resolve_safe_project
     from claude_autosar.core.session.store import SessionStore
 
     if session_dir:
         try:
             validate_no_traversal(session_dir)
+            _resolve_safe_project(session_dir)
         except ValueError as e:
             return {"success": False, "error": str(e)}
+        except PermissionError as e:
+            return {"success": False, "error": f"{type(e).__name__}: {e}"}
     d = Path(session_dir) if session_dir else _default_session_dir()
     return SessionStore(dir=d).list_session_ids()
 
@@ -30,14 +33,14 @@ def session_show(session_id: str, *, session_dir: str | None = None) -> dict[str
 
     支持特殊值 ``"latest"``：解析为 session_dir 下 mtime 最大的 session。
     """
-    from claude_autosar.cli.mcp_server import _default_session_dir
+    from claude_autosar.cli.mcp_server import _default_session_dir, _resolve_safe_project
     from claude_autosar.core.session.store import SessionStore, SessionStoreError
 
     if session_dir:
         try:
-            validate_no_traversal(session_dir)
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+            _resolve_safe_project(session_dir)
+        except (ValueError, PermissionError) as e:
+            return {"success": False, "error": f"{type(e).__name__}: {e}"}
     # M9: 校验 session_id 路径遍历（防止 dir/session_id.jsonl 逃逸）
     if session_id != "latest":
         try:
@@ -86,7 +89,7 @@ def session_export(
     session_dir: str | None = None,
 ) -> dict[str, Any]:
     """导出 session 为 ``fmt`` 格式（当前仅支持 ``html``）。"""
-    from claude_autosar.cli.mcp_server import _default_session_dir
+    from claude_autosar.cli.mcp_server import _default_session_dir, _resolve_safe_project
     from claude_autosar.core.session.exporter import export_html
     from claude_autosar.core.session.store import SessionStore, SessionStoreError
     from claude_autosar.core.session.tree import SessionTree
@@ -95,9 +98,9 @@ def session_export(
         return {"success": False, "error": f"unsupported fmt: {fmt!r} (only 'html')"}
     if session_dir:
         try:
-            validate_no_traversal(session_dir)
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+            _resolve_safe_project(session_dir)
+        except (ValueError, PermissionError) as e:
+            return {"success": False, "error": f"{type(e).__name__}: {e}"}
     # M9: 校验 session_id 路径遍历
     if session_id != "latest":
         try:
@@ -105,10 +108,8 @@ def session_export(
         except ValueError as e:
             return {"success": False, "error": str(e)}
     # HIGH-3 修复：自定义 output 必须通过 H4 containment check
-    # （默认 output = d/<id>.html 已在 d 内，d 已通过 validate_no_traversal）
+    # （默认 output = d/<id>.html 已在 d 内，d 已通过 _resolve_safe_project）
     if output:
-        from claude_autosar.cli.mcp_server import _resolve_safe_project
-
         try:
             _resolve_safe_project(output)
         except PermissionError as e:
@@ -145,7 +146,7 @@ def log_export(
     session_dir: str | None = None,
 ) -> dict[str, Any]:
     """从 session 提取 ``bsw_write`` entry，渲染成 timeline / by-url 文本。"""
-    from claude_autosar.cli.mcp_server import _default_session_dir
+    from claude_autosar.cli.mcp_server import _default_session_dir, _resolve_safe_project
     from claude_autosar.core.log.changelog import extract_changes, render_by_url, render_timeline
     from claude_autosar.core.session.store import SessionStore, SessionStoreError
     from claude_autosar.core.session.tree import SessionTree
@@ -154,9 +155,9 @@ def log_export(
         return {"success": False, "error": f"unsupported view: {view!r}"}
     if session_dir:
         try:
-            validate_no_traversal(session_dir)
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+            _resolve_safe_project(session_dir)
+        except (ValueError, PermissionError) as e:
+            return {"success": False, "error": f"{type(e).__name__}: {e}"}
     # M9: 校验 session_id 路径遍历
     if session_id != "latest":
         try:

@@ -84,6 +84,9 @@ class SessionStore:
         self.dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, session_id: str) -> Path:
+        # 防止路径遍历：session_id 只允许字母数字、连字符和下划线
+        if not session_id.replace("-", "").replace("_", "").isalnum():
+            raise SessionStoreError(f"invalid session_id: {session_id!r}")
         return self.dir / f"{session_id}.jsonl"
 
     def append(self, entry: SessionEntry) -> None:

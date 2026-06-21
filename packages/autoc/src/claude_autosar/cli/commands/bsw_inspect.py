@@ -16,14 +16,6 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from claude_autosar.core.bsw.dispatcher import (
-    DispatcherError,
-    UnknownFormatError,
-    detect_format,
-)
-from claude_autosar.core.bsw.inspector.arxml_report import export_arxml_report
-from claude_autosar.core.bsw.inspector.xdm_report import export_xdm_report
-
 __all__ = ["register", "run"]
 
 
@@ -64,6 +56,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run(args: argparse.Namespace) -> int:
     """执行 ``bsw-inspect``。返回 exit code。"""
+    from claude_autosar.core.bsw.dispatcher import (
+        DispatcherError,
+        UnknownFormatError,
+        detect_format,
+    )
+    from claude_autosar.core.bsw.inspector.arxml_report import export_arxml_report
+    from claude_autosar.core.bsw.inspector.xdm_report import export_xdm_report
+
     src = Path(args.path)
     output = getattr(args, "output", None)
 

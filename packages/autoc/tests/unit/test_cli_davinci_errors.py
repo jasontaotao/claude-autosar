@@ -180,7 +180,7 @@ class TestRunUnknownSubcommand:
         code = davinci.run(args, adapter_override=adapter)
         captured = capsys.readouterr()
         assert code == 1
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         assert "unknown subcommand" in payload["error"]
 
@@ -265,7 +265,7 @@ class TestRunSaveFailures:
 
         captured = capsys.readouterr()
         assert code == 1
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         assert "ClockFrq" in payload["error"]
         assert "suggestions" in payload
@@ -314,7 +314,7 @@ class TestRunSaveFailures:
 
         captured = capsys.readouterr()
         assert code == 1
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         assert "suggestions" not in payload
         assert "Did you mean:" not in captured.err
@@ -360,7 +360,7 @@ class TestRunSaveFailures:
 
         captured = capsys.readouterr()
         assert code == 1
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         assert "suggestions" not in payload
         assert "Did you mean:" not in captured.err

@@ -90,7 +90,8 @@ def _render_lint_html(violations: list[Any]) -> str:
         severity = _html.escape(str(getattr(v, "severity", "")))
         message = _html.escape(str(getattr(v, "message", "")))
         path_str = _html.escape(str(getattr(v, "path", "") or "-"))
-        line_str = str(getattr(v, "line", "") or "-")
+        line_val = getattr(v, "line", None)
+        line_str = str(line_val) if line_val is not None else "-"
         rows.append(
             "<tr>"
             f"<td>{rule_id}</td>"

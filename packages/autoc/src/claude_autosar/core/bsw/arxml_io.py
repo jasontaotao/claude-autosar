@@ -218,7 +218,7 @@ def _apply_surgical_patch_to_bytes(original_bytes: bytes, tree: Any) -> bytes:
 
     触发条件: 改前 vs 改后只在 <VALUE> 元素文本上不同.
     """
-    original_text = original_bytes.decode("utf-8", errors="replace")
+    original_text = original_bytes.decode("utf-8", errors="strict")
 
     import re
 

@@ -9,7 +9,7 @@ import sys
 import pytest
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-HOOKS_DIR = PLUGIN_ROOT / "plugins" / "autoc" / "hooks"
+HOOKS_DIR = PLUGIN_ROOT / "plugins" / "claude-autosar" / "hooks"
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 

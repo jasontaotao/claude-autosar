@@ -64,11 +64,13 @@ class SessionTree:
             r = self.root()
         except ValueError:
             return
-        yield r
-        # 显式 stack 避免 Python 递归深度问题
-        stack = list(reversed(self.children(r.id)))
+        visited: set[str] = set()
+        stack = [r]
         while stack:
             node = stack.pop()
+            if node.id in visited:
+                continue
+            visited.add(node.id)
             yield node
             stack.extend(reversed(self.children(node.id)))
 
@@ -92,15 +94,23 @@ class SessionTree:
             session=replace(self.session, title=title),
         )
 
-    def fork(self, parent_entry_id: str, new_session_id: str) -> SessionTree:
+    def fork(
+        self,
+        parent_entry_id: str,
+        new_session_id: str,
+        store: SessionStore | None = None,
+    ) -> SessionTree:
         """创建新 session tree，以新 root entry 指向原 tree 的某 entry。
 
         新 root entry 的 parent_id 指向原 tree 的 entry id（不是新 session 内的）。
+        如果传入 ``store``，会在创建前检查 ``new_session_id`` 是否已存在。
         """
         if self.find(parent_entry_id) is None:
             raise ValueError(
                 f"parent_entry_id {parent_entry_id!r} not found in session " f"{self.session.id!r}"
             )
+        if store is not None and store._path(new_session_id).exists():
+            raise ValueError(f"session {new_session_id!r} already exists")
         now = _now_iso8601_utc()
         fork_root = SessionEntry(
             id=uuid.uuid4().hex,

@@ -56,13 +56,10 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
 class LintSeverity:
     """Lint 违规严重度常量（3 档）。
 
-    使用 ClassVar 而非 ClassVar[str] 是因为冻结 dataclass 上 ClassVar
-    字段不会被 dataclass 机制当成实例字段，方便外部直接读
-    ``LintSeverity.ERROR``，又不会污染 ``__init__``。
+    普通 class + ClassVar — 所有字段都是类级常量，不需要 dataclass 机制。
     """
 
     ERROR: ClassVar[str] = "error"

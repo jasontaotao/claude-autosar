@@ -181,7 +181,7 @@ def _render_html_tail() -> str:
 
 def _render_metadata(path: Path, default_ns: str, module_name: str, file_size: int) -> str:
     rows: list[str] = []
-    rows.append(_kv_row("Path", str(path.resolve())))
+    rows.append(_kv_row("Path", f"<code>{_html_escape(str(path.resolve()))}</code>"))
     rows.append(_kv_row("Format", "DataModel2 (.xdm)"))
     rows.append(_kv_row("Default namespace", _html_escape(default_ns or "<none>")))
     rows.append(_kv_row("Module", f"<code>{_html_escape(module_name)}</code>"))

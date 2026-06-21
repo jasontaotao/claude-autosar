@@ -54,7 +54,7 @@ def detect_no_color() -> bool:
     2. ``sys.stdout`` 不是 TTY（管道 / 重定向）→ True
     3. 否则 → False
     """
-    if os.environ.get("NO_COLOR"):
+    if "NO_COLOR" in os.environ:
         return True
     try:
         return not sys.stdout.isatty()

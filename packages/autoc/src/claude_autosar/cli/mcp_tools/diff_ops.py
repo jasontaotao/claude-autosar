@@ -36,8 +36,11 @@ def bsw_diff(
 
     try:
         validate_module_name(module)
-        validate_no_traversal(file_a)
-        validate_no_traversal(file_b)
+        # 路径遍历检查（traversal-only，允许绝对路径用于文件系统操作）
+        if ".." in file_a:
+            raise ValueError(f"Path traversal not allowed: {file_a!r}")
+        if ".." in file_b:
+            raise ValueError(f"Path traversal not allowed: {file_b!r}")
         # H4 路径防御（HIGH-9 修复）：用 _resolve_safe_project 替换
         # validate_no_traversal(project)，确保 project 在 allowed roots 内
         # （单纯 validate_no_traversal 漏掉 ``/etc`` 这类绝对路径）。

@@ -331,7 +331,7 @@ class BSWMDRegistry:
             新的 ``BSWMDRegistry`` 实例。
         """
         if not isinstance(other, BSWMDRegistry):
-            return NotImplemented
+            raise TypeError(f"expected BSWMDRegistry, got {type(other).__name__}")
         merged_modules: dict[str, ModuleDef] = dict(self.modules)
         for k, v in other.modules.items():
             merged_modules[k] = v

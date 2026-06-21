@@ -86,7 +86,6 @@ def arxml_apply_template(
     :param project: 工程根目录（默认 cwd）
     """
     from claude_autosar.cli.mcp_server import _inspect_resolve_input
-    from claude_autosar.cli.mcp_tools.validation import validate_no_traversal
     from claude_autosar.core.bsw.arxml_io import ARXMLError
     from claude_autosar.core.bsw.dispatcher import (
         DispatcherError,
@@ -109,10 +108,8 @@ def arxml_apply_template(
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
 
     # M9: 校验 template 路径遍历
-    try:
-        validate_no_traversal(template)
-    except ValueError as e:
-        return {"success": False, "error": str(e)}
+    if ".." in template:
+        return {"success": False, "error": f"Path traversal not allowed: {template!r}"}
 
     tpl = Path(template).resolve()
     if not tpl.is_file():
@@ -166,7 +163,7 @@ def arxml_apply_template(
         "modifies": len(diff_result.modifies),
         "deletes": len(diff_result.deletes),
         "applied": bool(apply),
-        "report_path": str(Path(output).resolve()) if output else None,
+        "report_path": str(Path(output)) if output else None,
         "result": _apply_result_to_dict(apply_result),
     }
 
@@ -213,12 +210,8 @@ def xdm_apply_template(
         return {"success": False, "error": f"{type(e).__name__}: {e}"}
 
     # M9: 校验 template 路径遍历
-    from claude_autosar.cli.mcp_tools.validation import validate_no_traversal
-
-    try:
-        validate_no_traversal(template)
-    except ValueError as e:
-        return {"success": False, "error": str(e)}
+    if ".." in template:
+        return {"success": False, "error": f"Path traversal not allowed: {template!r}"}
 
     tpl = Path(template).resolve()
     if not tpl.is_file():
@@ -272,6 +265,6 @@ def xdm_apply_template(
         "modifies": len(diff_result.modifies),
         "deletes": len(diff_result.deletes),
         "applied": bool(apply),
-        "report_path": str(Path(output).resolve()) if output else None,
+        "report_path": str(Path(output)) if output else None,
         "result": _apply_result_to_dict(apply_result),
     }

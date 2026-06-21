@@ -9,7 +9,11 @@ from pathlib import Path
 import sys
 from typing import Any
 
-__version__ = "0.3.0"
+try:
+    from importlib.metadata import version as _get_version
+    __version__ = _get_version("claude-autosar")
+except Exception:
+    __version__ = "0.0.0-dev"
 
 # ---------------------------------------------------------------------------
 # Lazy command module registry
@@ -58,11 +62,23 @@ class _LazyDispatch(dict):  # type: ignore[type-arg]
         return dict.__getitem__(self, key)
 
     def _load_all(self) -> None:
-        """Import every command module (used by iteration / build_parser)."""
+        """Import every command module (used by iteration / build_parser).
+
+        If any import fails, roll back already-loaded entries so a
+        subsequent call can retry from a clean state.
+        """
         if not dict.__len__(self):
-            for name, path in _COMMAND_MODULES.items():
-                mod = importlib.import_module(path)
-                dict.__setitem__(self, name, (mod.register, mod.run))
+            loaded: list[str] = []
+            try:
+                for name, path in _COMMAND_MODULES.items():
+                    mod = importlib.import_module(path)
+                    dict.__setitem__(self, name, (mod.register, mod.run))
+                    loaded.append(name)
+            except Exception:
+                # rollback: remove partially loaded entries
+                for n in loaded:
+                    dict.__delitem__(self, n)
+                raise
 
     def items(self):  # type: ignore[override]
         self._load_all()

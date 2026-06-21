@@ -317,9 +317,11 @@ def test_apply_add_op_supported(tmp_path: Path) -> None:
     )
     diff = TemplateDiffResult(module_name="Can", diffs=(add_diff,))
 
-    # 不再抛 NotImplementedError
+    # 不再抛 NotImplementedError；diffs_applied 反映实际成功数
+    # CanGeneral 不在 Can_simple fixture 中 → 路径找不到 → 0
     result = apply_template_diff(doc, diff, mode=ApplyMode.DRY_RUN)
-    assert result.diffs_applied == 1
+    assert result.diffs_applied == 0
+    assert len(result.diffs) == 1  # diff 仍被传入
 
 
 # ---------------------------------------------------------------------------
@@ -339,9 +341,11 @@ def test_apply_delete_op_supported(tmp_path: Path) -> None:
     )
     diff = TemplateDiffResult(module_name="Can", diffs=(del_diff,))
 
-    # 不再抛 NotImplementedError
+    # 不再抛 NotImplementedError；diffs_applied 反映实际成功数
+    # CanGeneral 不在 Can_simple fixture 中 → 路径找不到 → 0
     result = apply_template_diff(doc, diff, mode=ApplyMode.DRY_RUN)
-    assert result.diffs_applied == 1
+    assert result.diffs_applied == 0
+    assert len(result.diffs) == 1  # diff 仍被传入
 
 
 # ---------------------------------------------------------------------------
@@ -511,8 +515,9 @@ def test_apply_arxml_skips_missing_path(
     )
 
     result = apply_template_diff(doc, diff, mode=ApplyMode.APPLY)
-    # apply 仍处理了 2 个（diffs_applied = 总数；缺失路径静默跳过）
-    assert result.diffs_applied == 2
+    # diffs_applied 只计实际成功数：缺失路径静默跳过，只成功 1 个
+    assert result.diffs_applied == 1
+    assert len(result.diffs) == 2  # 2 个 diff 都被传入
     # 真实改了那个存在的 path
     new_text = doc.read_bytes().decode("utf-8")
     assert "<VALUE>101</VALUE>" in new_text

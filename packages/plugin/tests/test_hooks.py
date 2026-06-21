@@ -19,7 +19,7 @@ import pytest
 
 # 把 plugin hooks 目录加到 sys.path
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
-HOOKS_DIR = PLUGIN_ROOT / "plugins" / "autoc" / "hooks"
+HOOKS_DIR = PLUGIN_ROOT / "plugins" / "claude-autosar" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
 import posttooluse_bsw_validate  # type: ignore[import-not-found]  # noqa: E402

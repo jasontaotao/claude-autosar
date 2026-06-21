@@ -92,6 +92,16 @@ def bsw_write(
             "field": "project",
             "param_index": -1,
         }
+    if tresos_home:
+        try:
+            validate_no_traversal(tresos_home)
+        except ValueError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "field": "tresos_home",
+                "param_index": -1,
+            }
     tresos_path = Path(tresos_home).resolve() if tresos_home else _default_tresos_home(project_path)
     try:
         tresos_path.relative_to(project_path)
@@ -102,6 +112,8 @@ def bsw_write(
             "field": "tresos_home",
             "param_index": -1,
         }
+    if tresos_path == project_path:
+        return {"success": False, "error": "tresos_home must be a subdirectory of project_path, not project_path itself"}
     tresos_path.mkdir(parents=True, exist_ok=True)
 
     bsw_params = tuple(
@@ -171,7 +183,7 @@ def bsw_verify(
         _default_tresos_home,
         _resolve_safe_project,
     )
-    from claude_autosar.cli.mcp_tools.validation import validate_module_name
+    from claude_autosar.cli.mcp_tools.validation import validate_module_name, validate_no_traversal
     from claude_autosar.adapters.tresos import TresosAdapter
     from claude_autosar.core.bsw.verify.tresos_parser import parse_tresos_verify_stdout
 
@@ -190,6 +202,16 @@ def bsw_verify(
             "field": "project",
             "param_index": -1,
         }
+    if tresos_home:
+        try:
+            validate_no_traversal(tresos_home)
+        except ValueError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "field": "tresos_home",
+                "param_index": -1,
+            }
     tresos_path = Path(tresos_home).resolve() if tresos_home else _default_tresos_home(project_path)
     try:
         tresos_path.relative_to(project_path)
@@ -200,6 +222,8 @@ def bsw_verify(
             "field": "tresos_home",
             "param_index": -1,
         }
+    if tresos_path == project_path:
+        return {"success": False, "error": "tresos_home must be a subdirectory of project_path, not project_path itself"}
     tresos_path.mkdir(parents=True, exist_ok=True)
 
     _v2_paths_meta: dict[str, str] = {}
@@ -268,7 +292,7 @@ def bsw_autocalc(
         _default_tresos_home,
         _resolve_safe_project,
     )
-    from claude_autosar.cli.mcp_tools.validation import validate_module_name
+    from claude_autosar.cli.mcp_tools.validation import validate_module_name, validate_no_traversal
     from claude_autosar.adapters.tresos import TresosAdapter
 
     # M12: 校验 modules 白名单
@@ -287,6 +311,16 @@ def bsw_autocalc(
             "field": "project",
             "param_index": -1,
         }
+    if tresos_home:
+        try:
+            validate_no_traversal(tresos_home)
+        except ValueError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "field": "tresos_home",
+                "param_index": -1,
+            }
     tresos_path = Path(tresos_home).resolve() if tresos_home else _default_tresos_home(project_path)
     try:
         tresos_path.relative_to(project_path)
@@ -297,6 +331,8 @@ def bsw_autocalc(
             "field": "tresos_home",
             "param_index": -1,
         }
+    if tresos_path == project_path:
+        return {"success": False, "error": "tresos_home must be a subdirectory of project_path, not project_path itself"}
     tresos_path.mkdir(parents=True, exist_ok=True)
     primary = modules[0] if modules else None
     if primary is None:

@@ -24,9 +24,6 @@ import json
 import sys
 from typing import Any
 
-from claude_autosar.cli.mcp_server import bsw_verify as _mcp_bsw_verify
-
-
 def register(subparsers: Any) -> None:
     """挂载到主 argparse subparsers。"""
     p = subparsers.add_parser(
@@ -88,6 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run(args: argparse.Namespace) -> int:
     """执行 bsw-verify 子命令。返回 exit code（0 成功 / 1 失败）。"""
+    from claude_autosar.cli.mcp_server import bsw_verify as _mcp_bsw_verify
+
     try:
         result = _mcp_bsw_verify(
             args.module,

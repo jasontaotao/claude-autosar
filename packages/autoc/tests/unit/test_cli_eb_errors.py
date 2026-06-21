@@ -285,7 +285,7 @@ class TestRunDiscoverFailure:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """adapter.discover 抛异常 → exit 1 + stdout JSON error。"""
+        """adapter.discover 抛异常 → exit 1 + stderr JSON error。"""
 
         class _RaisingAdapter:
             def discover(self, *a: Any, **kw: Any) -> Any:
@@ -304,7 +304,7 @@ class TestRunDiscoverFailure:
         code = eb.run(args, adapter_override=_RaisingAdapter())
         captured = capsys.readouterr()
         assert code == 1
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         assert "discover failed" in payload["error"]
 
@@ -329,7 +329,7 @@ class TestRunUnknownSubcommand:
         code = eb.run(args, adapter_override=adapter)
         captured = capsys.readouterr()
         assert code == 1
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         assert "unknown subcommand" in payload["error"]
 
@@ -460,8 +460,8 @@ class TestRunSaveFailures:
 
         captured = capsys.readouterr()
         assert code == 1
-        # stdout JSON
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        # stderr JSON（error 输出到 stderr）
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         assert "ClockFrq" in payload["error"]
         # 候选应被添加（ClockFreq 是真名）
@@ -521,7 +521,7 @@ class TestRunSaveFailures:
 
         captured = capsys.readouterr()
         assert code == 1
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         # target_file=None → suggestions 空
         assert "suggestions" not in payload
@@ -578,7 +578,7 @@ class TestRunSaveFailures:
 
         captured = capsys.readouterr()
         assert code == 1
-        payload = json.loads(captured.out.strip().splitlines()[-1])
+        payload = json.loads(captured.err.strip().splitlines()[-1])
         assert payload["success"] is False
         # 候选空
         assert "suggestions" not in payload

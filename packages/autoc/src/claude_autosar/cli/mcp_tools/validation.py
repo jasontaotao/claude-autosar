@@ -6,6 +6,7 @@ bsw_write_ops / session_ops 调用。
 
 from __future__ import annotations
 
+import os
 import re
 
 #: 白名单：模块 / segment 名必须以字母开头，仅含字母数字下划线。
@@ -29,5 +30,7 @@ def validate_no_traversal(path: str) -> str:
     :raises ValueError: 路径含 ``..``
     """
     if ".." in path:
+        raise ValueError(f"Path traversal not allowed: {path!r}")
+    if os.path.isabs(path) or path.startswith("/"):
         raise ValueError(f"Path traversal not allowed: {path!r}")
     return path

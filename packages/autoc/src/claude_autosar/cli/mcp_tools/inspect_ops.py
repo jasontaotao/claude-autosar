@@ -23,9 +23,9 @@ def _inspect_resolve_input(path: str, *, project: str = ".") -> Path:
     :raises ValueError: path 含路径遍历序列
     """
     from claude_autosar.cli.mcp_server import _resolve_safe_project
-    from claude_autosar.cli.mcp_tools.validation import validate_no_traversal
 
-    validate_no_traversal(path)
+    if ".." in path:
+        raise ValueError(f"Path traversal not allowed: {path!r}")
     _resolve_safe_project(project)
     src = Path(path).resolve()
     if not src.is_file():
@@ -90,13 +90,10 @@ def _run_lint_for_inspect(src: Path, fmt: str) -> dict[str, Any] | None:
 
 def arxml_validate(path: str) -> dict[str, Any]:
     """ARXML 解析校验（parse-only）。"""
-    from claude_autosar.cli.mcp_tools.validation import validate_no_traversal
     from claude_autosar.core.bsw.arxml_io import ARXMLError, read
 
-    try:
-        validate_no_traversal(path)
-    except ValueError as e:
-        return {"success": False, "error": str(e)}
+    if ".." in path:
+        return {"success": False, "error": f"Path traversal not allowed: {path!r}"}
 
     p = Path(path)
     if not p.is_file():
@@ -118,17 +115,13 @@ def arxml_validate(path: str) -> dict[str, Any]:
 
 def dbc_parse(path: str) -> dict[str, Any]:
     """DBC 解析：返回 messages + signals 的 JSON 友好 dict。"""
-    from claude_autosar.cli.mcp_tools.validation import validate_no_traversal
-
     try:
         import cantools
     except ImportError:
         return {"success": False, "error": "cantools not installed"}
 
-    try:
-        validate_no_traversal(path)
-    except ValueError as e:
-        return {"success": False, "error": str(e)}
+    if ".." in path:
+        return {"success": False, "error": f"Path traversal not allowed: {path!r}"}
 
     p = Path(path)
     if not p.is_file():

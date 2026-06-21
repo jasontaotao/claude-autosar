@@ -352,7 +352,8 @@ def _render_key_params(key_params: list[dict[str, str]]) -> str:
     for p in key_params:
         container = _html_escape(p.get("container", ""))
         name = _html_escape(p.get("name", ""))
-        value = _html_escape(p.get("value", "") or "<em>none</em>")
+        raw = p.get("value", "")
+        value = _html_escape(raw) if raw else "<em>none</em>"
         rows.append(
             "<tr>"
             f"<td><code>{container}</code></td>"

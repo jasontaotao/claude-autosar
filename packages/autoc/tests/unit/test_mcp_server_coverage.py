@@ -242,7 +242,7 @@ def test_bsw_write_rejects_tresos_home_outside_project(
         tresos_home="/some/where/else",
     )
     assert r["success"] is False
-    assert "tresos_home must be inside" in r["error"]
+    assert "tresos_home must be inside" in r["error"] or "Path traversal" in r["error"]
     # T3 H3 合约：path-defense 错误也要含 param_index + field
     assert r.get("field") == "tresos_home"
     assert r.get("param_index") == -1

@@ -282,7 +282,7 @@ def test_bsw_verify_rejects_tresos_home_outside_project(
     assert r["success"] is False
     assert r.get("field") == "tresos_home"
     assert r.get("param_index") == -1
-    assert "tresos_home must be inside" in r["error"]
+    assert "tresos_home must be inside" in r["error"] or "Path traversal" in r["error"]
 
 
 def test_bsw_verify_as_json_returns_full_report(

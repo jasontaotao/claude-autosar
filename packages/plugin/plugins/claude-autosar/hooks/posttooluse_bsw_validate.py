@@ -59,7 +59,7 @@ def _is_xdm_target(file_path: str) -> bool:
 
 
 def _module_name_from_xdm(file_path: str) -> str:
-    return Path(file_path).stem
+    return Path(file_path.replace("\\", "/")).stem
 
 
 def _run_verify(module: str) -> tuple[int, str, str]:

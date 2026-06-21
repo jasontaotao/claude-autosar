@@ -105,17 +105,25 @@ def apply_template_diff(
     loaded = dispatcher_read(doc_path)
     original_size = doc_path.stat().st_size
 
+    # 验证 diff op 类型合法性
+    known_ops = {"add", "modify", "delete"}
+    for d in diffs_tuple:
+        op = getattr(d, "op", "modify")
+        if op not in known_ops:
+            raise ValueError(f"unknown diff op: {op!r}")
+
     # Sprint 12 T12.4：支持 modify / add / delete
     modify_diffs = tuple(d for d in diffs_tuple if getattr(d, "op", "modify") == "modify")
     add_diffs = tuple(d for d in diffs_tuple if getattr(d, "op", "add") == "add")
     delete_diffs = tuple(d for d in diffs_tuple if getattr(d, "op", "delete") == "delete")
 
+    applied = 0
     if modify_diffs:
-        _apply_modify_to_tree(loaded, modify_diffs)
+        applied += _apply_modify_to_tree(loaded, modify_diffs)
     if add_diffs:
-        _apply_add_to_tree(loaded, add_diffs)
+        applied += _apply_add_to_tree(loaded, add_diffs)
     if delete_diffs:
-        _apply_delete_to_tree(loaded, delete_diffs)
+        applied += _apply_delete_to_tree(loaded, delete_diffs)
 
     if mode == ApplyMode.APPLY:
         # Sprint 12 T12.4：add/delete 需要 preserve_format=False 以重建完整 XML
@@ -131,7 +139,7 @@ def apply_template_diff(
     return ApplyResult(
         mode=mode,
         path=doc_path,
-        diffs_applied=len(diffs_tuple),
+        diffs_applied=applied,
         bytes_changed=bytes_changed,
         diffs=diffs_tuple,
     )
@@ -156,45 +164,40 @@ def _extract_diffs(diff_obj: object) -> tuple[object, ...]:
 def _apply_modify_to_tree(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
+) -> int:
     """对 in-memory tree 改每个 modify diff 的 target 元素文本。
 
     格式由 ``loaded.format`` 决定；走对应 io 模块的 set_child_text。
+    返回实际成功应用的 diff 数量。
     """
     if loaded.format == "arxml":
-        _apply_modify_arxml(loaded, diffs)
-        return
+        return _apply_modify_arxml(loaded, diffs)
     if loaded.format == "xdm":
-        _apply_modify_xdm(loaded, diffs)
-        return
+        return _apply_modify_xdm(loaded, diffs)
     raise ValueError(f"apply_template_diff: unknown format {loaded.format!r}")
 
 
 def _apply_add_to_tree(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
-    """对 in-memory tree 添加每个 add diff 的新参数节点。"""
+) -> int:
+    """对 in-memory tree 添加每个 add diff 的新参数节点。返回实际成功数量。"""
     if loaded.format == "arxml":
-        _apply_add_arxml(loaded, diffs)
-        return
+        return _apply_add_arxml(loaded, diffs)
     if loaded.format == "xdm":
-        _apply_add_xdm(loaded, diffs)
-        return
+        return _apply_add_xdm(loaded, diffs)
     raise ValueError(f"apply_template_diff: unknown format {loaded.format!r}")
 
 
 def _apply_delete_to_tree(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
-    """对 in-memory tree 删除每个 delete diff 的参数节点。"""
+) -> int:
+    """对 in-memory tree 删除每个 delete diff 的参数节点。返回实际成功数量。"""
     if loaded.format == "arxml":
-        _apply_delete_arxml(loaded, diffs)
-        return
+        return _apply_delete_arxml(loaded, diffs)
     if loaded.format == "xdm":
-        _apply_delete_xdm(loaded, diffs)
-        return
+        return _apply_delete_xdm(loaded, diffs)
     raise ValueError(f"apply_template_diff: unknown format {loaded.format!r}")
 
 
@@ -206,7 +209,7 @@ def _apply_delete_to_tree(
 def _apply_modify_arxml(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
+) -> int:
     """ARXML 端 modify apply。
 
     路径 ``Can/CanConfigSet/CanTxIPdu_0/CanTxIPduHandleId`` 在树中表示为::
@@ -232,6 +235,7 @@ def _apply_modify_arxml(
 
     tree = loaded.tree
     root = tree.getroot() if hasattr(tree, "getroot") else tree
+    count = 0
 
     for d in diffs:
         if getattr(d, "op", "modify") != "modify":
@@ -277,17 +281,25 @@ def _apply_modify_arxml(
 
         # 改 <VALUE> 文本
         arxml_io.set_child_text(param_value, "VALUE", new_raw)
+        count += 1
+
+    return count
 
 
 def _apply_add_arxml(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
+) -> int:
     """ARXML 端 add apply：在 parent container 下创建新的 param-value 节点。"""
     from claude_autosar.core.bsw import arxml_io
 
     tree = loaded.tree
     root = tree.getroot() if hasattr(tree, "getroot") else tree
+    # 从文档 root 元素获取 namespace，而非硬编码
+    from lxml import etree
+
+    ns = etree.QName(root.tag).namespace or "http://autosar.org/schema/r4.0"
+    count = 0
 
     for d in diffs:
         if getattr(d, "op", "add") != "add":
@@ -341,15 +353,9 @@ def _apply_add_arxml(
         # 找或创建 PARAMETER-VALUES wrapper
         pv_wrapper = parent.find("{*}PARAMETER-VALUES")
         if pv_wrapper is None:
-            from lxml import etree
-
-            nsmap = {"ar": "http://autosar.org/schema/r4.0"}
-            pv_wrapper = etree.SubElement(parent, "{http://autosar.org/schema/r4.0}PARAMETER-VALUES")
+            pv_wrapper = etree.SubElement(parent, f"{{{ns}}}PARAMETER-VALUES")
 
         # 创建新的 param-value 节点
-        from lxml import etree
-
-        ns = "http://autosar.org/schema/r4.0"
         pv_elem = etree.SubElement(pv_wrapper, f"{{{ns}}}{pv_tag}")
         def_ref = etree.SubElement(pv_elem, f"{{{ns}}}DEFINITION-REF")
         # HIGH-8 修复：DEST 同上 — BOOLEAN 也用 NUMERICAL-DEF
@@ -361,15 +367,19 @@ def _apply_add_arxml(
         def_ref.text = def_ref_path
         value = etree.SubElement(pv_elem, f"{{{ns}}}VALUE")
         value.text = new_raw
+        count += 1
+
+    return count
 
 
 def _apply_delete_arxml(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
+) -> int:
     """ARXML 端 delete apply：从 parent container 删除匹配的 param-value 节点。"""
     tree = loaded.tree
     root = tree.getroot() if hasattr(tree, "getroot") else tree
+    count = 0
 
     for d in diffs:
         if getattr(d, "op", "delete") != "delete":
@@ -410,6 +420,9 @@ def _apply_delete_arxml(
         param_value = _find_param_value_arxml(parent, target_param_short)
         if param_value is not None:
             param_value.getparent().remove(param_value)
+            count += 1
+
+    return count
 
 
 def _find_module_root_arxml(root: Any, module_name: str) -> Any | None:
@@ -505,7 +518,7 @@ def _local_tag_str(tag: str) -> str:
 def _apply_modify_xdm(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
+) -> int:
     """XDM 端 modify apply。
 
     路径 ``Can/CanConfigSet/CanTxIPdu/CanTxIPdu_0/CanTxIPduHandleId`` 在树中
@@ -526,6 +539,7 @@ def _apply_modify_xdm(
 
     tree = loaded.tree
     root = tree.getroot() if hasattr(tree, "getroot") else tree
+    count = 0
 
     for d in diffs:
         if getattr(d, "op", "modify") != "modify":
@@ -563,18 +577,22 @@ def _apply_modify_xdm(
 
         # 改 value 属性
         datamodel2_io.set_attribute(var_elem, "value", new_raw)
+        count += 1
+
+    return count
 
 
 def _apply_add_xdm(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
+) -> int:
     """XDM 端 add apply：在 parent container 下创建新的 d:var 节点。"""
     from lxml import etree
 
     tree = loaded.tree
     root = tree.getroot() if hasattr(tree, "getroot") else tree
     d_ns = "http://www.tresos.de/_projects/DataModel2/06/data.xsd"
+    count = 0
 
     for d in diffs:
         if getattr(d, "op", "add") != "add":
@@ -610,15 +628,19 @@ def _apply_add_xdm(
         var_elem.set("name", var_name)
         var_elem.set("value", new_raw)
         var_elem.set("type", "STRING")  # 默认类型
+        count += 1
+
+    return count
 
 
 def _apply_delete_xdm(
     loaded: LoadedDocument,
     diffs: tuple[object, ...],
-) -> None:
+) -> int:
     """XDM 端 delete apply：从 parent container 删除匹配的 d:var 节点。"""
     tree = loaded.tree
     root = tree.getroot() if hasattr(tree, "getroot") else tree
+    count = 0
 
     for d in diffs:
         if getattr(d, "op", "delete") != "delete":
@@ -652,6 +674,9 @@ def _apply_delete_xdm(
         var_elem = _find_var_xdm(parent, var_name)
         if var_elem is not None:
             var_elem.getparent().remove(var_elem)
+            count += 1
+
+    return count
 
 
 def _find_child_container_xdm(parent: Any, container_name: str) -> Any | None:

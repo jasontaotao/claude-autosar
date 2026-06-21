@@ -15,9 +15,6 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from claude_autosar.core.bsw.arxml_io import ARXMLError
-from claude_autosar.core.bsw.inspector.arxml_report import export_arxml_report
-
 __all__ = ["register", "run"]
 
 
@@ -58,6 +55,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run(args: argparse.Namespace) -> int:
     """执行 ``arxml-inspect``。返回 exit code。"""
+    from claude_autosar.core.bsw.arxml_io import ARXMLError
+    from claude_autosar.core.bsw.inspector.arxml_report import export_arxml_report
+
     src = Path(args.path)
     output = getattr(args, "output", None)
     try:

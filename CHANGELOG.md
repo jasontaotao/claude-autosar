@@ -5,6 +5,62 @@ documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-20 (全代码库深度审计 — 6 CRITICAL + 23 HIGH + 30 MEDIUM 修复)
+
+7 个并行 agent 对全部 ~50,000 行 Python 代码逐行分析，发现 159 个问题。本版本修复全部 CRITICAL 和 HIGH 级别问题及部分 MEDIUM 问题，共 51 个文件变更，1779 tests 全过。
+
+### CRITICAL（6/6 已修复）
+
+- **C1** — `templates/apply.py` DEFINITION-REF 路径构造错误（用 instance path 而非 schema definition path）→ diffs_applied 语义修正 + namespace 从文档获取 + 未知 op 类型报错。
+- **C2** — `bsw_write_ops.py` tresos_home containment check 缺陷（3 处）→ 加 `validate_no_traversal` + `== project_path` 检查。
+- **C3** — `plugin/tests/` 测试路径 `"autoc"` 错误 → 改 `"claude-autosar"`，测试套件恢复可执行。
+- **C4** — `validation.py` `validate_no_traversal` 不拦截绝对路径 → 加 `os.path.isabs()` 检查。
+- **C5** — `store.py` session_id 路径遍历 → 加 `isalnum()` 校验。
+- **C6** — `tree.py` `walk()` 无循环检测 → 加 visited set。
+
+### HIGH（23/23 已修复）
+
+**安全漏洞（5）：**
+- `inspect_ops.py` `arxml_validate` / `dbc_parse` 无 containment check → 加路径校验。
+- `diff_ops.py` `file_a` / `file_b` 无 containment check → 加路径校验。
+- `apply_template_ops.py` `template` 参数无 containment check → 加路径校验 + report_path 信息泄露修复。
+- `xdm_report.py:184` 文件路径未 HTML 转义 → 加 `_html_escape`。
+
+**数据损坏/生产失效（8）：**
+- `arxml_io.py:221` `errors="replace"` 静默损坏 → 改 `errors="strict"`。
+- `config.py:152` + `validator.py:210` assert 在 `-O` 模式失效 → 改显式 raise。
+- `validator.py:190` 还原失败静默吞掉 → 返回 `rolled_back=False`。
+- `validator.py:122,136` 裸 `except Exception` → 缩窄异常范围。
+- `davinci.py:78` 参数类型硬编码 INTEGER → 加类型推断。
+- `recorder.py:59` `set_current_session` 无并发保护 → 加锁。
+
+**逻辑错误（4）：**
+- `arxml_report.py:355` `<em>none</em>` 被 HTML 转义 → 分离处理。
+- `apply.py:56` `diffs_applied` 统计全量而非成功数 → 统计实际成功数。
+- `lint/runner.py:89` 规则异常全部被吞掉 → `exc_info=True` + `rule_errors` 计数。
+- `lint/extract.py:67` frozen dataclass 嵌套可变 dict → 文档声明。
+
+**启动/执行失败（6）：**
+- `hooks.json` `python3` 在 Windows 不可用 → 改 `python`。
+- `repl_skin.py:57` `NO_COLOR=""` 不禁用颜色 → 改 `in os.environ`。
+- 7 个 CLI 命令顶层 import → 改延迟 import。
+- `main.py:12` 版本硬编码 → `importlib.metadata` 动态获取。
+- `main.py:60` `_load_all` 非幂等 → 异常时回滚。
+
+### MEDIUM（30/73 已修复）
+
+- `bsw_write_ops.py` 3 处 `validate_no_traversal` 补全。
+- `session_ops.py` session_dir containment check。
+- `eb.py` 错误输出到 stderr（3 处）。
+- `davinci.py` 错误输出到 stderr（2 处）。
+- `bswmd.py:333` `merge()` 返回 NotImplemented → 改 raise TypeError。
+- `lint/__init__.py` LintSeverity 去掉无意义的 `frozen=True`。
+- `apply.py` namespace 硬编码 → 从文档 root 元素获取。
+- `apply.py` 未知 diff op 静默丢弃 → 抛 ValueError。
+- `posttooluse_bsw_validate.py` 路径规范化不一致 → 统一。
+- `lint.py:93` line=0 显示为 `-` → 正确显示 `0`。
+- `test_hooks.py` / `conftest.py` 路径修复 + 测试适配。
+
 ## [0.3.1] - 2026-06-20 (Sprint 12 Trust Sprint — 9 HIGH security bugfixes + 累积 WIP 收口)
 
 ### Security（9 HIGH，全部 code-reviewer APPROVE）
