@@ -11,5 +11,5 @@ AutoC 是一个面向 AUTOSAR BSW 工程师的终端 AI 助手：用自然语言
     - 工具与配置（utils, core.settings）
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = ["__version__"]

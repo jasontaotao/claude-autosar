@@ -447,7 +447,7 @@ def test_cli_version_help_nonexistent(tmp_path: Path) -> None:  # noqa: ARG001
         check=False,
     )
     assert v.returncode == 0
-    assert "0.3.0" in v.stdout
+    assert "0.4.0" in v.stdout
 
     # 2. --help
     h = subprocess.run(  # noqa: S603
