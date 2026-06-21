@@ -5,6 +5,34 @@ documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-06-21 (post-audit followups — version drift + doc rot + stale egg-info)
+
+v0.4.0 audit（7-agent 深度审计）漏抓的 1 CRITICAL + 2 HIGH + 1 MEDIUM，由二次 4-agent + adversarial verifier 评审捕获并修复。7 个文件、+36/-38 行。
+
+### Fixed
+
+- **CRITICAL — version drift**：`__init__.py:14` 的 `__version__` 停在 `"0.3.0"`，但 `pyproject.toml` 已 bump 到 `0.4.0`。CLI `--version` 输出过期，`test_sprint7_e2e.py:450` + `test_cli_main.py:88` 都断言 `"0.3.0"`，能过仅因 runtime 也过期——任意一方 bump 即破。两处测试断言同步到 `"0.4.0"`。
+- **HIGH — stale `autoc.egg-info/`**：`packages/autoc/src/autoc.egg-info/` 残留旧 package name（autoc v0.1.0）+ `Requires-Dist: tomli-w>=1.0` + entry_point `autoc = autoc.cli.main:main`，与 v0.4.0 已 rename 到 `claude_autosar` 矛盾。删除整个目录。
+- **HIGH — doc rot**：v0.4.0 bump 后 31 处 stale `v0.3.0` 字符串残留在 `docs/getting-started.html` (21) + `packages/autoc/docs/user-manual.html` (10)，包括 title tag、版本 banner、tag chip、changelog heading、wheel filename、install 步骤。Bulk replace 0.3.0 → 0.4.0。
+- **HIGH — doc rot (deps table)**：`user-manual.html:349` 系统要求表仍列已 drop 的 `tomli-w>=1.0`。删除整行。
+- **MEDIUM — unused dep**：`tomli-w>=1.0,<2.0` 在 `pyproject.toml dependencies` 但全仓库 grep `tomli_w` 零 import。Drop。
+- **MEDIUM — plugin manifest version drift**：`packages/plugin/plugins/claude-autosar/.claude-plugin/plugin.json` version 硬编码 `0.1.0`，主包已 `0.4.0`。Sync。
+
+### Cleanup
+
+- 删 `packages/autoc/.cov_html/`（旧 coverage HTML，gitignored，coverage run 重生成）
+- 删 `packages/autoc/src/claude_autosar.egg-info/`（同上）
+
+### Tests
+
+- 9/9 `tests/integration/test_sprint7_e2e.py` PASS
+- 1/1 `tests/unit/test_cli_main.py::test_main_version_flag_prints_to_stdout` PASS
+- 全测试套件 `1752 passed`，2 failed：1 个就是上面 test_cli_main（v0.4.1 修复）+ 1 个 pre-existing `test_namespace_detection.py` mtime 缓存 flake（重跑单测通过）
+
+### Credits
+
+- 4 specialist agents + 1 adversarial verifier 多 agent 评审循环（review → fix → re-review → fix）
+
 ## [0.4.0] - 2026-06-20 (全代码库深度审计 — 6 CRITICAL + 23 HIGH + 30 MEDIUM 修复)
 
 7 个并行 agent 对全部 ~50,000 行 Python 代码逐行分析，发现 159 个问题。本版本修复全部 CRITICAL 和 HIGH 级别问题及部分 MEDIUM 问题，共 51 个文件变更，1779 tests 全过。
