@@ -85,7 +85,7 @@ def test_main_version_flag_prints_to_stdout(capsys: pytest.CaptureFixture[str]) 
     assert excinfo.value.code == 0
     captured = capsys.readouterr()
     assert "claude-autosar" in captured.out
-    assert "0.3.0" in captured.out
+    assert "0.4.0" in captured.out
 
 
 def test_main_unknown_subcommand_exits_one(capsys: pytest.CaptureFixture[str]) -> None:

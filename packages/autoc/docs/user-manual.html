@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>claude-autosar v0.3.0 用户手册</title>
+<title>claude-autosar v0.4.0 用户手册</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -250,7 +250,7 @@
 <!-- ===== Sidebar ===== -->
 <nav class="sidebar">
   <h2>claude-autosar</h2>
-  <div class="version">v0.3.0 · 用户手册</div>
+  <div class="version">v0.4.0 · 用户手册</div>
 
   <div class="section-title">概览</div>
   <a href="#overview">项目简介</a>
@@ -346,8 +346,7 @@ claude-autosar --version</code></pre>
   <tr><td>rich</td><td>≥ 13.0, &lt; 14.0</td><td>终端美化输出</td></tr>
   <tr><td>mcp</td><td>≥ 0.9, &lt; 2.0</td><td>MCP 协议（Claude Code 集成）</td></tr>
   <tr><td>platformdirs</td><td>≥ 4.0, &lt; 5.0</td><td>平台目录探测</td></tr>
-  <tr><td>tomli-w</td><td>≥ 1.0, &lt; 2.0</td><td>TOML 写入</td></tr>
-</table>
+  </table>
 
 <h3>配置文件</h3>
 <p>claude-autosar 使用 4 级配置优先级：</p>
@@ -578,7 +577,7 @@ claude-autosar davinci verify --project /path/to/davinci/project --module Can</c
   <div class="cmd-header">
     <code>claude-autosar lint</code>
     <span class="tag tag-cli">CLI</span>
-    <span class="tag tag-new">v0.3.0</span>
+    <span class="tag tag-new">v0.4.0</span>
   </div>
   <div class="cmd-body">
     <p>对 .arxml / .xdm 文件运行 lint 规则检查。自动检测格式，按 namespace 过滤适用规则。</p>
@@ -650,7 +649,7 @@ claude-autosar lint Mcu_Cfg.arxml --severity error</code></pre>
   <div class="cmd-header">
     <code>claude-autosar bsw-inspect</code>
     <span class="tag tag-cli">CLI</span>
-    <span class="tag tag-new">v0.3.0</span>
+    <span class="tag tag-new">v0.4.0</span>
   </div>
   <div class="cmd-body">
     <p>通用 inspect 入口 — 自动检测 namespace 选择 ARXML / XDM 渲染器，生成单页式 HTML 报告。</p>
@@ -751,7 +750,7 @@ claude-autosar bsw-verify --project /path/to/project --module Mcu --as-json</cod
   <div class="cmd-header">
     <code>claude-autosar arxml-apply-template</code>
     <span class="tag tag-cli">CLI</span>
-    <span class="tag tag-new">v0.3.0</span>
+    <span class="tag tag-new">v0.4.0</span>
   </div>
   <div class="cmd-body">
     <p>ARXML 模板 diff + apply — 对比 current vs template，生成 add/modify/delete diff 报告。</p>
@@ -782,7 +781,7 @@ claude-autosar arxml-apply-template current.arxml template.arxml --apply -o diff
   <div class="cmd-header">
     <code>claude-autosar xdm-apply-template</code>
     <span class="tag tag-cli">CLI</span>
-    <span class="tag tag-new">v0.3.0</span>
+    <span class="tag tag-new">v0.4.0</span>
   </div>
   <div class="cmd-body">
     <p>XDM 模板 diff + apply — 对比 current vs template .xdm 文件。</p>
@@ -966,7 +965,7 @@ dbc_parse(path="/path/to/can.dbc")</code></pre>
   <div class="cmd-header">
     <code>arxml_inspect</code> / <code>xdm_inspect</code> / <code>bsw_inspect</code>
     <span class="tag tag-mcp">MCP</span>
-    <span class="tag tag-new">v0.3.0</span>
+    <span class="tag tag-new">v0.4.0</span>
   </div>
   <div class="cmd-body">
     <p>三个 inspect 工具分别对应 ARXML、XDM 和自动检测格式。生成单页式 HTML 报告。</p>
@@ -988,7 +987,7 @@ bsw_inspect(path="Mcu_Cfg.arxml")  // 自动检测格式</code></pre>
   <div class="cmd-header">
     <code>arxml_apply_template</code> / <code>xdm_apply_template</code>
     <span class="tag tag-mcp">MCP</span>
-    <span class="tag tag-new">v0.3.0</span>
+    <span class="tag tag-new">v0.4.0</span>
   </div>
   <div class="cmd-body">
     <p>模板 diff + apply 工具。对比 current vs template，返回 diff 结果。默认 dry-run。</p>
@@ -1125,7 +1124,7 @@ new_param = param.with_value(ParamValue(raw="160000000", type=ParamType.INTEGER)
 <!-- 更新日志 -->
 <h2 id="changelog">更新日志</h2>
 
-<h3>v0.3.0（2026-06-14）</h3>
+<h3>v0.4.0（2026-06-14）</h3>
 <ul>
   <li>双格式模板 diff + apply（ARXML + XDM）</li>
   <li>bsw_verify 增强（结构化 verify 报告）</li>
@@ -1138,7 +1137,7 @@ new_param = param.with_value(ParamValue(raw="160000000", type=ParamType.INTEGER)
 
 <hr>
 <p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 40px;">
-  claude-autosar v0.3.0 · MIT License · <a href="https://github.com/jasontaotao/claude-autosar">GitHub</a> · <a href="https://pypi.org/project/claude-autosar/">PyPI</a>
+  claude-autosar v0.4.0 · MIT License · <a href="https://github.com/jasontaotao/claude-autosar">GitHub</a> · <a href="https://pypi.org/project/claude-autosar/">PyPI</a>
 </p>
 
 </div><!-- /main -->

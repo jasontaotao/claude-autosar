@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>claude-autosar v0.3.0 — 安装与使用指南</title>
+<title>claude-autosar v0.4.0 — 安装与使用指南</title>
 <style>
   :root{
     --bg:#fafaf7; --surface:#ffffff; --ink:#1a1a1a; --ink-2:#4a4a4a; --muted:#7a7a7a;
@@ -226,9 +226,9 @@
   <span class="eyebrow">claude-autosar · Claude Code 插件</span>
   <h1>安装与使用指南</h1>
   <p class="subtitle">把 <a href="https://www.autoc-tool.com/">autoc-tool.com</a> 描述的 BSW 配置 AI 助手用 Claude Code 原生插件格式落地。
-  本指南对应 <code>v0.3.0</code>（Sprint 9.5 集成）——已发布到 PyPI，覆盖从装包到第一次 lint / apply-template 的全流程。</p>
+  本指南对应 <code>v0.4.0</code>（Sprint 9.5 集成）——已发布到 PyPI，覆盖从装包到第一次 lint / apply-template 的全流程。</p>
   <div class="meta">
-    <span><b>版本</b> 0.3.0</span>
+    <span><b>版本</b> 0.4.0</span>
     <span><b>更新</b> 2026-06-14</span>
     <span><b>协议</b> MIT</span>
     <span><b>测试</b> 1331 pass / coverage 85.86%</span>
@@ -259,7 +259,7 @@
 <section id="tldr">
 <div class="tldr">
   <h2>TL;DR</h2>
-  <pre><span class="c"># 1. 装包（PyPI 上 v0.3.0 已发布）</span>
+  <pre><span class="c"># 1. 装包（PyPI 上 v0.4.0 已发布）</span>
 pip install claude-autosar
 
 <span class="c"># 2. 启动 Claude Code，挂 claude-autosar 插件（开发模式）</span>
@@ -290,7 +290,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug
 <section id="install">
 <h2><span class="num">2</span>安装 Python 包</h2>
 
-<p>v0.3.0 <strong>已发布到 PyPI</strong>，全世界 <code>pip install</code> 即可。三种路径二选一：
+<p>v0.4.0 <strong>已发布到 PyPI</strong>，全世界 <code>pip install</code> 即可。三种路径二选一：
 开发期用 editable 装（你改 <code>packages/autoc/src/claude_autosar/</code> 立即生效）；生产用 PyPI；内网用本地 wheel/sdist。</p>
 
 <div class="path-grid">
@@ -300,7 +300,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug
     <p>需要：能联网到 <code>pypi.org</code>。</p>
     <pre>pip install claude-autosar
 claude-autosar --version
-<span class="c"># → claude-autosar 0.3.0</span></pre>
+<span class="c"># → claude-autosar 0.4.0</span></pre>
   </div>
   <div class="path-card">
     <span class="tag">路径 B · 开发</span>
@@ -309,7 +309,7 @@ claude-autosar --version
     <pre><span class="k">cd</span> D:/claude_proj2/claude-autosar
 pip install -e packages/autoc[dev]
 claude-autosar --version
-<span class="c"># → claude-autosar 0.3.0</span></pre>
+<span class="c"># → claude-autosar 0.4.0</span></pre>
   </div>
 </div>
 
@@ -318,22 +318,22 @@ claude-autosar --version
 rm dist/*
 <span class="k">cd</span> packages/autoc
 python -m build
-<span class="c"># → dist/claude_autosar-0.3.0-py3-none-any.whl  (200 KB)
-# → dist/claude_autosar-0.3.0.tar.gz           (151 KB)</span>
+<span class="c"># → dist/claude_autosar-0.4.0-py3-none-any.whl  (200 KB)
+# → dist/claude_autosar-0.4.0.tar.gz           (151 KB)</span>
 
 <span class="k">cd</span> ../..
-pip install --force-reinstall dist/claude_autosar-0.3.0-py3-none-any.whl
-claude-autosar --version   <span class="c"># → claude-autosar 0.3.0</span></pre>
+pip install --force-reinstall dist/claude_autosar-0.4.0-py3-none-any.whl
+claude-autosar --version   <span class="c"># → claude-autosar 0.4.0</span></pre>
 
 <div class="callout warn">
   <span class="ic">!</span><p><strong>仓库根 <code>dist/</code> 现有产物是旧版</strong>（文件名 <code>autoc-0.1.0-*</code>，66KB + 51KB），未上传 PyPI。
-  PyPI 上的新版是 <code>claude_autosar-0.3.0-*</code>（200KB + 151KB）。
+  PyPI 上的新版是 <code>claude_autosar-0.4.0-*</code>（200KB + 151KB）。
   若要在本地拿到同名 wheel，按上面路径 C 重 build 即可。</p>
 </div>
 
 <p>装好自检（13 个子命令）：</p>
 <pre>$ claude-autosar --version
-claude-autosar 0.3.0
+claude-autosar 0.4.0
 $ claude-autosar --help
 <span class="k">usage:</span> claude-autosar [-h] [--version] [--project PROJECT] [--verbose] [--no-color]
              {eb,davinci,session,log,export,init,arxml-inspect,xdm-inspect,
@@ -364,7 +364,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug</pre>
 &gt; /plugin list</pre>
 <p>应看到：</p>
 <pre>installed plugins:
-  - claude-autosar (0.3.0)  ✓ valid</pre>
+  - claude-autosar (0.4.0)  ✓ valid</pre>
 
 <div class="callout warn">
   <span class="ic">!</span><p>路径用<strong>正斜杠</strong> <code>D:/...</code>，不要用 <code>D:\d\...</code> 这种盘符切换前缀 — Claude Code 不解释 shell 风格盘符。</p>
@@ -372,7 +372,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug</pre>
 
 <div class="callout warn">
   <span class="ic">!</span><p>如果报 <code>Failed to load hooks: expected record, received undefined, path:["hooks"]</code>，<br>
-  说明 <code>hooks.json</code> 顶层缺 <code>"hooks": {...}</code> 包装。v0.3.0 仓库里这是 <code>0309498</code> 已修的 bug；如遇自检 <code>cat packages/plugin/plugins/claude-autosar/hooks/hooks.json | head -1</code> 应该是 <code>{ "hooks": {</code> 开头。</p>
+  说明 <code>hooks.json</code> 顶层缺 <code>"hooks": {...}</code> 包装。v0.4.0 仓库里这是 <code>0309498</code> 已修的 bug；如遇自检 <code>cat packages/plugin/plugins/claude-autosar/hooks/hooks.json | head -1</code> 应该是 <code>{ "hooks": {</code> 开头。</p>
 </div>
 </section>
 
@@ -381,9 +381,9 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug</pre>
 <p>新会话里跑一遍，全部通过才算装好：</p>
 
 <div class="check-grid">
-  <div class="check"><span class="dot">1</span><div><b>CLI 入口</b><br><code>claude-autosar --version</code> → <code>claude-autosar 0.3.0</code></div></div>
+  <div class="check"><span class="dot">1</span><div><b>CLI 入口</b><br><code>claude-autosar --version</code> → <code>claude-autosar 0.4.0</code></div></div>
   <div class="check"><span class="dot">2</span><div><b>子命令 dispatch</b><br><code>claude-autosar --help</code> → 13 个子命令（eb / davinci / session / log / export / init / arxml-inspect / xdm-inspect / bsw-inspect / lint / bsw-verify / arxml-apply-template / xdm-apply-template）</div></div>
-  <div class="check"><span class="dot">3</span><div><b>插件加载</b><br><code>/plugin list</code> → <code>claude-autosar (0.3.0) ✓ valid</code></div></div>
+  <div class="check"><span class="dot">3</span><div><b>插件加载</b><br><code>/plugin list</code> → <code>claude-autosar (0.4.0) ✓ valid</code></div></div>
   <div class="check"><span class="dot">4</span><div><b>SessionStart hook</b><br>cd 到带 <code>.project</code>（EB tresos）/ <code>*.dpa</code>（DaVinci）/ <code>*.arxml</code>（纯 ARXML）的工程根，启动 Claude Code → 上下文注入 <em>"detected EB tresos project"</em>（或对应 DaVinci / arxml）</div></div>
 </div>
 
@@ -679,7 +679,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug</pre>
   <li><code>core/bsw/lint/__init__.py::lint_file()</code> 按 suffix 过滤</li>
   <li><code>cli/mcp_server.py::_run_lint_for_inspect()</code> 改用 <code>rules_for_namespace</code></li>
 </ol>
-<p>本地仓库已修，PyPI 上 0.3.0 已含修复。验证：</p>
+<p>本地仓库已修，PyPI 上 0.4.0 已含修复。验证：</p>
 <pre>$ python -c <span class="s">"from claude_autosar.core.bsw.lint import lint_file; \
   r = lint_file('path/to/file.xdm'); print(r.summary.total_rules, len(r.violations))"</span>
 <span class="c"># XDM 文件应见 total_rules=2, violations=[] (或命中 DEM-AP-001 / DEM-AP-004)</span></pre>
@@ -693,7 +693,7 @@ claude --plugin-dir ./packages/plugin/plugins/claude-autosar --debug</pre>
 <span class="c"># 应输出 True（无意义改写保持 byte-identity）</span></pre>
 
 <h3>Q9. PyPI <code>description</code> 字段还是 Sprint 2 旧版</h3>
-<p>已知瑕疵状态变化（v0.3.0 → HEAD）：PyPI 项目页 <code>project_urls</code> 错指 <code>autoc-cc/autoc-cc</code> 已在本仓库 HEAD 修复（指向 <code>jasontaotao/claude-autosar</code>）。PyPI 展示需重发布 0.3.1 才同步（PyPI 链接不可 in-place 改）。</p>
+<p>已知瑕疵状态变化（v0.4.0 → HEAD）：PyPI 项目页 <code>project_urls</code> 错指 <code>autoc-cc/autoc-cc</code> 已在本仓库 HEAD 修复（指向 <code>jasontaotao/claude-autosar</code>）。PyPI 展示需重发布 0.3.1 才同步（PyPI 链接不可 in-place 改）。</p>
 </section>
 
 <section id="uninst">
@@ -711,11 +711,11 @@ rm -rf ~/.claude-autosar/agent/.current     <span class="c"># "current" session 
 </section>
 
 <footer>
-  <p>本文档随 <code>claude-autosar</code> 仓库（HEAD <code>c597874</code>，tag <code>v0.3.0</code>）一起发布。最新版看
+  <p>本文档随 <code>claude-autosar</code> 仓库（HEAD <code>c597874</code>，tag <code>v0.4.0</code>）一起发布。最新版看
     <a href="https://github.com/jasontaotao/claude-autosar/blob/main/docs/getting-started.html">GitHub</a>。
     仓库内路径：<code>docs/getting-started.html</code>。
     配套 <a href="../install.html">install.html</a>（更详细的安装 + 排错）和 <a href="../PROGRESS.md">PROGRESS.md</a>（开发进度）可一并参考。</p>
-  <p>© 2026 AutoC Contributors · MIT License · PyPI <a href="https://pypi.org/project/claude-autosar/">claude-autosar 0.3.0</a></p>
+  <p>© 2026 AutoC Contributors · MIT License · PyPI <a href="https://pypi.org/project/claude-autosar/">claude-autosar 0.4.0</a></p>
 </footer>
 
 </div>
